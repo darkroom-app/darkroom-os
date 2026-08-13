@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e ' *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8791/darkroom-app.html)",
+      "Read(//tmp/**)",
+      "Bash(powershell -Command \"Stop-Process -Id 55920 -Force\")",
+      "Bash(curl -s http://127.0.0.1:8791/darkroom-app.html)"
+    ]
+  }
+}
