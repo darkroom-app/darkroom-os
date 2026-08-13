@@ -1213,7 +1213,7 @@ body{
             <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Obaveštenja</div>
           </div>
           <div class="notif-scroll">
-            <div class="notif-item"><div class="notif-icon ic-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></div><div><div class="notif-text">Klijent Aura Dizajn je odobrio "Faza 01" na projektu P2026-100.</div><span class="notif-time">pre 10 min</span></div></div>
+            <div class="notif-item"><div class="notif-icon ic-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M20 6 9 17l-5-5"/></svg></div><div><div class="notif-text">Klijent Gensler Dubai je odobrio "Faza 01" na projektu P2026-100.</div><span class="notif-time">pre 10 min</span></div></div>
             <div class="notif-item"><div class="notif-icon ic-comment"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div><div class="notif-text">Novi komentar na "Draft" (Projekat Vila Gradnja).</div><span class="notif-time">pre 45 min</span></div></div>
             <div class="notif-item"><div class="notif-icon ic-render"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="m16 10 6-4v12l-6-4"/></svg></div><div><div class="notif-text">Render na farmi završen (Kadar_03_Final).</div><span class="notif-time">pre 2 sata</span></div></div>
             <div class="notif-item"><div class="notif-icon ic-warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.6 2.7h17.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/></svg></div><div><div class="notif-text">Bliži se rok za "Exterior_01" (Danas u 17:00).</div><span class="notif-time">pre 3 sata</span></div></div>
@@ -1755,7 +1755,7 @@ body{
     </div>
     <div class="modal-field">
       <label>Opis / Strana</label>
-      <input type="text" id="txDescInput" placeholder="npr. Aura Dizajn — avans">
+      <input type="text" id="txDescInput" placeholder="npr. Gensler Dubai — avans">
     </div>
     <div class="modal-field">
       <label>Iznos (RSD)</label>
@@ -1894,7 +1894,7 @@ body{
     <div class="modal-title" id="ncTitle">Novi klijent</div>
     <div class="modal-field">
       <label>Naziv klijenta</label>
-      <input type="text" id="ncName" placeholder="npr. Aura Dizajn">
+      <input type="text" id="ncName" placeholder="npr. Gensler Dubai">
     </div>
     <div class="modal-field">
       <label>Kontakt osoba</label>
@@ -1932,7 +1932,7 @@ body{
     </div>
     <div class="modal-field">
       <label>Klijent</label>
-      <input type="text" id="npClient" placeholder="npr. Aura Dizajn">
+      <input type="text" id="npClient" placeholder="npr. Gensler Dubai">
     </div>
     <div class="modal-field">
       <label>Umetnik</label>
@@ -2007,7 +2007,7 @@ body{
     </div>
     <div class="modal-field">
       <label>Klijent</label>
-      <input type="text" id="portClientInput" placeholder="npr. Aura Dizajn">
+      <input type="text" id="portClientInput" placeholder="npr. Gensler Dubai">
     </div>
     <div class="modal-field">
       <label>Umetnik</label>
@@ -2221,7 +2221,7 @@ projects.forEach(p=>{
 
 const agendaData = {
   3: { label:"Ponedeljak, 3. avgust", items:[{t:"09:00", x:"Interni sastanak tima"},{t:"13:00", x:"Priprema materijala za klijenta"}] },
-  4: { label:"Utorak, 4. avgust", items:[{t:"10:00", x:"Sastanak sa klijentom — Aura Dizajn"},{t:"14:00", x:"Render review — Kadar_03"},{t:"16:30", x:"Poziv — Delta Real Estate"}] },
+  4: { label:"Utorak, 4. avgust", items:[{t:"10:00", x:"Sastanak sa klijentom — Gensler Dubai"},{t:"14:00", x:"Render review — Kadar_03"},{t:"16:30", x:"Poziv — Arvi Studios"}] },
   5: { label:"Sreda, 5. avgust", items:[{t:"11:00", x:"Modelovanje terena — Vila Sunčana Padina"}] },
   6: { label:"Četvrtak, 6. avgust", items:[] },
   7: { label:"Petak, 7. avgust", items:[{t:"09:30", x:"Predaja Faza 01 — Projekat Koncept 7"}] },
@@ -2897,18 +2897,18 @@ populateMonthYearSelects();
 syncMonthYearControls();
 
 let allProjects = [
-  {name:"Projekat Koncept 7", code:"P2026-106", client:"Aura Dizajn", year:2026, artist:"Dušan Stević", status:"U toku", phase:"Faza 01", deadline:"12. avg", seed:1.3},
-  {name:"Vila Sunčana Padina", code:"P2026-104", client:"N. Radović", year:2026, artist:"Stefana Ristić", status:"U toku", phase:"Eksterijer render", deadline:"18. avg", seed:4.1},
-  {name:"Poslovni Kompleks Delta", code:"P2026-098", client:"Delta Real Estate", year:2026, artist:"Radoslav Milanović", status:"Revizija", phase:"Revizija fasade", deadline:"20. avg", seed:2.6},
-  {name:"Rezidencija Javor", code:"P2026-092", client:"M&M Investments", year:2026, artist:"Dalibor Mitić", status:"U toku", phase:"Modelovanje terena", deadline:"25. avg", seed:6.4},
-  {name:"Hotel Panorama", code:"P2026-087", client:"Panorama Group", year:2026, artist:"Katarina Đorđević", status:"Završeno", phase:"Finalna predaja", deadline:"30. jul", seed:3.2},
-  {name:"Stambeni Blok Riva", code:"P2026-081", client:"Riva Development", year:2026, artist:"Aleksandra Vukašinović", status:"U toku", phase:"Kamere — ptičja perspektiva", deadline:"5. sep", seed:5.7},
-  {name:"Enterijer Penthouse K", code:"P2025-076", client:"privatni klijent", year:2025, artist:"Mihajlo Nagradić", status:"Završeno", phase:"Isporuka klijentu", deadline:"14. dec", seed:7.2},
-  {name:"Poslovna Zgrada Vertex", code:"P2025-134", client:"Nova Gradnja doo", year:2025, artist:"Nikola Jovanović", status:"Na čekanju", phase:"Koncept", deadline:"—", seed:8.5},
-  {name:"Vikendica Zlatibor", code:"P2025-120", client:"privatni klijent", year:2025, artist:"Anđela Pešić", status:"Završeno", phase:"Finalni render", deadline:"3. nov", seed:9.1},
-  {name:"Šoping Centar Aurora", code:"P2025-101", client:"Urban Plan", year:2025, artist:"Marija Todorović", status:"U toku", phase:"Eksterijer dan/noć", deadline:"22. sep", seed:1.9},
-  {name:"Rezidencijalni Kompleks Nova", code:"P2024-088", client:"Delta Real Estate", year:2024, artist:"Ana Krstić", status:"Završeno", phase:"Predaja projekta", deadline:"10. dec", seed:3.8},
-  {name:"Apartman Studio M", code:"P2024-054", client:"privatni klijent", year:2024, artist:"Miljana Cvetković", status:"Završeno", phase:"Enterijer", deadline:"2. jun", seed:5.2},
+  {name:"Projekat Koncept 7", code:"P2026-106", client:"Gensler Dubai", year:2026, artist:"Dušan Stević", status:"U toku", phase:"Faza 01", deadline:"12. avg", seed:1.3},
+  {name:"Vila Sunčana Padina", code:"P2026-104", client:"Gensler San Francisco", year:2026, artist:"Stefana Ristić", status:"U toku", phase:"Eksterijer render", deadline:"18. avg", seed:4.1},
+  {name:"Poslovni Kompleks Delta", code:"P2026-098", client:"Arvi Studios", year:2026, artist:"Radoslav Milanović", status:"Revizija", phase:"Revizija fasade", deadline:"20. avg", seed:2.6},
+  {name:"Rezidencija Javor", code:"P2026-092", client:"Rilea Group", year:2026, artist:"Dalibor Mitić", status:"U toku", phase:"Modelovanje terena", deadline:"25. avg", seed:6.4},
+  {name:"Hotel Panorama", code:"P2026-087", client:"Growcott Freer", year:2026, artist:"Katarina Đorđević", status:"Završeno", phase:"Finalna predaja", deadline:"30. jul", seed:3.2},
+  {name:"Stambeni Blok Riva", code:"P2026-081", client:"One World Properties", year:2026, artist:"Aleksandra Vukašinović", status:"U toku", phase:"Kamere — ptičja perspektiva", deadline:"5. sep", seed:5.7},
+  {name:"Enterijer Penthouse K", code:"P2025-076", client:"Woods Bagot", year:2025, artist:"Mihajlo Nagradić", status:"Završeno", phase:"Isporuka klijentu", deadline:"14. dec", seed:7.2},
+  {name:"Poslovna Zgrada Vertex", code:"P2025-134", client:"One Line Design", year:2025, artist:"Nikola Jovanović", status:"Na čekanju", phase:"Koncept", deadline:"—", seed:8.5},
+  {name:"Vikendica Zlatibor", code:"P2025-120", client:"Woods Bagot", year:2025, artist:"Anđela Pešić", status:"Završeno", phase:"Finalni render", deadline:"3. nov", seed:9.1},
+  {name:"Šoping Centar Aurora", code:"P2025-101", client:"Southern Land Company", year:2025, artist:"Marija Todorović", status:"U toku", phase:"Eksterijer dan/noć", deadline:"22. sep", seed:1.9},
+  {name:"Rezidencijalni Kompleks Nova", code:"P2024-088", client:"Arvi Studios", year:2024, artist:"Ana Krstić", status:"Završeno", phase:"Predaja projekta", deadline:"10. dec", seed:3.8},
+  {name:"Apartman Studio M", code:"P2024-054", client:"Woods Bagot", year:2024, artist:"Miljana Cvetković", status:"Završeno", phase:"Enterijer", deadline:"2. jun", seed:5.2},
 ];
 allProjects.forEach(p=>p._id=nextId());
 fromPersisted('allProjects', allProjects);
@@ -3112,15 +3112,15 @@ const clientAvatarColors = [
 ];
 
 let allClients = [
-  {name:"Aura Dizajn", contact:"Jelena Aura", email:"jelena@auradizajn.rs", phone:"060 231 4410", status:"Aktivan", active:3, total:5, since:2024},
-  {name:"N. Radović", contact:"Nikola Radović", email:"nikola.radovic@gmail.com", phone:"063 812 0091", status:"Aktivan", active:1, total:1, since:2026},
-  {name:"Delta Real Estate", contact:"Stefan Delić", email:"s.delic@deltare.rs", phone:"011 344 2290", status:"Aktivan", active:1, total:4, since:2023},
-  {name:"M&M Investments", contact:"Mina Mitić", email:"mina@mminvest.rs", phone:"064 552 8871", status:"Aktivan", active:1, total:2, since:2025},
-  {name:"Panorama Group", contact:"Vuk Panić", email:"v.panic@panoramagroup.com", phone:"021 665 1123", status:"Neaktivan", active:0, total:3, since:2022},
-  {name:"Riva Development", contact:"Ognjen Riva", email:"ognjen@rivadev.rs", phone:"065 990 3345", status:"Aktivan", active:1, total:2, since:2024},
-  {name:"Nova Gradnja doo", contact:"Sanja Novak", email:"sanja@novagradnja.rs", phone:"022 410 7765", status:"Neaktivan", active:0, total:1, since:2025},
-  {name:"Urban Plan", contact:"Filip Urban", email:"filip@urbanplan.rs", phone:"011 782 4456", status:"Aktivan", active:1, total:1, since:2025},
-  {name:"privatni klijent", contact:"K. Petrović", email:"k.petrovic@gmail.com", phone:"061 340 9982", status:"Aktivan", active:1, total:1, since:2025},
+  {name:"Gensler Dubai", contact:"Yasmin Al-Farsi", email:"yasmin.alfarsi@gensler.com", phone:"+971 4 234 5610", status:"Aktivan", active:3, total:5, since:2024},
+  {name:"Gensler San Francisco", contact:"Michael Chen", email:"michael.chen@gensler.com", phone:"+1 415 668 0092", status:"Aktivan", active:1, total:1, since:2026},
+  {name:"Arvi Studios", contact:"Filip Arsić", email:"filip@arvistudios.com", phone:"011 344 2290", status:"Aktivan", active:1, total:4, since:2023},
+  {name:"Rilea Group", contact:"Diana Kolbe", email:"d.kolbe@rileagroup.com", phone:"+1 216 555 0142", status:"Aktivan", active:1, total:2, since:2025},
+  {name:"Growcott Freer", contact:"Tom Growcott", email:"tom@growcottfreer.com.au", phone:"+61 2 8311 4420", status:"Neaktivan", active:0, total:3, since:2022},
+  {name:"One World Properties", contact:"Camila Reyes", email:"camila@oneworldproperties.com", phone:"+1 305 666 0198", status:"Aktivan", active:1, total:2, since:2024},
+  {name:"One Line Design", contact:"Petra Linden", email:"petra@onelinedesign.com", phone:"022 410 7765", status:"Neaktivan", active:0, total:1, since:2025},
+  {name:"Southern Land Company", contact:"James Calloway", email:"j.calloway@southernland.com", phone:"+1 615 550 3321", status:"Aktivan", active:1, total:1, since:2025},
+  {name:"Woods Bagot", contact:"Isabelle Wood", email:"isabelle.wood@woodsbagot.com", phone:"+61 3 8646 2200", status:"Aktivan", active:1, total:1, since:2025},
 ];
 allClients.forEach(c=>c._id=nextId());
 fromPersisted('allClients', allClients);
@@ -3368,20 +3368,20 @@ const typeColorVar = { "Render":"var(--gold)", "Animacija":"var(--teal)", "Walkt
 const typeHours = { "Render":4, "Animacija":10, "Walkthrough":8, "Print":3, "VR Prikaz":12 };
 
 const portfolioItems = [
-  {title:"Eksterijer — Glavna fasada", project:"Projekat Koncept 7", code:"P2026-106", client:"Aura Dizajn", artist:"Dušan Stević", year:2026, type:"Render", seed:1.1},
-  {title:"Noćni eksterijer render", project:"Vila Sunčana Padina", code:"P2026-104", client:"N. Radović", artist:"Stefana Ristić", year:2026, type:"Render", seed:2.2},
-  {title:"Walkthrough animacija — Prizemlje", project:"Vila Sunčana Padina", code:"P2026-104", client:"N. Radović", artist:"Radoslav Milanović", year:2026, type:"Animacija", seed:3.3},
-  {title:"Fasadna revizija — Rev02", project:"Poslovni Kompleks Delta", code:"P2026-098", client:"Delta Real Estate", artist:"Dalibor Mitić", year:2026, type:"Render", seed:4.4},
-  {title:"Enterijer — Dnevna soba", project:"Rezidencija Javor", code:"P2026-092", client:"M&M Investments", artist:"Katarina Đorđević", year:2026, type:"Render", seed:5.5},
-  {title:"Drone walkthrough", project:"Hotel Panorama", code:"P2026-087", client:"Panorama Group", artist:"Aleksandra Vukašinović", year:2026, type:"Walkthrough", seed:6.6},
-  {title:"Ptičja perspektiva — Kompleks", project:"Stambeni Blok Riva", code:"P2026-081", client:"Riva Development", artist:"Mihajlo Nagradić", year:2026, type:"Render", seed:7.7},
-  {title:"Print materijal — Brošura", project:"Enterijer Penthouse K", code:"P2025-076", client:"privatni klijent", artist:"Nikola Jovanović", year:2025, type:"Print", seed:8.8},
-  {title:"Konceptualni render", project:"Poslovna Zgrada Vertex", code:"P2025-134", client:"Nova Gradnja doo", artist:"Anđela Pešić", year:2025, type:"Render", seed:9.9},
-  {title:"Finalni render — Enterijer", project:"Vikendica Zlatibor", code:"P2025-120", client:"privatni klijent", artist:"Marija Todorović", year:2025, type:"Render", seed:1.5},
-  {title:"Dan/noć animacija", project:"Šoping Centar Aurora", code:"P2025-101", client:"Urban Plan", artist:"Ana Krstić", year:2025, type:"Animacija", seed:2.5},
-  {title:"Predajni set — Fasada", project:"Rezidencijalni Kompleks Nova", code:"P2024-088", client:"Delta Real Estate", artist:"Miljana Cvetković", year:2024, type:"Render", seed:3.5},
-  {title:"Enterijer walkthrough", project:"Apartman Studio M", code:"P2024-054", client:"privatni klijent", artist:"Miloš Tasić", year:2024, type:"Walkthrough", seed:4.5},
-  {title:"VR prikaz — Showroom", project:"Projekat Koncept 7", code:"P2026-106", client:"Aura Dizajn", artist:"Ivana Sazdov", year:2026, type:"VR Prikaz", seed:5.9},
+  {title:"Eksterijer — Glavna fasada", project:"Projekat Koncept 7", code:"P2026-106", client:"Gensler Dubai", artist:"Dušan Stević", year:2026, type:"Render", seed:1.1},
+  {title:"Noćni eksterijer render", project:"Vila Sunčana Padina", code:"P2026-104", client:"Gensler San Francisco", artist:"Stefana Ristić", year:2026, type:"Render", seed:2.2},
+  {title:"Walkthrough animacija — Prizemlje", project:"Vila Sunčana Padina", code:"P2026-104", client:"Gensler San Francisco", artist:"Radoslav Milanović", year:2026, type:"Animacija", seed:3.3},
+  {title:"Fasadna revizija — Rev02", project:"Poslovni Kompleks Delta", code:"P2026-098", client:"Arvi Studios", artist:"Dalibor Mitić", year:2026, type:"Render", seed:4.4},
+  {title:"Enterijer — Dnevna soba", project:"Rezidencija Javor", code:"P2026-092", client:"Rilea Group", artist:"Katarina Đorđević", year:2026, type:"Render", seed:5.5},
+  {title:"Drone walkthrough", project:"Hotel Panorama", code:"P2026-087", client:"Growcott Freer", artist:"Aleksandra Vukašinović", year:2026, type:"Walkthrough", seed:6.6},
+  {title:"Ptičja perspektiva — Kompleks", project:"Stambeni Blok Riva", code:"P2026-081", client:"One World Properties", artist:"Mihajlo Nagradić", year:2026, type:"Render", seed:7.7},
+  {title:"Print materijal — Brošura", project:"Enterijer Penthouse K", code:"P2025-076", client:"Woods Bagot", artist:"Nikola Jovanović", year:2025, type:"Print", seed:8.8},
+  {title:"Konceptualni render", project:"Poslovna Zgrada Vertex", code:"P2025-134", client:"One Line Design", artist:"Anđela Pešić", year:2025, type:"Render", seed:9.9},
+  {title:"Finalni render — Enterijer", project:"Vikendica Zlatibor", code:"P2025-120", client:"Woods Bagot", artist:"Marija Todorović", year:2025, type:"Render", seed:1.5},
+  {title:"Dan/noć animacija", project:"Šoping Centar Aurora", code:"P2025-101", client:"Southern Land Company", artist:"Ana Krstić", year:2025, type:"Animacija", seed:2.5},
+  {title:"Predajni set — Fasada", project:"Rezidencijalni Kompleks Nova", code:"P2024-088", client:"Arvi Studios", artist:"Miljana Cvetković", year:2024, type:"Render", seed:3.5},
+  {title:"Enterijer walkthrough", project:"Apartman Studio M", code:"P2024-054", client:"Woods Bagot", artist:"Miloš Tasić", year:2024, type:"Walkthrough", seed:4.5},
+  {title:"VR prikaz — Showroom", project:"Projekat Koncept 7", code:"P2026-106", client:"Gensler Dubai", artist:"Ivana Sazdov", year:2026, type:"VR Prikaz", seed:5.9},
 ];
 portfolioItems.forEach(p=>p._id=nextId());
 fromPersisted('portfolioItems', portfolioItems);
@@ -3627,12 +3627,12 @@ const monthNamesShort = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg","Sep","
 
 const monthlyProjects = [4,5,7,9,8,6,5,2,7,9,8,6];
 const clientRevenue = [
-  {client:"Delta Real Estate", amount:3120000},
-  {client:"Aura Dizajn", amount:2450000},
-  {client:"Panorama Group", amount:1860000},
-  {client:"Riva Development", amount:1340000},
-  {client:"Urban Plan", amount:890000},
-  {client:"M&M Investments", amount:980000},
+  {client:"Arvi Studios", amount:3120000},
+  {client:"Gensler Dubai", amount:2450000},
+  {client:"Growcott Freer", amount:1860000},
+  {client:"One World Properties", amount:1340000},
+  {client:"Southern Land Company", amount:890000},
+  {client:"Rilea Group", amount:980000},
 ];
 const phaseDurations = [
   {label:"Clay", days:2, color:"var(--teal)"},
@@ -4092,25 +4092,25 @@ function fmtK(n){ return Math.round(n/1000) + 'k'; }
 const monthAbbrRS = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg"];
 
 let allTransactions = [
-  {date:"2026-01-12", type:"Priliv", category:"Uplata klijenta", desc:"Aura Dizajn — avans P2026-106", method:"Račun", amount:450000},
+  {date:"2026-01-12", type:"Priliv", category:"Uplata klijenta", desc:"Gensler Dubai — avans P2026-106", method:"Račun", amount:450000},
   {date:"2026-01-18", type:"Odliv", category:"Zakup prostora", desc:"Kirija — januar", method:"Račun", amount:95000},
   {date:"2026-02-05", type:"Odliv", category:"Softver", desc:"Corona Renderer licence (6x)", method:"Račun", amount:62000},
-  {date:"2026-02-14", type:"Priliv", category:"Uplata klijenta", desc:"Delta Real Estate — Faza 01", method:"Račun", amount:620000},
+  {date:"2026-02-14", type:"Priliv", category:"Uplata klijenta", desc:"Arvi Studios — Faza 01", method:"Račun", amount:620000},
   {date:"2026-02-20", type:"Odliv", category:"Zakup prostora", desc:"Kirija — februar", method:"Račun", amount:95000},
-  {date:"2026-03-08", type:"Priliv", category:"Uplata klijenta", desc:"Panorama Group — finalna isplata", method:"Račun", amount:780000},
+  {date:"2026-03-08", type:"Priliv", category:"Uplata klijenta", desc:"Growcott Freer — finalna isplata", method:"Račun", amount:780000},
   {date:"2026-03-15", type:"Odliv", category:"Oprema", desc:"2× RTX 4080 grafičke kartice", method:"Račun", amount:340000},
   {date:"2026-03-22", type:"Odliv", category:"Zakup prostora", desc:"Kirija — mart", method:"Račun", amount:95000},
-  {date:"2026-04-10", type:"Priliv", category:"Uplata klijenta", desc:"M&M Investments — avans", method:"Račun", amount:390000},
+  {date:"2026-04-10", type:"Priliv", category:"Uplata klijenta", desc:"Rilea Group — avans", method:"Račun", amount:390000},
   {date:"2026-04-19", type:"Odliv", category:"Zakup prostora", desc:"Kirija — april", method:"Račun", amount:95000},
-  {date:"2026-05-06", type:"Priliv", category:"Uplata klijenta", desc:"Riva Development — Faza 01", method:"Račun", amount:510000},
+  {date:"2026-05-06", type:"Priliv", category:"Uplata klijenta", desc:"One World Properties — Faza 01", method:"Račun", amount:510000},
   {date:"2026-05-21", type:"Odliv", category:"Ostalo", desc:"Knjigovodstvene usluge", method:"Račun", amount:38000},
   {date:"2026-05-24", type:"Odliv", category:"Zakup prostora", desc:"Kirija — maj", method:"Račun", amount:95000},
-  {date:"2026-06-09", type:"Priliv", category:"Uplata klijenta", desc:"Urban Plan — avans", method:"Račun", amount:340000},
+  {date:"2026-06-09", type:"Priliv", category:"Uplata klijenta", desc:"Southern Land Company — avans", method:"Račun", amount:340000},
   {date:"2026-06-18", type:"Odliv", category:"Zakup prostora", desc:"Kirija — jun", method:"Račun", amount:95000},
-  {date:"2026-07-03", type:"Priliv", category:"Uplata klijenta", desc:"Aura Dizajn — Faza 02", method:"Račun", amount:280000},
+  {date:"2026-07-03", type:"Priliv", category:"Uplata klijenta", desc:"Gensler Dubai — Faza 02", method:"Račun", amount:280000},
   {date:"2026-07-15", type:"Odliv", category:"Softver", desc:"Adobe Creative Cloud — godišnja", method:"Račun", amount:118000},
   {date:"2026-07-25", type:"Odliv", category:"Zakup prostora", desc:"Kirija — jul", method:"Račun", amount:95000},
-  {date:"2026-08-01", type:"Priliv", category:"Uplata klijenta", desc:"Delta Real Estate — Faza 02", method:"Račun", amount:410000},
+  {date:"2026-08-01", type:"Priliv", category:"Uplata klijenta", desc:"Arvi Studios — Faza 02", method:"Račun", amount:410000},
   {date:"2026-08-04", type:"Odliv", category:"Zakup prostora", desc:"Kirija — avgust", method:"Gotovina", amount:95000},
 ];
 allTransactions.forEach(t=>t._id=nextId());
@@ -4726,7 +4726,7 @@ function sendChat(){
   runChatSearch(val);
 }
 
-const chatSuggestions = ["Projekat Koncept 7", "Aura Dizajn", "Miljana", "Workflow standardi"];
+const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Workflow standardi"];
 document.getElementById('chatSuggestRow').innerHTML = chatSuggestions.map(s=>`<div class="chat-suggest-chip">${s}</div>`).join('');
 document.querySelectorAll('.chat-suggest-chip').forEach(chip=>{
   chip.addEventListener('click', ()=> runChatSearch(chip.textContent));
