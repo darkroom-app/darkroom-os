@@ -411,7 +411,8 @@ body{
 .sal-head2{ padding:0 4px 10px; border-bottom:1px solid var(--border); margin-bottom:4px; }
 .sal-head2 span{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; text-align:center; }
 .sal-head2 span:first-child{ text-align:left; }
-.sal-row2{ padding:9px 4px; border-bottom:1px solid var(--border); transition:background .15s; border-radius:8px; }
+.sal-row2{ padding:9px 4px 9px 8px; border-bottom:1px solid var(--border); border-left:3px solid transparent; transition:background .15s, border-color .3s ease; border-radius:8px; }
+.sal-row2.entered{ border-left-color:#4C8A55; }
 .sal-row2:hover{ background:var(--card-soft); }
 .sal-row2:last-child{ border-bottom:none; }
 .sal-emp{ display:flex; align-items:center; gap:8px; }
@@ -438,19 +439,31 @@ body{
 .sal-payrun-row b{ font-family:var(--font-display); font-weight:700; font-size:12.5px; }
 .sal-payrun-row b.pending{ color:var(--coral); }
 .sal-history-total{ font-family:var(--font-display); font-weight:700; font-size:21px; }
+.sal-unit-chart{ height:200px; padding-top:8px; }
+.sal-unit-col{ position:relative; }
+.sal-unit-bar{ display:flex; flex-direction:column-reverse; align-items:center; gap:2.5px; }
+.sal-unit-sq{ width:20px; height:7px; border-radius:2.5px; transform:scale(0.3); opacity:0; transition:transform .45s cubic-bezier(.34,1.6,.4,1), opacity .3s ease; }
+.sal-unit-sq.shown{ transform:scale(1); opacity:1; }
+.sal-unit-tooltip{ position:absolute; bottom:100%; left:50%; transform:translateX(-50%) translateY(-10px); background:var(--card); border:1px solid var(--border); border-radius:12px; padding:10px 13px; box-shadow:0 16px 30px -12px rgba(40,30,10,0.32); opacity:0; pointer-events:none; transition:opacity .15s ease; z-index:5; }
+.sal-unit-col:hover .sal-unit-tooltip{ opacity:1; }
+.sal-unit-tooltip-grid{ display:grid; grid-template-columns:1fr 1fr; gap:5px 16px; }
+.sal-unit-tooltip-item{ display:flex; align-items:center; gap:6px; font-size:10.5px; white-space:nowrap; }
+.sal-unit-tooltip-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.sal-unit-tooltip-item b{ font-family:var(--font-mono); font-weight:700; }
 
 .sal-emp-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; }
-.sal-emp-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
-.sal-emp-card.missing{ border-color:var(--coral-soft); background:linear-gradient(180deg, var(--coral-soft) 0%, var(--card) 22%); }
+.sal-emp-card{ background:var(--card); border:2px solid var(--border); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:11px; transition:border-color .35s ease, box-shadow .35s ease; }
+.sal-emp-card.entered{ border-color:#4C8A55; box-shadow:0 0 0 3px rgba(76,138,85,0.12); }
 .sal-emp-card-top{ display:flex; align-items:center; gap:10px; }
 .sal-emp-avatar-lg{ width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:12px; color:#fff; flex-shrink:0; }
 .sal-emp-card-name{ font-family:var(--font-display); font-weight:600; font-size:12.5px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sal-emp-card-role{ font-size:10px; color:var(--ink-faint); }
 .sal-emp-card-amt{ font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--ink); }
+.sal-emp-card-amt.empty{ font-family:var(--font-body); font-size:11px; font-weight:600; color:var(--ink-faint); }
+.sal-emp-card-status{ font-family:var(--font-mono); font-size:9px; font-weight:600; color:var(--ink-faint); }
+.sal-emp-card-status.paid{ color:#4C8A55; }
 .sal-emp-card-btn{ width:100%; font-family:var(--font-body); font-size:11px; font-weight:600; padding:8px; border-radius:10px; border:1px solid var(--border); background:var(--card-soft); color:var(--ink-dim); cursor:pointer; transition:background .15s; }
 .sal-emp-card-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); }
-.sal-emp-card-btn.primary{ background:var(--ink); color:#FBF8F1; border-color:var(--ink); }
-.sal-emp-card-btn.primary:hover{ opacity:0.87; }
 
 .sal-progress-row{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
 .sal-progress-track{ flex:1; height:7px; background:var(--card-soft); border-radius:5px; overflow:hidden; }
@@ -1932,7 +1945,7 @@ body{
               <div class="kpi-trend" id="salChartTrend"></div>
             </div>
             <div class="fin-flow-legend" id="salStackLegend"></div>
-            <div class="line-svg-wrap"><svg id="salChart" viewBox="0 0 760 220" preserveAspectRatio="none" style="width:100%;height:220px;"></svg></div>
+            <div class="fin-flow-chart sal-unit-chart" id="salChart"></div>
           </div>
         </div>
 
@@ -2096,7 +2109,8 @@ body{
       <select id="salMonthInput">
         <option value="0">Januar</option><option value="1">Februar</option><option value="2">Mart</option>
         <option value="3">April</option><option value="4">Maj</option><option value="5">Jun</option>
-        <option value="6">Jul</option><option value="7" selected>Avgust</option>
+        <option value="6">Jul</option><option value="7" selected>Avgust</option><option value="8">Septembar</option>
+        <option value="9">Oktobar</option><option value="10">Novembar</option><option value="11">Decembar</option>
       </select>
     </div>
     <div class="sal-modal-grid">
@@ -5916,13 +5930,14 @@ function refreshSalMonthView(){
   renderSalMonthMenu();
   renderSalBreakdown();
   renderSalPayrun();
+  renderSalChart();
   renderSalProgress();
   renderSalEmpGrid();
   renderSalTable();
 }
 
 function renderSalMonthMenu(){
-  document.getElementById('filterSalMonthMenu').innerHTML = monthNamesFull.slice(0,8).map((label,i)=>
+  document.getElementById('filterSalMonthMenu').innerHTML = monthNamesFull.map((label,i)=>
     `<div class="cal-filter-item" data-val="${i}">${label}</div>`).join('');
   document.getElementById('filterSalMonthLabel').textContent = monthNamesFull[salBreakdownMonth];
   document.getElementById('salTableMonthLabel').textContent = `${monthNamesFull[salBreakdownMonth]} ${salBreakdownYear}.`;
@@ -6021,12 +6036,12 @@ function renderSalPayrun(){
   setTimeout(()=>{ document.getElementById('salPayrunDonutWrap').classList.add('shown'); }, 100);
 }
 
-const salAreaGrad = { osnovica:['var(--gold)','var(--gold-deep)'], bonus:['var(--sage)','var(--sage-deep)'], prekovremeno:['var(--sky)','var(--sky-deep)'], porez:['var(--plum)','var(--plum-deep)'] };
+const salMonthAbbr = monthNamesFull.map(m=>m.slice(0,3));
 
 function renderSalChart(){
   const cats = ['osnovica','bonus','prekovremeno','porez'];
   const monthSegs = [], monthTotals = [];
-  for(let m=0;m<8;m++){
+  for(let m=0;m<12;m++){
     const entries = salaryEntries.filter(s=>s.month===m);
     const seg = {};
     cats.forEach(c=> seg[c] = entries.reduce((s,e)=>s+e[c],0));
@@ -6036,61 +6051,37 @@ function renderSalChart(){
   document.getElementById('salStackLegend').innerHTML = cats.map(c=>`
     <div class="fin-flow-legend-item"><span class="fin-flow-legend-dot" style="background:${salCatColors[c]}"></span>${salCatLabels[c]}</div>`).join('');
 
-  const W=760, H=220, padL=6, padR=6, padT=16, padB=28;
-  const max = Math.max(...monthTotals, 1) * 1.1;
-  const n = monthAbbrRS.length;
-  const xFor = i => padL + (i/(n-1)) * (W-padL-padR);
-  const yFor = v => padT + (1 - v/max) * (H-padT-padB);
-  const baseY = yFor(0);
+  const maxTotal = Math.max(...monthTotals, 1);
+  const targetMaxSquares = 16;
+  const unitValue = maxTotal / targetMaxSquares;
 
-  let defs = `<defs>${cats.map(c=>`
-    <linearGradient id="salGrad-${c}" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="${salAreaGrad[c][0]}" stop-opacity="0.9"/>
-      <stop offset="100%" stop-color="${salAreaGrad[c][1]}" stop-opacity="0.55"/>
-    </linearGradient>`).join('')}</defs>`;
-
-  let grid = [0,0.5,1].map(f=>{
-    const y = padT + f*(H-padT-padB);
-    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5"/>`;
+  document.getElementById('salChart').innerHTML = salMonthAbbr.map((label,i)=>{
+    const seg = monthSegs[i];
+    const squares = [];
+    cats.forEach(c=>{
+      const val = seg[c];
+      if(val <= 0) return;
+      const count = Math.max(1, Math.round(val/unitValue));
+      for(let s=0;s<count;s++) squares.push(`<div class="sal-unit-sq" style="background:${salCatColors[c]};"></div>`);
+    });
+    const tooltip = `<div class="sal-unit-tooltip"><div class="sal-unit-tooltip-grid">${cats.map(c=>`
+        <div class="sal-unit-tooltip-item"><span class="sal-unit-tooltip-dot" style="background:${salCatColors[c]}"></span><b>${fmtRSD(seg[c])}</b></div>`).join('')}
+      </div></div>`;
+    return `<div class="fin-flow-col sal-unit-col">
+      ${tooltip}
+      <div class="fin-flow-track"><div class="sal-unit-bar">${squares.join('')}</div></div>
+      <div class="fin-flow-label">${label}</div>
+    </div>`;
   }).join('');
 
-  let cum = new Array(n).fill(0);
-  let areas = '';
-  cats.forEach(c=>{
-    const prevCum = [...cum];
-    cum = cum.map((v,i)=> v + monthSegs[i][c]);
-    const topPts = cum.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' L ');
-    const botPts = [...prevCum].map((v,i)=>`${xFor(i)},${yFor(v)}`).reverse().join(' L ');
-    const d = `M ${topPts} L ${botPts} Z`;
-    areas += `<path d="${d}" fill="url(#salGrad-${c})" class="sal-area-path" style="opacity:0; transition:opacity .8s ease;"><title>${salCatLabels[c]}</title></path>`;
-  });
-
-  const totalPts = cum.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' ');
-  const totalLine = `<polyline points="${totalPts}" fill="none" stroke="var(--ink)" stroke-opacity="0.3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sal-area-topline"/>`;
-
-  let dots = cum.map((v,i)=>`<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3" fill="var(--card)" stroke="var(--ink)" stroke-opacity="0.4" stroke-width="1.4"><title>${monthAbbrRS[i]}: ${fmtRSD(v)}</title></circle>`).join('');
-
-  let labels = monthAbbrRS.map((label,i)=>
-    `<text x="${xFor(i)}" y="${H-8}" font-size="9.5" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-mono)">${label}</text>`).join('');
-
-  document.getElementById('salChart').innerHTML = defs + grid + areas + totalLine + dots + labels;
-
-  requestAnimationFrame(()=>{
-    document.querySelectorAll('#salChart .sal-area-path').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.opacity = '1'; }, i*120);
+  setTimeout(()=>{
+    document.querySelectorAll('#salChart .sal-unit-sq').forEach((el,i)=>{
+      setTimeout(()=>{ el.classList.add('shown'); }, i*12);
     });
-    const line = document.querySelector('#salChart .sal-area-topline');
-    if(line){
-      const len = line.getTotalLength();
-      line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
-      line.getBoundingClientRect();
-      line.style.transition = 'stroke-dashoffset 1.3s cubic-bezier(.34,1,.4,1)';
-      requestAnimationFrame(()=>{ line.style.strokeDashoffset = 0; });
-    }
-  });
+  }, 100);
 
   document.getElementById('salHistoryTotal').textContent = fmtRSD(yearPayrollTotal());
-  const currTotal = monthTotals[7], prevTotal = monthTotals[6];
+  const currTotal = monthTotals[salBreakdownMonth], prevTotal = monthTotals[salBreakdownMonth-1] || 0;
   const trend = prevTotal>0 ? ((currTotal-prevTotal)/prevTotal)*100 : 0;
   const badge = document.getElementById('salChartTrend');
   badge.className = 'kpi-trend ' + (trend>=0?'up':'down');
@@ -6129,10 +6120,6 @@ function renderSalProgress(){
   }
 }
 
-function salEmpBtnHtml(key, hasEntry){
-  return `<button class="sal-emp-card-btn ${hasEntry?'':'primary'}" data-emp="${key}">${hasEntry?'Izmeni platu':'Unesi platu'}</button>`;
-}
-
 function renderSalEmpGrid(){
   const month = salBreakdownMonth;
   const emps = salFilteredEmployees();
@@ -6144,24 +6131,24 @@ function renderSalEmpGrid(){
     const grad = artistGrad[e.key] || clientAvatarColors[0];
     const initials = artistInitials[e.key] || clientInitials(e.name);
     if(!entry){
-      return `<div class="sal-emp-card missing">
+      return `<div class="sal-emp-card">
         <div class="sal-emp-card-top">
           <span class="sal-emp-avatar-lg" style="background:${grad}">${initials}</span>
           <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
         </div>
-        <span class="sal-status-badge missing" style="justify-self:start;">Nije uneto</span>
-        ${salEmpBtnHtml(e.key, false)}
+        <div class="sal-emp-card-amt empty">Nije uneto</div>
+        <button class="sal-emp-card-btn" data-emp="${e.key}">Unesi platu</button>
       </div>`;
     }
     const paid = entry.status !== 'Na čekanju';
-    return `<div class="sal-emp-card">
+    return `<div class="sal-emp-card entered">
       <div class="sal-emp-card-top">
         <span class="sal-emp-avatar-lg" style="background:${grad}">${initials}</span>
         <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
       </div>
-      <span class="sal-status-badge ${paid?'paid':'pending'}" style="justify-self:start;">${paid?'✓':'⏳'} ${entry.status}</span>
       <div class="sal-emp-card-amt">${fmtRSD(salUkupno(entry))}</div>
-      ${salEmpBtnHtml(e.key, true)}
+      <div class="sal-emp-card-status ${paid?'paid':''}">${paid?'✓':'⏳'} ${entry.status}</div>
+      <button class="sal-emp-card-btn" data-emp="${e.key}">Unesi platu</button>
     </div>`;
   }).join('');
   document.querySelectorAll('#salEmpGrid .sal-emp-card-btn').forEach(btn=>{
@@ -6187,7 +6174,7 @@ function renderSalTable(){
     const up = changed && entry.osnovica > prevEntry.osnovica;
     const arrow = changed ? `<span class="sal-change ${up?'up':'down'}">${up?'▲':'▼'}</span>` : '';
     const paid = entry.status !== 'Na čekanju';
-    return `<div class="sal-row2" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
+    return `<div class="sal-row2 entered" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
       <div class="sal-emp"><span class="sal-emp-avatar" style="background:${artistGrad[e.key]}">${artistInitials[e.key]}</span><span class="sal-emp-name">${e.name}</span></div>
       <div class="sal-cell2">${fmtK(entry.osnovica)}${arrow}</div>
       <div class="sal-cell2">${entry.bonus ? fmtK(entry.bonus) : '—'}</div>
@@ -6197,7 +6184,7 @@ function renderSalTable(){
       <div class="sal-cell2 strong">${fmtK(salNeto(entry))}</div>
       <div class="sal-cell2 strong">${fmtK(salUkupno(entry))}</div>
       <div><span class="sal-status-badge ${paid?'paid':'pending'}">${entry.status}</span></div>
-      <button class="sal-row-btn" data-emp="${e.key}">Izmeni</button>
+      <button class="sal-row-btn" data-emp="${e.key}">Unesi platu</button>
     </div>`;
   }).join('');
 
@@ -6222,7 +6209,7 @@ document.querySelectorAll('.vt-btn[data-smode]').forEach(btn=>{
 function renderSalTrendMini(emp){
   const wrap = document.getElementById('salTrendWrap');
   const entries = [];
-  for(let m=0;m<8;m++){ const e = salaryFor(emp, m); if(e) entries.push({m, osn:e.osnovica}); }
+  for(let m=0;m<12;m++){ const e = salaryFor(emp, m); if(e) entries.push({m, osn:e.osnovica}); }
   if(entries.length < 2){ wrap.style.display='none'; return; }
   wrap.style.display='block';
   const W=500,H=90,padL=8,padR=8,padT=14,padB=18;
@@ -6237,8 +6224,8 @@ function renderSalTrendMini(emp){
     const changed = i>0 && entries[i-1].osn !== e.osn;
     const r = changed ? 4.2 : 2.6;
     const fill = changed ? '#4C8A55' : 'var(--gold-deep)';
-    svg += `<circle cx="${xFor(i)}" cy="${yFor(e.osn)}" r="${r}" fill="${fill}" stroke="var(--card)" stroke-width="1.3"><title>${monthAbbrRS[e.m]}: ${fmtRSD(e.osn)}${changed?' (promena)':''}</title></circle>`;
-    svg += `<text x="${xFor(i)}" y="${H-4}" font-size="7.5" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-mono)">${monthAbbrRS[e.m]}</text>`;
+    svg += `<circle cx="${xFor(i)}" cy="${yFor(e.osn)}" r="${r}" fill="${fill}" stroke="var(--card)" stroke-width="1.3"><title>${salMonthAbbr[e.m]}: ${fmtRSD(e.osn)}${changed?' (promena)':''}</title></circle>`;
+    svg += `<text x="${xFor(i)}" y="${H-4}" font-size="7.5" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-mono)">${salMonthAbbr[e.m]}</text>`;
   });
   document.getElementById('salTrendSvg').innerHTML = svg;
   requestAnimationFrame(()=>{
@@ -6294,7 +6281,9 @@ document.getElementById('salConfirmSubmit').addEventListener('click', ()=>{
   salaryEntries.filter(s=>s.month===month).forEach(e=>{ e.status = 'Isplaćeno'; });
   if(!salConfirmedMonths.includes(month)) salConfirmedMonths.push(month);
   salConfirmModalOverlay.classList.remove('open');
-  refreshAfterSalChange();
+  if(month < 11) salBreakdownMonth = month + 1;
+  refreshSalMonthView();
+  renderFinKpis(); renderFinFlowChart(); renderFinDonut();
   persist();
 });
 function closeSalModal(){ salModalOverlay.classList.remove('open'); }
@@ -6319,7 +6308,7 @@ function updateSalModalLive(){
     if(Math.abs(pct) >= 0.5){
       badge.style.display='inline-flex';
       badge.className = 'sal-badge ' + (pct>=0?'up':'down');
-      badge.textContent = `${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(0)}% vs ${monthAbbrRS[month-1]}`;
+      badge.textContent = `${pct>=0?'▲':'▼'} ${Math.abs(pct).toFixed(0)}% vs ${salMonthAbbr[month-1]}`;
     } else { badge.style.display='none'; }
   } else { badge.style.display='none'; }
 
