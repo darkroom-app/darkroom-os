@@ -211,15 +211,19 @@ body{
 .modal-submit{ background:var(--gold); color:#3a2704; }
 .modal-delete{ background:var(--coral-soft); color:var(--coral); flex:0 0 auto !important; padding:10px 14px !important; }
 
-/* project detail overlay */
-.modal-card-wide{ width:820px; }
-.pd-header{ display:flex; gap:16px; padding-bottom:18px; border-bottom:1px solid var(--border); margin-bottom:16px; }
-.pd-thumb{ width:120px; height:80px; border-radius:var(--r-sm); background:var(--card-soft); background-size:cover; background-position:center; flex-shrink:0; }
-.pd-header-info{ min-width:0; }
-.pd-name{ font-family:var(--font-display); font-weight:700; font-size:18px; }
-.pd-code{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); margin-top:2px; }
-.pd-meta-row{ display:flex; flex-wrap:wrap; gap:14px; margin-top:10px; font-size:12px; color:var(--ink-dim); }
-.pd-meta-item{ display:flex; align-items:center; gap:6px; }
+/* project detail page */
+.pd-back-row{ margin-bottom:14px; }
+.pd-back-btn{ display:flex; align-items:center; gap:7px; background:none; border:none; color:var(--ink-dim); font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; padding:4px 0; }
+.pd-back-btn:hover{ color:var(--ink); }
+.pd-back-btn svg{ width:16px; height:16px; }
+.pd-hero{ height:220px; border-radius:var(--r-lg); background:linear-gradient(155deg, #EFE7D2, #E2D6B8); background-size:cover; background-position:center; position:relative; overflow:hidden; margin-bottom:16px; }
+.pd-hero::after{ content:""; position:absolute; inset:0; background:linear-gradient(0deg, rgba(20,16,8,0.82) 0%, rgba(20,16,8,0.1) 55%, transparent 75%); }
+.pd-hero-overlay{ position:absolute; left:24px; right:24px; bottom:18px; z-index:2; }
+.pd-hero-title{ font-family:var(--font-display); font-weight:700; font-size:24px; color:#fff; }
+.pd-hero-client{ font-size:13px; color:rgba(255,255,255,0.85); margin-top:3px; }
+.pd-stat-bar{ display:flex; flex-wrap:wrap; gap:22px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-md); padding:14px 20px; margin-bottom:20px; }
+.pd-stat-item{ font-size:12px; color:var(--ink-dim); }
+.pd-stat-item b{ color:var(--ink); font-weight:700; }
 .pd-tasks-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .pd-tasks-title{ font-family:var(--font-display); font-weight:700; font-size:14px; }
 .round-choice-row{ display:flex; gap:8px; }
@@ -230,6 +234,21 @@ body{
 .round-upload-btn:hover{ background:var(--gold); }
 .kadar-edit-btn{ background:var(--card-soft); color:var(--ink-dim); }
 .kadar-edit-btn:hover{ background:var(--border); }
+.pd-kadar-block{ padding:10px 0; border-bottom:1px solid var(--border); }
+.pd-kadar-block:last-child{ border-bottom:none; }
+.pd-kadar-title-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+.pd-kadar-title{ font-size:12.5px; color:var(--ink); }
+.pd-kadar-title span{ color:var(--ink-faint); }
+.pd-round-scroll{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
+.pd-round-add{ width:60px; height:44px; border-radius:10px; border:1.5px dashed var(--border); background:none; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+.pd-round-add:hover{ border-color:var(--gold); color:var(--gold-deep); }
+.pd-round-add svg{ width:16px; height:16px; }
+.pd-round-pill{ min-width:76px; height:44px; border-radius:10px; border:none; cursor:pointer; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:0 8px; }
+.pd-round-pill.billable{ background:var(--sage-soft); color:#3d6b3d; }
+.pd-round-pill.internal{ background:var(--card-soft); color:var(--ink-dim); border:1px solid var(--border); }
+.pd-round-pill-label{ font-family:var(--font-body); font-weight:700; font-size:10.5px; }
+.pd-round-pill-date{ font-family:var(--font-mono); font-size:8.5px; opacity:0.85; }
+.round-view-img{ width:100%; height:280px; border-radius:var(--r-md); background:var(--card-soft); background-size:cover; background-position:center; }
 
 /* login */
 .login-screen{ position:fixed; inset:0; background:var(--bg-outer); display:flex; align-items:center; justify-content:center; z-index:200; }
@@ -1376,6 +1395,30 @@ body{
 
     </div>
 
+    <div class="view-panel" id="view-projekat-detalji">
+      <div class="pd-back-row">
+        <button class="pd-back-btn" id="pdBackBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          Nazad na projekte
+        </button>
+      </div>
+      <div class="pd-hero" id="pdHero">
+        <div class="pd-hero-overlay">
+          <div class="pd-hero-title" id="pdName"></div>
+          <div class="pd-hero-client" id="pdClientLabel"></div>
+        </div>
+      </div>
+      <div class="pd-stat-bar" id="pdStatBar"></div>
+      <div class="pd-tasks-head">
+        <div class="pd-tasks-title">Kadrovi</div>
+        <button class="btn-primary" id="pdAddTaskBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+          Dodaj kadar
+        </button>
+      </div>
+      <div id="pdTaskList"></div>
+    </div>
+
     <div class="view-panel" id="view-klijenti">
 
       <div class="page-head">
@@ -2014,26 +2057,14 @@ body{
   </div>
 </div>
 
-<div class="modal-overlay" id="projectDetailOverlay">
-  <div class="modal-card modal-card-wide">
-    <div class="pd-header">
-      <div class="pd-thumb" id="pdThumb"></div>
-      <div class="pd-header-info">
-        <div class="pd-name" id="pdName"></div>
-        <div class="pd-code" id="pdCode"></div>
-        <div class="pd-meta-row" id="pdMetaRow"></div>
-      </div>
-    </div>
-    <div class="pd-tasks-head">
-      <div class="pd-tasks-title">Kadrovi</div>
-      <button class="btn-primary" id="pdAddTaskBtn" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-        Dodaj kadar
-      </button>
-    </div>
-    <div id="pdTaskList"></div>
+<div class="modal-overlay" id="roundViewOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="roundViewTitle">Round 01</div>
+    <div class="pd-code" id="roundViewDate" style="margin-bottom:14px;"></div>
+    <div class="round-view-img" id="roundViewImg"></div>
     <div class="modal-actions">
-      <button class="modal-cancel" id="pdClose" style="width:100%;">Zatvori</button>
+      <button class="modal-delete" id="roundViewDelete">Obriši</button>
+      <button class="modal-cancel" id="roundViewClose" style="flex:1;">Zatvori</button>
     </div>
   </div>
 </div>
@@ -3318,8 +3349,7 @@ document.getElementById('npSubmit').addEventListener('click', ()=>{
   }
 });
 
-/* ==== PROJECT DETAIL (kadrovi) ==== */
-const projectDetailOverlay = document.getElementById('projectDetailOverlay');
+/* ==== PROJECT DETAIL (kadrovi) — full page ==== */
 let activeProjectDetailId = null;
 
 function pdAvatarHtml(name){
@@ -3333,22 +3363,24 @@ function pdAvatarHtml(name){
   return `<span class="cb-avatar" style="width:20px;height:20px;font-size:8px;background:var(--ink-faint);">${clientInitials(name)}</span>`;
 }
 
-function closeProjectDetail(){
-  projectDetailOverlay.classList.remove('open');
-  activeProjectDetailId = null;
-}
 function openProjectDetail(proj){
   activeProjectDetailId = proj._id;
-  document.getElementById('pdThumb').style.backgroundImage = proj.thumbnail ? `url('${proj.thumbnail}')` : '';
-  document.getElementById('pdName').textContent = proj.name;
-  document.getElementById('pdCode').textContent = proj.code;
-  document.getElementById('pdMetaRow').innerHTML = `
-    <span class="pd-meta-item">${escapeHtml(proj.client)}</span>
-    <span class="pd-meta-item">${pdAvatarHtml(proj.managerName)} ${escapeHtml(proj.managerName)}</span>
-    <span class="pd-meta-item">${formatIsoDateHuman(proj.startDate) || proj.startDate}</span>
-    <span class="tag ${statusTag[proj.status]}">${proj.status}</span>`;
+  const heroStyle = proj.thumbnail ? `background-image:url('${proj.thumbnail}');background-size:cover;background-position:center;` : thumbStyle(proj.seed, 900);
+  document.getElementById('pdHero').setAttribute('style', `height:220px;border-radius:var(--r-lg);position:relative;overflow:hidden;margin-bottom:16px;${heroStyle}`);
+  document.getElementById('pdName').textContent = `${proj.code} — ${proj.name}`;
+  document.getElementById('pdClientLabel').textContent = proj.client;
+  const s = projectStats(proj);
+  const totalRoundsAll = proj.kadrovi.reduce((sum,k)=>sum + k.rounds.length, 0);
+  document.getElementById('pdStatBar').innerHTML = `
+    <div class="pd-stat-item">Datum početka <b>${formatIsoDateHuman(proj.startDate) || proj.startDate}</b></div>
+    <div class="pd-stat-item">Broj rendera <b>${s.total}${s.typeBreakdown ? ' ('+escapeHtml(s.typeBreakdown)+')' : ''}</b></div>
+    <div class="pd-stat-item">Odobreno <b>${s.approved} / ${s.total}</b></div>
+    <div class="pd-stat-item">Broj revizija <b>${totalRoundsAll}</b></div>
+    <div class="pd-stat-item">Menadžer ${pdAvatarHtml(proj.managerName)} <b>${escapeHtml(proj.managerName)}</b></div>
+    <div class="pd-stat-item"><span class="tag ${statusTag[proj.status]}">${proj.status}</span></div>`;
   renderProjectDetailKadrovi();
-  projectDetailOverlay.classList.add('open');
+  showView('projekat-detalji');
+  setActiveNav('projekti');
 }
 function renderProjectDetailKadrovi(){
   const proj = allProjects.find(p=>p._id===activeProjectDetailId);
@@ -3363,6 +3395,12 @@ function renderProjectDetailKadrovi(){
     groups.get(k.employee).push(k);
   });
   const employees = [...groups.keys()].sort((a,b)=> groups.get(b).length - groups.get(a).length);
+
+  const roundPillHtml = (k)=> k.rounds.map(r=>`
+      <button class="pd-round-pill ${r.billable ? 'billable' : 'internal'}" data-task-id="${k._id}" data-round-id="${r._id}" type="button">
+        <span class="pd-round-pill-label">${escapeHtml(r.label)}</span>
+        <span class="pd-round-pill-date">${formatIsoDateHuman(r.date) || r.date}</span>
+      </button>`).join('');
 
   document.getElementById('pdTaskList').innerHTML = employees.map(name=>{
     const items = groups.get(name);
@@ -3383,17 +3421,19 @@ function renderProjectDetailKadrovi(){
       </div>
       <div class="price-kadar-list">
         ${items.map(k=>`
-          <div class="price-kadar-row">
-            <div class="price-kadar-name">${escapeHtml(k.name)} <span style="color:var(--ink-faint);">· ${escapeHtml(k.type)}</span></div>
-            <div class="price-kadar-right">
-              <span style="font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);">${k.rounds.length} rundi</span>
+          <div class="pd-kadar-block">
+            <div class="pd-kadar-title-row">
+              <div class="pd-kadar-title">${escapeHtml(k.name)} <span>· ${escapeHtml(k.type)}</span></div>
               <span class="tag ${kadarStatusTag[k.status]}">${k.status}</span>
-              <button class="round-upload-btn" data-task-id="${k._id}" title="Upload runde" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
               <button class="round-upload-btn kadar-edit-btn" data-task-id="${k._id}" title="Izmeni kadar" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
               </button>
+            </div>
+            <div class="pd-round-scroll">
+              <button class="pd-round-add" data-task-id="${k._id}" title="Dodaj rundu" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              ${roundPillHtml(k)}
             </div>
           </div>`).join('')}
       </div>
@@ -3403,7 +3443,7 @@ function renderProjectDetailKadrovi(){
   document.querySelectorAll('#pdTaskList .price-project-head').forEach(head=>{
     head.addEventListener('click', ()=>{ head.closest('.price-project').classList.toggle('open'); });
   });
-  document.querySelectorAll('#pdTaskList .round-upload-btn:not(.kadar-edit-btn)').forEach(btn=>{
+  document.querySelectorAll('#pdTaskList .pd-round-add').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
       openRoundModal(proj._id, Number(btn.dataset.taskId));
@@ -3416,12 +3456,57 @@ function renderProjectDetailKadrovi(){
       if(kadar) openTaskModal(proj._id, kadar);
     });
   });
+  document.querySelectorAll('#pdTaskList .pd-round-pill').forEach(pill=>{
+    pill.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openRoundView(proj._id, Number(pill.dataset.taskId), Number(pill.dataset.roundId));
+    });
+  });
 }
 document.getElementById('pdAddTaskBtn').addEventListener('click', ()=>{
   if(activeProjectDetailId) openTaskModal(activeProjectDetailId, null);
 });
-document.getElementById('pdClose').addEventListener('click', closeProjectDetail);
-wireOverlayClose(projectDetailOverlay, closeProjectDetail);
+document.getElementById('pdBackBtn').addEventListener('click', ()=>{
+  showView('projekti');
+  setActiveNav('projekti');
+});
+
+/* ==== ROUND VIEW MODAL ==== */
+const roundViewOverlay = document.getElementById('roundViewOverlay');
+let activeRoundViewProjectId = null;
+let activeRoundViewTaskId = null;
+let activeRoundViewRoundId = null;
+function openRoundView(projectId, taskId, roundId){
+  const proj = allProjects.find(p=>p._id===projectId);
+  const kadar = proj && proj.kadrovi.find(k=>k._id===taskId);
+  const round = kadar && kadar.rounds.find(r=>r._id===roundId);
+  if(!round) return;
+  activeRoundViewProjectId = projectId;
+  activeRoundViewTaskId = taskId;
+  activeRoundViewRoundId = roundId;
+  document.getElementById('roundViewTitle').textContent = round.label;
+  document.getElementById('roundViewDate').textContent = formatIsoDateHuman(round.date) || round.date;
+  document.getElementById('roundViewImg').style.backgroundImage = round.image ? `url('${round.image}')` : '';
+  roundViewOverlay.classList.add('open');
+}
+function closeRoundView(){
+  roundViewOverlay.classList.remove('open');
+}
+document.getElementById('roundViewClose').addEventListener('click', closeRoundView);
+wireOverlayClose(roundViewOverlay, closeRoundView);
+document.getElementById('roundViewDelete').addEventListener('click', ()=>{
+  if(!confirm('Obrisati ovu rundu?')) return;
+  const proj = allProjects.find(p=>p._id===activeRoundViewProjectId);
+  const kadar = proj && proj.kadrovi.find(k=>k._id===activeRoundViewTaskId);
+  if(kadar){
+    const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
+    if(idx>-1) kadar.rounds.splice(idx,1);
+  }
+  closeRoundView();
+  renderProjectDetailKadrovi();
+  renderProjectsPage();
+  persist();
+});
 
 /* ==== TASK (KADAR) MODAL ==== */
 const taskModalOverlay = document.getElementById('taskModalOverlay');
@@ -5209,6 +5294,7 @@ function showView(name){
   document.getElementById('view-pregled').classList.toggle('active', name==='pregled');
   document.getElementById('view-kalendar').classList.toggle('active', name==='kalendar');
   document.getElementById('view-projekti').classList.toggle('active', name==='projekti');
+  document.getElementById('view-projekat-detalji').classList.toggle('active', name==='projekat-detalji');
   document.getElementById('view-klijenti').classList.toggle('active', name==='klijenti');
   document.getElementById('view-playbook').classList.toggle('active', name==='playbook');
   document.getElementById('view-portfolio').classList.toggle('active', name==='portfolio');
