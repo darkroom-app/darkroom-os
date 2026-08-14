@@ -978,6 +978,7 @@ body{
 .twg-head-day.today .twg-num{ color:var(--gold-deep); }
 .twg-rows{ position:relative; }
 .twg-today-col{ position:absolute; top:0; bottom:0; background:var(--gold-soft); opacity:0.35; pointer-events:none; z-index:0; }
+.twg-holiday-col{ position:absolute; top:0; bottom:0; background:repeating-linear-gradient(45deg, var(--coral-soft), var(--coral-soft) 8px, #f0c9ba 8px, #f0c9ba 16px); opacity:0.6; pointer-events:none; z-index:0; border-left:1.5px solid var(--coral); border-right:1.5px solid var(--coral); }
 .twg-row{ display:grid; grid-template-columns:190px 1fr; border-top:1px solid var(--border); min-height:48px; position:relative; z-index:1; }
 .twg-row:last-child{ border-bottom:1px solid var(--border); }
 .twg-person{ position:sticky; left:0; z-index:2; background:var(--card); display:flex; align-items:center; gap:9px; padding:8px 12px 8px 2px; }
@@ -2817,6 +2818,16 @@ function renderTeamSwimlane(days, opts){
     wrap.querySelector('.twg-rows').appendChild(overlay);
   }
 
+  holidayEvents.forEach(e=>{
+    const span = e.colEnd - e.colStart + 1;
+    const overlay = document.createElement('div');
+    overlay.className = 'twg-holiday-col';
+    overlay.title = `🎉 ${e.holidayName} — ne radi se!`;
+    overlay.style.left = `calc(190px + (100% - 190px) * ${e.colStart}/${n})`;
+    overlay.style.width = `calc((100% - 190px) * ${span}/${n})`;
+    wrap.querySelector('.twg-rows').appendChild(overlay);
+  });
+
   wrap.querySelectorAll('.twg-track').forEach(track=>{
     track.__days = days;
     if(!track.dataset.person) return;
@@ -3051,23 +3062,13 @@ let drpState = { start:null, end:null, hoverDate:null, cursor:null, onApply:null
 function drpPrevMonth(){ return drpState.cursor.m===1 ? {y:drpState.cursor.y-1, m:12} : {y:drpState.cursor.y, m:drpState.cursor.m-1}; }
 function drpNextMonth(){ return drpState.cursor.m===12 ? {y:drpState.cursor.y+1, m:1} : {y:drpState.cursor.y, m:drpState.cursor.m+1}; }
 
-function renderDrpCalendar(){
+function buildDrpGrid(){
   document.getElementById('drpMonthLabel').textContent = `${calMonthNames[drpState.cursor.m-1]} ${drpState.cursor.y}.`;
   const cells = generateMonthCells(drpState.cursor.y, drpState.cursor.m);
-  const rangeEnd = drpState.end || drpState.hoverDate;
-  const hasPreviewRange = drpState.start && rangeEnd && daysBetween(drpState.start, rangeEnd) >= 0;
   document.getElementById('drpGrid').innerHTML = cells.map(c=>{
-    let cls = 'drp-cell';
-    if(c.m !== drpState.cursor.m) cls += ' drp-muted';
-    if(sameDate(c, TODAY)) cls += ' drp-today';
-    if(hasPreviewRange && daysBetween(drpState.start, c) >= 0 && daysBetween(c, rangeEnd) >= 0) cls += ' drp-in-range';
-    if(drpState.start && sameDate(c, drpState.start)) cls += ' drp-start';
-    if(rangeEnd && sameDate(c, rangeEnd)) cls += ' drp-end';
+    const cls = 'drp-cell' + (c.m !== drpState.cursor.m ? ' drp-muted' : '');
     return `<div class="${cls}" data-iso="${toISO(c)}">${c.d}</div>`;
   }).join('');
-  document.getElementById('drpRangeText').textContent = drpState.start
-    ? (drpState.end ? `${formatDateHuman(drpState.start)} – ${formatDateHuman(drpState.end)}` : `${formatDateHuman(drpState.start)} – ?`)
-    : 'Izaberi prvi dan';
 
   document.querySelectorAll('#drpGrid .drp-cell').forEach(cell=>{
     cell.addEventListener('click', ()=>{
@@ -3079,15 +3080,30 @@ function renderDrpCalendar(){
       } else {
         drpState.end = d;
       }
-      renderDrpCalendar();
+      updateDrpHighlight();
     });
     cell.addEventListener('mouseenter', ()=>{
       if(drpState.start && !drpState.end){
         drpState.hoverDate = fromISO(cell.dataset.iso);
-        renderDrpCalendar();
+        updateDrpHighlight();
       }
     });
   });
+  updateDrpHighlight();
+}
+function updateDrpHighlight(){
+  const rangeEnd = drpState.end || drpState.hoverDate;
+  const hasPreviewRange = drpState.start && rangeEnd && daysBetween(drpState.start, rangeEnd) >= 0;
+  document.querySelectorAll('#drpGrid .drp-cell').forEach(cell=>{
+    const c = fromISO(cell.dataset.iso);
+    cell.classList.toggle('drp-today', sameDate(c, TODAY));
+    cell.classList.toggle('drp-in-range', !!(hasPreviewRange && daysBetween(drpState.start, c) >= 0 && daysBetween(c, rangeEnd) >= 0));
+    cell.classList.toggle('drp-start', !!(drpState.start && sameDate(c, drpState.start)));
+    cell.classList.toggle('drp-end', !!(rangeEnd && sameDate(c, rangeEnd)));
+  });
+  document.getElementById('drpRangeText').textContent = drpState.start
+    ? (drpState.end ? `${formatDateHuman(drpState.start)} – ${formatDateHuman(drpState.end)}` : `${formatDateHuman(drpState.start)} – ?`)
+    : 'Izaberi prvi dan';
 }
 function openDateRangePicker(triggerEl, startISO, endISO, onApply){
   drpState.start = startISO ? fromISO(startISO) : null;
@@ -3095,15 +3111,15 @@ function openDateRangePicker(triggerEl, startISO, endISO, onApply){
   drpState.hoverDate = null;
   drpState.cursor = drpState.start ? {y:drpState.start.y, m:drpState.start.m} : {y:TODAY.y, m:TODAY.m};
   drpState.onApply = onApply;
-  renderDrpCalendar();
+  buildDrpGrid();
   const rect = triggerEl.getBoundingClientRect();
   drpPopover.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 340)}px`;
   drpPopover.style.left = `${Math.min(rect.left, window.innerWidth - 290)}px`;
   drpPopover.classList.add('open');
 }
 function closeDateRangePicker(){ drpPopover.classList.remove('open'); }
-document.getElementById('drpPrev').addEventListener('click', (e)=>{ e.stopPropagation(); drpState.cursor = drpPrevMonth(); renderDrpCalendar(); });
-document.getElementById('drpNext').addEventListener('click', (e)=>{ e.stopPropagation(); drpState.cursor = drpNextMonth(); renderDrpCalendar(); });
+document.getElementById('drpPrev').addEventListener('click', (e)=>{ e.stopPropagation(); drpState.cursor = drpPrevMonth(); buildDrpGrid(); });
+document.getElementById('drpNext').addEventListener('click', (e)=>{ e.stopPropagation(); drpState.cursor = drpNextMonth(); buildDrpGrid(); });
 document.getElementById('drpApply').addEventListener('click', (e)=>{
   e.stopPropagation();
   if(!drpState.start) return;
