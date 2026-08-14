@@ -1880,6 +1880,14 @@ body{
               <div class="cal-filter-btn"><span id="filterTxCategoryLabel">Sve kategorije</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
               <div class="cal-filter-menu" id="filterTxCategoryMenu"></div>
             </div>
+            <div class="cal-filter" id="filterTxMonth">
+              <div class="cal-filter-btn"><span id="filterTxMonthLabel">Svi meseci</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="filterTxMonthMenu"></div>
+            </div>
+            <div class="cal-filter" id="filterTxYear">
+              <div class="cal-filter-btn"><span id="filterTxYearLabel">Sve godine</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="filterTxYearMenu"></div>
+            </div>
           </div>
           <button class="btn-primary" id="newTxBtn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
@@ -5698,12 +5706,23 @@ function renderRecentTx(){
     </div>`).join('');
 }
 
-const txState = { search:"", type:"Sve", category:"Sve kategorije" };
+const txState = { search:"", type:"Sve", category:"Sve kategorije", month:"Svi meseci", year:"Sve godine" };
 function buildTxCategoryMenu(){
   const cats = uniqueSorted(allTransactions.map(t=>t.category));
   document.getElementById('filterTxCategoryMenu').innerHTML = `<div class="cal-filter-item" data-val="Sve kategorije">Sve kategorije</div>` +
     cats.map(c=>`<div class="cal-filter-item" data-val="${c}"><span class="cal-filter-dot" style="background:${categoryColorVar[c]||'var(--ink-faint)'}"></span>${c}</div>`).join('');
   bindCalFilter('filterTxCategory', (val)=>{ txState.category = val; renderTxList(); });
+}
+function buildTxMonthMenu(){
+  document.getElementById('filterTxMonthMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi meseci">Svi meseci</div>` +
+    monthNamesFull.map(m=>`<div class="cal-filter-item" data-val="${m}">${m}</div>`).join('');
+  bindCalFilter('filterTxMonth', (val)=>{ txState.month = val; renderTxList(); });
+}
+function buildTxYearMenu(){
+  const years = uniqueSorted(allTransactions.map(t=>t.date.slice(0,4))).sort((a,b)=>b.localeCompare(a));
+  document.getElementById('filterTxYearMenu').innerHTML = `<div class="cal-filter-item" data-val="Sve godine">Sve godine</div>` +
+    years.map(y=>`<div class="cal-filter-item" data-val="${y}">${y}</div>`).join('');
+  bindCalFilter('filterTxYear', (val)=>{ txState.year = val; renderTxList(); });
 }
 function bindCalFilter(id, onSelect){
   const f = document.getElementById(id);
@@ -5727,6 +5746,8 @@ function renderTxList(){
   const list = allTransactions.filter(t=>
     (txState.type==="Sve" || t.type===txState.type) &&
     (txState.category==="Sve kategorije" || t.category===txState.category) &&
+    (txState.month==="Svi meseci" || monthNamesFull[parseInt(t.date.slice(5,7),10)-1]===txState.month) &&
+    (txState.year==="Sve godine" || t.date.slice(0,4)===txState.year) &&
     (!q || t.desc.toLowerCase().includes(q) || t.category.toLowerCase().includes(q))
   ).sort((a,b)=> b.date.localeCompare(a.date));
 
@@ -5757,7 +5778,7 @@ bindCalFilter('filterTxType', (val)=>{ txState.type = val; renderTxList(); });
 const txModalOverlay = document.getElementById('txModalOverlay');
 let editingTxId = null;
 function refreshFinAfterTxChange(){
-  buildTxCategoryMenu(); renderTxList(); renderFinKpis(); renderFinFlowChart(); renderFinDonut(); renderRecentTx();
+  buildTxCategoryMenu(); buildTxYearMenu(); renderTxList(); renderFinKpis(); renderFinFlowChart(); renderFinDonut(); renderRecentTx();
 }
 function closeTxModal(){
   txModalOverlay.classList.remove('open');
@@ -6380,6 +6401,8 @@ function initFinansije(){
   renderRoundsMiniChart();
   renderRecentTx();
   buildTxCategoryMenu();
+  buildTxMonthMenu();
+  buildTxYearMenu();
   renderTxList();
   renderPricingList();
   renderSalMonthMenu();
