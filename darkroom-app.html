@@ -163,7 +163,7 @@ body{
 .pg-body{ padding:12px 13px 13px; }
 .pg-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:3px; }
 .pg-name{ font-family:var(--font-display); font-weight:600; font-size:13px; line-height:1.25; }
-.pg-code{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-bottom:9px; }
+.pg-code{ font-family:var(--font-mono); font-size:11.5px; font-weight:700; color:var(--gold-deep); margin-bottom:9px; }
 .pg-client{ font-size:11px; color:var(--ink-dim); margin-bottom:10px; }
 .pg-foot{ display:flex; align-items:center; justify-content:space-between; }
 .pg-stats-row{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-dim); margin-bottom:6px; line-height:1.5; }
@@ -190,7 +190,7 @@ body{
 .plist-thumb .m .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a68f5c,#8a7443); }
 .plist-name-text{ min-width:0; }
 .plist-name{ font-family:var(--font-display); font-weight:600; font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.plist-code{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); }
+.plist-code{ font-family:var(--font-mono); font-size:11px; font-weight:700; color:var(--gold-deep); }
 .plist-cell{ font-size:12px; color:var(--ink-dim); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .plist-artist{ display:flex; align-items:center; gap:7px; }
 
@@ -222,14 +222,14 @@ body{
 .pd-meta-item{ display:flex; align-items:center; gap:6px; }
 .pd-tasks-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .pd-tasks-title{ font-family:var(--font-display); font-weight:700; font-size:14px; }
-.pd-task-row{ cursor:pointer; }
-.pd-task-row:hover{ background:var(--card-soft); border-radius:10px; }
 .round-choice-row{ display:flex; gap:8px; }
 .round-choice-btn{ flex:1; padding:9px 0; border-radius:10px; border:1.5px solid var(--border); background:var(--card-soft); color:var(--ink-dim); font-family:var(--font-body); font-weight:600; font-size:12px; cursor:pointer; }
 .round-choice-btn.active{ border-color:var(--gold); background:var(--gold-soft); color:var(--gold-deep); }
 .round-upload-btn{ width:22px; height:22px; border-radius:50%; border:none; background:var(--gold-soft); color:var(--gold-deep); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
 .round-upload-btn svg{ width:12px; height:12px; }
 .round-upload-btn:hover{ background:var(--gold); }
+.kadar-edit-btn{ background:var(--card-soft); color:var(--ink-dim); }
+.kadar-edit-btn:hover{ background:var(--border); }
 
 /* login */
 .login-screen{ position:fixed; inset:0; background:var(--bg-outer); display:flex; align-items:center; justify-content:center; z-index:200; }
@@ -258,8 +258,8 @@ body{
 @media (max-width:1400px){ .projects-grid-page{ grid-template-columns:repeat(3,1fr); } }
 @media (max-width:1000px){
   .projects-grid-page{ grid-template-columns:repeat(2,1fr); }
-  .plist-head, .plist-row{ grid-template-columns:2fr 1fr 1fr 1fr; }
-  .plist-head span:nth-child(4), .plist-row > *:nth-child(4){ display:none; }
+  .plist-head, .plist-row{ grid-template-columns:2fr 1fr 1fr 1fr 1fr; }
+  .plist-head span:nth-child(3), .plist-row > *:nth-child(3){ display:none; }
 }
 
 /* ==== KLIJENTI VIEW ==== */
@@ -1364,7 +1364,6 @@ body{
         <div class="view-toggle">
           <button class="vt-btn active" data-mode="grid" title="Grid prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
           <button class="vt-btn" data-mode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-          <button class="vt-btn" data-mode="people" title="Po osobama"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M2 20c0-3.4 2.8-5.8 6-5.8s6 2.4 6 5.8"/><path d="M14.5 14.5c2.7.3 4.7 2.3 4.7 5.5"/></svg></button>
         </div>
       </div>
 
@@ -1373,7 +1372,6 @@ body{
         <div class="plist-head"><span>Naziv</span><span>Klijent</span><span>Menadžer</span><span>Kadrovi</span><span>Odobreno</span><span>Rundi</span></div>
         <div id="projectsList"></div>
       </div>
-      <div class="projects-people-page" id="projectsPeopleWrap" style="display:none;"></div>
       <div class="empty-state" id="projectsEmpty" style="display:none;">Nema projekata za izabrane filtere.</div>
 
     </div>
@@ -3145,9 +3143,6 @@ function renderProjectsPage(){
   document.getElementById('projectsEmpty').style.display = list.length ? 'none' : 'block';
   document.getElementById('projectsGrid').style.display = (viewMode==='grid' && list.length) ? 'grid' : 'none';
   document.getElementById('projectsListWrap').style.display = (viewMode==='list' && list.length) ? 'block' : 'none';
-  document.getElementById('projectsPeopleWrap').style.display = (viewMode==='people') ? 'block' : 'none';
-
-  if(viewMode==='people'){ renderProjectsByPerson(list); }
 
   document.getElementById('projectsGrid').innerHTML = list.map(p=>{
     const s = projectStats(p);
@@ -3213,56 +3208,6 @@ document.querySelectorAll('.vt-btn[data-mode]').forEach(btn=>{
     renderProjectsPage();
   });
 });
-
-function renderProjectsByPerson(list){
-  const groups = new Map();
-  list.forEach(p=>{
-    p.kadrovi.forEach(k=>{
-      if(!groups.has(k.employee)) groups.set(k.employee, []);
-      groups.get(k.employee).push({ project:p, kadar:k });
-    });
-  });
-  const employees = [...groups.keys()].sort((a,b)=> groups.get(b).length - groups.get(a).length);
-
-  document.getElementById('projectsPeopleWrap').innerHTML = employees.length ? employees.map(name=>{
-    const items = groups.get(name);
-    const t = teamMembers.find(m=>m.name===name);
-    const { grad, initials, avatar } = t ? avatarFor(t) : { grad:'var(--ink-faint)', initials:clientInitials(name), avatar:null };
-    const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
-    return `
-    <div class="price-project open">
-      <div class="price-project-head" style="cursor:default;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <span class="pg-avatar" style="width:32px;height:32px;font-size:11px;${avatarStyle}">${avatar ? '' : initials}</span>
-          <div>
-            <div class="price-project-name">${escapeHtml(name)}</div>
-            <div class="price-project-meta">${items.length} ${items.length===1 ? 'zadatak' : 'zadatka'}</div>
-          </div>
-        </div>
-      </div>
-      <div class="price-kadar-list" style="display:block;">
-        ${items.map(({project,kadar})=>`
-          <div class="price-kadar-row">
-            <div class="price-kadar-name">${escapeHtml(project.name)} <span style="color:var(--ink-faint);">${project.code} · ${escapeHtml(kadar.name)} · ${escapeHtml(kadar.type)}</span></div>
-            <div class="price-kadar-right">
-              <span style="font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);">${kadar.rounds.length} rundi</span>
-              <span class="tag ${kadarStatusTag[kadar.status]}">${kadar.status}</span>
-              <button class="round-upload-btn" data-project-id="${project._id}" data-task-id="${kadar._id}" title="Upload runde" type="button">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
-              </button>
-            </div>
-          </div>`).join('')}
-      </div>
-    </div>`;
-  }).join('') : '<div class="agenda-empty">Nema kadrova ni za koga u trenutnom prikazu.</div>';
-
-  document.querySelectorAll('.round-upload-btn').forEach(btn=>{
-    btn.addEventListener('click', (e)=>{
-      e.stopPropagation();
-      openRoundModal(Number(btn.dataset.projectId), Number(btn.dataset.taskId));
-    });
-  });
-}
 
 const modalOverlay = document.getElementById('modalOverlay');
 let editingProjectId = null;
@@ -3408,19 +3353,66 @@ function openProjectDetail(proj){
 function renderProjectDetailKadrovi(){
   const proj = allProjects.find(p=>p._id===activeProjectDetailId);
   if(!proj) return;
-  document.getElementById('pdTaskList').innerHTML = proj.kadrovi.length ? proj.kadrovi.map(k=>`
-    <div class="price-kadar-row pd-task-row" data-id="${k._id}">
-      <div class="price-kadar-name">${escapeHtml(k.name)} <span style="color:var(--ink-faint);">· ${escapeHtml(k.type)}</span></div>
-      <div class="price-kadar-right">
-        ${pdAvatarHtml(k.employee)}
-        <span style="font-size:11px;color:var(--ink-dim);">${escapeHtml(k.employee)}</span>
-        <span style="font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);">${k.rounds.length} rundi</span>
-        <span class="tag ${kadarStatusTag[k.status]}">${k.status}</span>
+  if(!proj.kadrovi.length){
+    document.getElementById('pdTaskList').innerHTML = '<div class="agenda-empty">Nema kadrova. Klikni "Dodaj kadar" da dodaš prvi.</div>';
+    return;
+  }
+  const groups = new Map();
+  proj.kadrovi.forEach(k=>{
+    if(!groups.has(k.employee)) groups.set(k.employee, []);
+    groups.get(k.employee).push(k);
+  });
+  const employees = [...groups.keys()].sort((a,b)=> groups.get(b).length - groups.get(a).length);
+
+  document.getElementById('pdTaskList').innerHTML = employees.map(name=>{
+    const items = groups.get(name);
+    const t = teamMembers.find(m=>m.name===name);
+    const { grad, initials, avatar } = t ? avatarFor(t) : { grad:'var(--ink-faint)', initials:clientInitials(name), avatar:null };
+    const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
+    return `
+    <div class="price-project open">
+      <div class="price-project-head">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span class="pg-avatar" style="width:28px;height:28px;font-size:10px;${avatarStyle}">${avatar ? '' : initials}</span>
+          <div>
+            <div class="price-project-name">${escapeHtml(name)}</div>
+            <div class="price-project-meta">${items.length} ${items.length===1 ? 'kadar' : 'kadra'}</div>
+          </div>
+        </div>
+        <svg class="price-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
       </div>
-    </div>`).join('') : '<div class="agenda-empty">Nema kadrova. Klikni "Dodaj kadar" da dodaš prvi.</div>';
-  document.querySelectorAll('#pdTaskList .pd-task-row').forEach(row=>{
-    row.addEventListener('click', ()=>{
-      const kadar = proj.kadrovi.find(k=>k._id===Number(row.dataset.id));
+      <div class="price-kadar-list">
+        ${items.map(k=>`
+          <div class="price-kadar-row">
+            <div class="price-kadar-name">${escapeHtml(k.name)} <span style="color:var(--ink-faint);">· ${escapeHtml(k.type)}</span></div>
+            <div class="price-kadar-right">
+              <span style="font-family:var(--font-mono);font-size:10px;color:var(--ink-faint);">${k.rounds.length} rundi</span>
+              <span class="tag ${kadarStatusTag[k.status]}">${k.status}</span>
+              <button class="round-upload-btn" data-task-id="${k._id}" title="Upload runde" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+              </button>
+              <button class="round-upload-btn kadar-edit-btn" data-task-id="${k._id}" title="Izmeni kadar" type="button">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+              </button>
+            </div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('#pdTaskList .price-project-head').forEach(head=>{
+    head.addEventListener('click', ()=>{ head.closest('.price-project').classList.toggle('open'); });
+  });
+  document.querySelectorAll('#pdTaskList .round-upload-btn:not(.kadar-edit-btn)').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openRoundModal(proj._id, Number(btn.dataset.taskId));
+    });
+  });
+  document.querySelectorAll('#pdTaskList .kadar-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const kadar = proj.kadrovi.find(k=>k._id===Number(btn.dataset.taskId));
       if(kadar) openTaskModal(proj._id, kadar);
     });
   });
@@ -3585,7 +3577,7 @@ document.getElementById('roundSubmit').addEventListener('click', ()=>{
   if(pendingRoundImage) kadar.rounds[kadar.rounds.length-1].image = pendingRoundImage;
   closeRoundModal();
   renderProjectsPage();
-  if(typeof renderProjectsByPerson === 'function') renderProjectsByPerson();
+  if(activeProjectDetailId) renderProjectDetailKadrovi();
   persist();
 });
 
