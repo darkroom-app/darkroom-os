@@ -947,6 +947,7 @@ body{
 .twg-gridlines i{ position:absolute; top:0; bottom:0; width:1px; background:var(--border); }
 .twg-bar{ display:flex; align-items:center; gap:6px; padding:0 9px 0 6px; height:27px; border-radius:9px; border:1.5px solid; margin:0 4px; overflow:hidden; cursor:grab; position:relative; user-select:none; }
 .twg-bar.dragging{ cursor:grabbing; opacity:0.85; z-index:5; }
+.twg-bar-locked{ cursor:pointer; opacity:0.72; }
 .cb-avatar{ width:17px; height:17px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:7.5px; font-weight:700; color:#fff; flex-shrink:0; }
 .cb-person{ font-size:11px; font-weight:600; flex-shrink:0; white-space:nowrap; }
 .cb-code{ font-family:var(--font-mono); font-size:9px; flex-shrink:0; white-space:nowrap; opacity:0.85; }
@@ -1032,9 +1033,9 @@ body{
       <a data-view="klijenti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.5 14.3c2.9.4 5 2.6 5 5.7"/></svg>Klijenti</a>
       <a data-view="playbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v14.5"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H19"/></svg>DR Playbook</a>
       <a data-view="portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-4.5-4.5L9 18"/></svg>Portfolio</a>
-      <a data-view="statistika"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Statistika</a>
+      <a data-view="statistika" id="navStatistika"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Statistika</a>
       <a data-view="tim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M2 20c0-3.4 2.8-5.8 6-5.8s6 2.4 6 5.8"/><path d="M14.5 14.5c2.7.3 4.7 2.3 4.7 5.5"/></svg>Tim</a>
-      <a data-view="finansije"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>Finansije</a>
+      <a data-view="finansije" id="navFinansije"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/></svg>Finansije</a>
       <div class="nav-gap"></div>
       <a data-view="postavke"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.6V21a2 2 0 1 1-4 0v-.2a1.7 1.7 0 0 0-1.1-1.6 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.6-1H3a2 2 0 1 1 0-4h.2a1.7 1.7 0 0 0 1.6-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.6V3a2 2 0 1 1 4 0v.2a1.7 1.7 0 0 0 1 1.6 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.6 1H21a2 2 0 1 1 0 4h-.2a1.7 1.7 0 0 0-1.6 1Z"/></svg>Postavke</a>
     </nav>
@@ -1886,6 +1887,14 @@ body{
         <option value="Na odsustvu">Na odsustvu</option>
       </select>
     </div>
+    <div class="modal-field" id="ntAccessField">
+      <label>Nivo pristupa</label>
+      <select id="ntAccess">
+        <option value="user">Korisnik</option>
+        <option value="admin">Administrator</option>
+        <option value="superadmin">Super Administrator</option>
+      </select>
+    </div>
     <div class="modal-actions">
       <button class="modal-cancel" id="ntCancel">Otkaži</button>
       <button class="modal-submit" id="ntSubmit">Dodaj člana</button>
@@ -2151,6 +2160,20 @@ body{
 
 let _idCounter = 1;
 const STORAGE_KEY = 'darkroom_state_v1';
+const CURRENT_USER_KEY = 'darkroom_current_user_id';
+let currentUserId = null;
+const accessLabels = { user:"Korisnik", admin:"Administrator", superadmin:"Super Administrator" };
+function currentUser(){ return teamMembers.find(t=>t._id===currentUserId); }
+function currentAccess(){ const u = currentUser(); return u ? (u.access || 'user') : 'user'; }
+function isSuperAdmin(){ return currentAccess()==='superadmin'; }
+function canAccessFinance(){ return isSuperAdmin(); }
+function canAccessStats(){ return currentAccess()!=='user'; }
+function canEditCalendarFor(personName){
+  const acc = currentAccess();
+  if(acc==='superadmin' || acc==='admin') return true;
+  const u = currentUser();
+  return !!u && u.name===personName;
+}
 let _persistedRaw = null;
 try { _persistedRaw = JSON.parse(localStorage.getItem(STORAGE_KEY)); } catch(e){ _persistedRaw = null; }
 if(_persistedRaw){
@@ -2510,15 +2533,18 @@ function renderTeamSwimlane(days, opts){
     for(let i=1;i<n;i++){ gridlines += `<i style="left:${(i/n*100)}%"></i>`; }
     gridlines += '</div>';
 
-    const bars = personEvents.map(e=>`
-      <div class="twg-bar cal-${e.color}${barDragState && barDragState.id===e._id ? ' dragging' : ''}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${e.code ? escapeHtml(e.code)+' · ' : ''}${escapeHtml(e.phase)}">
-        <span class="cb-resize cb-resize-left"></span>
+    const bars = personEvents.map(e=>{
+      const editable = canEditCalendarFor(e.person);
+      return `
+      <div class="twg-bar cal-${e.color}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${e.code ? escapeHtml(e.code)+' · ' : ''}${escapeHtml(e.phase)}">
+        ${editable ? '<span class="cb-resize cb-resize-left"></span>' : ''}
         ${e.code ? `<span class="cb-code">${escapeHtml(e.code)}</span>` : ''}
         <span class="cb-phase">${escapeHtml(e.phase)}</span>
         <span class="cb-status ${e.status}">${statusIcon[e.status]}</span>
-        <span class="cb-resize cb-resize-right"></span>
-        <span class="cb-delete" data-id="${e._id}" title="Obriši">×</span>
-      </div>`).join('');
+        ${editable ? '<span class="cb-resize cb-resize-right"></span>' : ''}
+        ${editable ? `<span class="cb-delete" data-id="${e._id}" title="Obriši">×</span>` : ''}
+      </div>`;
+    }).join('');
 
     return `
     <div class="twg-row">
@@ -2613,6 +2639,7 @@ calWeeks.addEventListener('mousedown', (e)=>{
   if(!track) return;
   const evObj = events.find(x=>x._id===Number(bar.dataset.id));
   if(!evObj) return;
+  if(!canEditCalendarFor(evObj.person)) return;
   let mode = 'move';
   if(e.target.closest('.cb-resize-left')) mode = 'resize-left';
   else if(e.target.closest('.cb-resize-right')) mode = 'resize-right';
@@ -2690,8 +2717,10 @@ calWeeks.addEventListener('click', (e)=>{
   if(suppressBarClick){ suppressBarClick = false; return; }
   const delBtn = e.target.closest('.cb-delete');
   if(delBtn){
+    const evObj = events.find(x=>x._id===Number(delBtn.dataset.id));
+    if(!evObj || !canEditCalendarFor(evObj.person)) return;
     if(!confirm('Obrisati ovu stavku iz kalendara?')) return;
-    const idx = events.findIndex(x=>x._id===Number(delBtn.dataset.id));
+    const idx = events.findIndex(x=>x._id===evObj._id);
     if(idx>-1) events.splice(idx,1);
     buildCalFilterMenus();
     renderCalendar();
@@ -2708,6 +2737,7 @@ calWeeks.addEventListener('click', (e)=>{
   }
   const track = e.target.closest('.twg-track');
   if(track){
+    if(currentAccess()==='user' && track.dataset.person !== currentUser().name) return;
     const rect = track.getBoundingClientRect();
     const date = trackHoverDate(track, rect, e.clientX);
     openEventModal(null, toISO(date), track.dataset.person);
@@ -2756,10 +2786,16 @@ function updateEvFieldsForStatus(){
 }
 document.getElementById('evStatus').addEventListener('change', updateEvFieldsForStatus);
 function openEventModal(ev, prefillDateISO, prefillPerson){
+  const readOnly = !!ev && !canEditCalendarFor(ev.person);
+  const lockPerson = currentAccess()==='user';
   editingEventId = ev ? ev._id : null;
-  document.getElementById('evTitle').textContent = ev ? "Izmeni stavku" : "Nova stavka";
+  document.getElementById('evTitle').textContent = readOnly ? "Pregled stavke" : (ev ? "Izmeni stavku" : "Nova stavka");
+  document.getElementById('evSubmit').style.display = readOnly ? 'none' : '';
   document.getElementById('evSubmit').textContent = ev ? "Sačuvaj" : "Dodaj stavku";
-  document.getElementById('evDelete').style.display = ev ? 'block' : 'none';
+  document.getElementById('evDelete').style.display = (ev && !readOnly) ? 'block' : 'none';
+  ['evPerson','evCode','evPhase','evStart','evEnd','evStatus'].forEach(id=>{
+    document.getElementById(id).disabled = readOnly;
+  });
   if(ev){
     document.getElementById('evPerson').value = ev.person;
     document.getElementById('evCode').value = ev.code;
@@ -2770,12 +2806,14 @@ function openEventModal(ev, prefillDateISO, prefillPerson){
   } else {
     document.getElementById('evCode').value = '';
     document.getElementById('evPhase').value = '';
-    if(prefillPerson) document.getElementById('evPerson').value = prefillPerson;
+    if(lockPerson) document.getElementById('evPerson').value = currentUser().name;
+    else if(prefillPerson) document.getElementById('evPerson').value = prefillPerson;
     const iso = prefillDateISO || toISO(calCursor);
     document.getElementById('evStart').value = iso;
     document.getElementById('evEnd').value = iso;
     document.getElementById('evStatus').value = 'pending';
   }
+  document.getElementById('evPerson').disabled = readOnly || lockPerson;
   updateEvFieldsForStatus();
   eventModalOverlay.classList.add('open');
 }
@@ -3168,6 +3206,7 @@ function filteredClients(){
 
 function renderClientsPage(){
   const list = filteredClients();
+  document.getElementById('newClientBtn').style.display = isSuperAdmin() ? '' : 'none';
   document.getElementById('clientCountLabel').textContent = list.length + (list.length===1 ? ' klijent' : ' klijenata');
   document.getElementById('clientsEmpty').style.display = list.length ? 'none' : 'block';
   document.getElementById('clientsGrid').style.display = (clientViewMode==='grid' && list.length) ? 'grid' : 'none';
@@ -3214,6 +3253,7 @@ function renderClientsPage(){
 
   document.querySelectorAll('#clientsGrid .client-card, #clientsList .clist-row').forEach(el=>{
     el.addEventListener('click', ()=>{
+      if(!isSuperAdmin()) return;
       const client = allClients.find(x=>x._id===Number(el.dataset.id));
       if(client) openClientModal(client);
     });
@@ -3295,6 +3335,7 @@ function openClientModal(client){
   clientModalOverlay.classList.add('open');
 }
 document.getElementById('newClientBtn').addEventListener('click', ()=>{
+  if(!isSuperAdmin()) return;
   editingClientId = null;
   document.getElementById('ncTitle').textContent = "Novi klijent";
   document.getElementById('ncSubmit').textContent = "Dodaj klijenta";
@@ -3337,8 +3378,6 @@ document.getElementById('ncSubmit').addEventListener('click', ()=>{
   renderClientsPage();
   persist();
 });
-
-renderClientsPage();
 
 const pbIcons = {
   layers: '<path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>',
@@ -3957,24 +3996,24 @@ function initStatistika(){
 let statistikaInited = false;
 
 let teamMembers = [
-  {name:"Dušan Stević", key:"Dušan Stević", role:"Član tima", email:"dusan.stevic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Stefana Ristić", key:"Stefana Ristić", role:"Član tima", email:"stefana.ristic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Radoslav Milanović", key:"Radoslav Milanović", role:"Član tima", email:"radoslav.milanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Dalibor Mitić", key:"Dalibor Mitić", role:"Član tima", email:"dalibor.mitic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Katarina Đorđević", key:"Katarina Đorđević", role:"Član tima", email:"katarina.djordjevic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Aleksandra Vukašinović", key:"Aleksandra Vukašinović", role:"Član tima", email:"aleksandra.vukasinovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Mihajlo Nagradić", key:"Mihajlo Nagradić", role:"Član tima", email:"mihajlo.nagradic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Nikola Jovanović", key:"Nikola Jovanović", role:"Član tima", email:"nikola.jovanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Anđela Pešić", key:"Anđela Pešić", role:"Član tima", email:"andjela.pesic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Marija Todorović", key:"Marija Todorović", role:"Član tima", email:"marija.todorovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Ana Krstić", key:"Ana Krstić", role:"Član tima", email:"ana.krstic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Miljana Cvetković", key:"Miljana Cvetković", role:"Član tima", email:"miljana.cvetkovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Miloš Tasić", key:"Miloš Tasić", role:"Član tima", email:"milos.tasic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Ivana Sazdov", key:"Ivana Sazdov", role:"Član tima", email:"ivana.sazdov@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Lazar Pešić", key:"Lazar Pešić", role:"Član tima", email:"lazar.pesic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Damjan Mitrović", key:"Damjan Mitrović", role:"Član tima", email:"damjan.mitrovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Aleksandar Jovanović", key:"Aleksandar Jovanović", role:"Član tima", email:"aleksandar.jovanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Marija Milenković", key:"Marija Milenković", role:"Član tima", email:"marija.milenkovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Dušan Stević", key:"Dušan Stević", role:"Član tima", access:"superadmin", email:"dusan.stevic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Stefana Ristić", key:"Stefana Ristić", role:"Član tima", access:"user", email:"stefana.ristic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Radoslav Milanović", key:"Radoslav Milanović", role:"Član tima", access:"user", email:"radoslav.milanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Dalibor Mitić", key:"Dalibor Mitić", role:"Član tima", access:"user", email:"dalibor.mitic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Katarina Đorđević", key:"Katarina Đorđević", role:"Član tima", access:"user", email:"katarina.djordjevic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Aleksandra Vukašinović", key:"Aleksandra Vukašinović", role:"Član tima", access:"user", email:"aleksandra.vukasinovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Mihajlo Nagradić", key:"Mihajlo Nagradić", role:"Član tima", access:"user", email:"mihajlo.nagradic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Nikola Jovanović", key:"Nikola Jovanović", role:"Član tima", access:"user", email:"nikola.jovanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Anđela Pešić", key:"Anđela Pešić", role:"Član tima", access:"user", email:"andjela.pesic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Marija Todorović", key:"Marija Todorović", role:"Član tima", access:"user", email:"marija.todorovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Ana Krstić", key:"Ana Krstić", role:"Član tima", access:"user", email:"ana.krstic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Miljana Cvetković", key:"Miljana Cvetković", role:"Član tima", access:"user", email:"miljana.cvetkovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Miloš Tasić", key:"Miloš Tasić", role:"Član tima", access:"user", email:"milos.tasic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Ivana Sazdov", key:"Ivana Sazdov", role:"Član tima", access:"user", email:"ivana.sazdov@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Lazar Pešić", key:"Lazar Pešić", role:"Član tima", access:"user", email:"lazar.pesic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Damjan Mitrović", key:"Damjan Mitrović", role:"Član tima", access:"user", email:"damjan.mitrovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Aleksandar Jovanović", key:"Aleksandar Jovanović", role:"Član tima", access:"user", email:"aleksandar.jovanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Marija Milenković", key:"Marija Milenković", role:"Član tima", access:"user", email:"marija.milenkovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
 ];
 teamMembers.forEach(t=>t._id=nextId());
 fromPersisted('teamMembers', teamMembers);
@@ -3999,6 +4038,8 @@ function filteredTeam(){
 
 function renderTeamPage(){
   const list = filteredTeam();
+  const canManage = isSuperAdmin();
+  document.getElementById('newTeamBtn').style.display = canManage ? '' : 'none';
   document.getElementById('teamCountLabel').textContent = list.length + (list.length===1 ? ' član' : ' članova');
   document.getElementById('teamEmpty').style.display = list.length ? 'none' : 'block';
   document.getElementById('teamGrid').style.display = (teamViewMode==='grid' && list.length) ? 'grid' : 'none';
@@ -4016,7 +4057,7 @@ function renderTeamPage(){
           <div class="cc-avatar" style="background:${grad}; border-radius:50%;">${initials}</div>
           <div class="cc-name-wrap"><div class="cc-name">${escapeHtml(t.name)}</div><div class="cc-contact">${escapeHtml(t.role)}</div></div>
         </div>
-        <div class="team-delete" data-id="${t._id}" title="Ukloni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>
+        ${canManage ? `<div class="team-delete" data-id="${t._id}" title="Ukloni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>` : ''}
       </div>
       <div class="cc-info" style="margin-top:13px;">
         <div class="cc-info-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(t.email)}</span></div>
@@ -4048,6 +4089,7 @@ function renderTeamPage(){
   document.querySelectorAll('.team-delete').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
       ev.stopPropagation();
+      if(!isSuperAdmin()) return;
       if(!confirm('Ukloniti ovog člana tima?')) return;
       const id = Number(btn.dataset.id);
       teamMembers = teamMembers.filter(t=>t._id!==id);
@@ -4059,7 +4101,7 @@ function renderTeamPage(){
   document.querySelectorAll('#teamGrid .team-card, #teamList .clist-row').forEach(el=>{
     el.addEventListener('click', ()=>{
       const member = teamMembers.find(x=>x._id===Number(el.dataset.id));
-      if(member) openTeamModal(member);
+      if(member && (isSuperAdmin() || member._id===currentUserId)) openTeamModal(member);
     });
   });
 }
@@ -4112,15 +4154,20 @@ function openTeamModal(member){
   document.getElementById('ntEmail').value = member.email;
   document.getElementById('ntPhone').value = member.phone;
   document.getElementById('ntStatus').value = member.status;
+  document.getElementById('ntAccess').value = member.access || 'user';
+  document.getElementById('ntAccessField').style.display = isSuperAdmin() ? '' : 'none';
   teamModalOverlay.classList.add('open');
 }
 document.getElementById('newTeamBtn').addEventListener('click', ()=>{
+  if(!isSuperAdmin()) return;
   editingTeamId = null;
   document.getElementById('ntTitle').textContent = "Novi član tima";
   document.getElementById('ntSubmit').textContent = "Dodaj člana";
   document.getElementById('ntName').disabled = false;
   ['ntName','ntRole','ntEmail','ntPhone'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ntStatus').value = 'Aktivan';
+  document.getElementById('ntAccess').value = 'user';
+  document.getElementById('ntAccessField').style.display = '';
   teamModalOverlay.classList.add('open');
 });
 document.getElementById('ntCancel').addEventListener('click', closeTeamModal);
@@ -4130,14 +4177,19 @@ document.getElementById('ntSubmit').addEventListener('click', ()=>{
   const email = document.getElementById('ntEmail').value.trim() || "—";
   const phone = document.getElementById('ntPhone').value.trim() || "—";
   const status = document.getElementById('ntStatus').value;
+  const access = document.getElementById('ntAccess').value;
 
   if(editingTeamId){
     const member = teamMembers.find(t=>t._id===editingTeamId);
-    if(member) Object.assign(member, {role, email, phone, status});
+    if(member){
+      Object.assign(member, {role, email, phone, status});
+      if(isSuperAdmin()) member.access = access;
+    }
   } else {
+    if(!isSuperAdmin()) return;
     const name = document.getElementById('ntName').value.trim();
     if(!name) return;
-    teamMembers.unshift({ _id:nextId(), name, key:name, role, email, phone, status, since:new Date().getFullYear(), skills:[] });
+    teamMembers.unshift({ _id:nextId(), name, key:name, role, email, phone, status, access, since:new Date().getFullYear(), skills:[] });
   }
   closeTeamModal();
   renderTeamPage();
@@ -4145,6 +4197,7 @@ document.getElementById('ntSubmit').addEventListener('click', ()=>{
   persist();
 });
 
+renderClientsPage();
 renderTeamPage();
 
 function fmtRSD(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' RSD'; }
@@ -4638,6 +4691,8 @@ function initFinansije(){
 }
 
 function showView(name){
+  if(name==='statistika' && !canAccessStats()) name = 'pregled';
+  if(name==='finansije' && !canAccessFinance()) name = 'pregled';
   document.getElementById('view-pregled').classList.toggle('active', name==='pregled');
   document.getElementById('view-kalendar').classList.toggle('active', name==='kalendar');
   document.getElementById('view-projekti').classList.toggle('active', name==='projekti');
@@ -4798,8 +4853,6 @@ pushChatMessage('bot', "Zdravo! 👋 Mogu da pretražim projekte, klijente, port
 /* ==== LOGIN / SESIJA / PROFIL ==== */
 const loginScreen = document.getElementById('loginScreen');
 const shellEl = document.querySelector('.shell');
-const CURRENT_USER_KEY = 'darkroom_current_user_id';
-let currentUserId = null;
 
 function populateLoginSelect(){
   document.getElementById('loginUserSelect').innerHTML = teamMembers.map(t=>`<option value="${t._id}">${escapeHtml(t.name)}</option>`).join('');
@@ -4826,6 +4879,19 @@ function applyCurrentUser(){
   avatarEl.style.background = grad;
   avatarEl.textContent = initials;
   renderProfilePage();
+  applyAccessGating();
+}
+function applyAccessGating(){
+  const acc = currentAccess();
+  const navStat = document.getElementById('navStatistika');
+  const navFin = document.getElementById('navFinansije');
+  if(navStat) navStat.style.display = (acc==='user') ? 'none' : '';
+  if(navFin) navFin.style.display = (acc==='superadmin') ? '' : 'none';
+  if(document.querySelector('.nav a.active[data-view="statistika"]') && acc==='user'){ document.querySelector('a[data-view="pregled"]').click(); }
+  if(document.querySelector('.nav a.active[data-view="finansije"]') && acc!=='superadmin'){ document.querySelector('a[data-view="pregled"]').click(); }
+  renderClientsPage();
+  renderTeamPage();
+  renderCalendar();
 }
 function login(id){
   currentUserId = id;
