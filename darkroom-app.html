@@ -367,6 +367,17 @@ body{
 .recent-tx-amt.in{ color:#4C8A55; }
 .recent-tx-amt.out{ color:var(--coral); }
 
+.kpi-trend{ font-family:var(--font-mono); font-size:8.5px; margin-top:5px; display:flex; align-items:center; gap:3px; }
+.kpi-trend.up{ color:#4C8A55; }
+.kpi-trend.down{ color:var(--coral); }
+
+.fin-mini-stat{ display:flex; align-items:baseline; gap:8px; margin-bottom:14px; }
+.fin-mini-stat-val{ font-family:var(--font-display); font-weight:700; font-size:22px; }
+.fin-mini-stat-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; }
+
+.rounds-mini-chart{ display:flex; align-items:flex-end; gap:20px; height:96px; padding:0 10px; }
+.rounds-mini-sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); margin-top:10px; text-align:center; }
+
 .tx-head{ display:grid; grid-template-columns:0.8fr 0.7fr 1fr 1.6fr 1fr 1fr; gap:10px; padding:12px 18px; border-bottom:1px solid var(--border); }
 .tx-head span{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; }
 .tx-row{ display:grid; grid-template-columns:0.8fr 0.7fr 1fr 1.6fr 1fr 1fr; gap:10px; align-items:center; padding:11px 18px; border-bottom:1px solid var(--border); }
@@ -1718,7 +1729,7 @@ body{
 
       <!-- TAB 1: PREGLED -->
       <div class="stat-tab-panel active" id="finTabPregled">
-        <div class="kpi-row" id="finKpiRow"></div>
+        <div class="kpi-row" id="finKpiRow" style="grid-template-columns:repeat(3,1fr);"></div>
         <div class="stat-grid-2">
           <div class="stat-panel">
             <div class="stat-panel-head"><div class="stat-panel-title">📈 Priliv vs. odliv po mesecima</div></div>
@@ -1738,6 +1749,44 @@ body{
               <div class="donut-legend" id="finDonutLegend"></div>
             </div>
           </div>
+        </div>
+        <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">💰 Naplativost cenovnika</div></div>
+            <div class="donut-row">
+              <div class="donut-wrap" id="naplDonutWrap">
+                <div class="donut-circle" id="naplDonutCircle"></div>
+                <div class="donut-hole"><div class="donut-hole-val" id="naplDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
+              </div>
+              <div class="donut-legend" id="naplDonutLegend"></div>
+            </div>
+          </div>
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">📁 Vrednost projekata po statusu</div></div>
+            <div class="fin-mini-stat"><span class="fin-mini-stat-val" id="finActiveProjCount">0</span><span class="fin-mini-stat-label">aktivnih projekata</span></div>
+            <div class="donut-row">
+              <div class="donut-wrap" id="statusDonutWrap">
+                <div class="donut-circle" id="statusDonutCircle"></div>
+                <div class="donut-hole"><div class="donut-hole-val" id="statusDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
+              </div>
+              <div class="donut-legend" id="statusDonutLegend"></div>
+            </div>
+          </div>
+        </div>
+        <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">🏆 Prihod po klijentu</div></div>
+            <div class="lb-list" id="finClientLeaderboard"></div>
+          </div>
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">📉 Top 5 troškova ovog meseca</div></div>
+            <div class="lb-list" id="topExpensesList"></div>
+          </div>
+        </div>
+        <div class="stat-panel" style="margin-bottom:16px;">
+          <div class="stat-panel-head"><div class="stat-panel-title">🔁 Naplativo vs. interne ispravke (Rev Remark) — ovog meseca</div></div>
+          <div class="rounds-mini-chart" id="roundsMiniChart"></div>
+          <div class="rounds-mini-sub" id="roundsMiniSub"></div>
         </div>
         <div class="stat-panel">
           <div class="stat-panel-head"><div class="stat-panel-title">🕓 Poslednje transakcije</div></div>
@@ -5221,6 +5270,12 @@ function yearPayrollTotal(){ return salaryEntries.reduce((s,e)=>s+e.amount,0); }
 
 function txMonth(dateStr){ return parseInt(dateStr.split('-')[1],10) - 1; }
 
+function receivablesTotal(){
+  let sum = 0;
+  Object.values(projectPricing).forEach(rows=>rows.forEach(r=>{ if(r.status==='Fakturisano' || r.status==='Neplaćeno') sum += r.price; }));
+  return sum;
+}
+
 function renderFinKpis(){
   const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
   const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
@@ -5228,21 +5283,43 @@ function renderFinKpis(){
   const totalOut = totalOutTx + totalSalary;
   const net = totalIn - totalOut;
   const balance = openingBalance + net;
+  const receivables = receivablesTotal();
+  const payrollPct = totalIn > 0 ? (totalSalary/totalIn)*100 : 0;
+
+  const currM = TODAY.m - 1, prevM = currM - 1;
+  const inFor = m => allTransactions.filter(t=>t.type==='Priliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0);
+  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m);
+  const inCurr = inFor(currM), inPrev = prevM>=0 ? inFor(prevM) : 0;
+  const outCurr = outFor(currM), outPrev = prevM>=0 ? outFor(prevM) : 0;
+  const inTrend = inPrev>0 ? ((inCurr-inPrev)/inPrev)*100 : null;
+  const outTrend = outPrev>0 ? ((outCurr-outPrev)/outPrev)*100 : null;
+
   const kpis = [
-    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalIn, label:"Ukupan priliv (2026)", color:"#4C8A55" },
-    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalOut, label:"Ukupan odliv (2026)", color:"var(--coral)" },
+    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalIn, label:"Ukupan priliv (2026)", color:"#4C8A55", trend:inTrend },
+    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalOut, label:"Ukupan odliv (2026)", color:"var(--coral)", trend:outTrend, invertTrend:true },
     { icon:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>', val:net, label:"Neto rezultat (2026)", color: net>=0 ? "#4C8A55" : "var(--coral)" },
     { icon:'<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/>', val:balance, label:"Trenutno stanje", color:"var(--ink)" },
+    { icon:'<path d="M17 9V7a5 5 0 0 0-10 0v2"/><rect x="4" y="9" width="16" height="12" rx="2"/>', val:receivables, label:"Potraživanja", color:"var(--gold-deep)" },
+    { icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>', val:payrollPct, decimals:1, suffix:'%', label:"Plate kao % prihoda", color:"var(--plum)" },
   ];
-  document.getElementById('finKpiRow').innerHTML = kpis.map(k=>`
+  document.getElementById('finKpiRow').innerHTML = kpis.map(k=>{
+    let trendHtml = '';
+    if(k.trend != null){
+      const up = k.invertTrend ? k.trend < 0 : k.trend >= 0;
+      trendHtml = `<div class="kpi-trend ${up?'up':'down'}">${k.trend>=0?'▲':'▼'} ${Math.abs(k.trend).toFixed(0)}% vs prošli mesec</div>`;
+    }
+    return `
     <div class="kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${k.icon}</svg></div>
       <div class="kpi-val" style="color:${k.color}"><span class="fcu">0</span></div>
+      ${trendHtml}
       <div class="kpi-label">${k.label}</div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
   const els = document.querySelectorAll('#finKpiRow .fcu');
-  [totalIn, totalOut, net, balance].forEach((v,i)=>{
-    if(els[i]) animateCountUp(els[i], v, {suffix:' RSD'});
+  const vals = [totalIn, totalOut, net, balance, receivables, payrollPct];
+  vals.forEach((v,i)=>{
+    if(els[i]) animateCountUp(els[i], v, i===5 ? {suffix:'%', decimals:1} : {suffix:' RSD'});
   });
 }
 
@@ -5290,6 +5367,139 @@ function renderFinDonut(){
     </div>`).join('');
   animateCountUp(document.getElementById('finDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('finDonutWrap').classList.add('shown'); }, 100);
+}
+
+function projectValueByCode(code){
+  return (projectPricing[code]||[]).reduce((s,r)=>s+r.price, 0);
+}
+
+function renderNaplativostDonut(){
+  const colorMap = { "Naplaćeno":"#4C8A55", "Fakturisano":"var(--gold)", "Neplaćeno":"var(--coral)" };
+  const sums = { "Naplaćeno":0, "Fakturisano":0, "Neplaćeno":0 };
+  Object.values(projectPricing).forEach(rows=>rows.forEach(r=>{ sums[r.status] = (sums[r.status]||0) + r.price; }));
+  const total = Object.values(sums).reduce((a,b)=>a+b,0);
+  const cats = Object.keys(sums).filter(c=>sums[c]>0);
+  let acc = 0;
+  const stops = cats.map(c=>{
+    const pct = (sums[c]/total)*100;
+    const seg = `${colorMap[c]} ${acc}% ${acc+pct}%`;
+    acc += pct;
+    return seg;
+  }).join(', ');
+  document.getElementById('naplDonutCircle').style.background = `conic-gradient(${stops})`;
+  document.getElementById('naplDonutLegend').innerHTML = cats.sort((a,b)=>sums[b]-sums[a]).map(c=>`
+    <div class="donut-legend-item">
+      <span class="donut-legend-left"><span class="donut-dot" style="background:${colorMap[c]}"></span>${c}</span>
+      <b>${fmtK(sums[c])}k</b>
+    </div>`).join('');
+  animateCountUp(document.getElementById('naplDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
+  setTimeout(()=>{ document.getElementById('naplDonutWrap').classList.add('shown'); }, 100);
+}
+
+function renderProjectValueDonut(){
+  const colorMap = { "U toku":"var(--gold)", "Revizija":"var(--coral)", "Na čekanju":"var(--ink-faint)", "Završeno":"#4C8A55" };
+  const sums = {};
+  allProjects.forEach(p=>{ sums[p.status] = (sums[p.status]||0) + projectValueByCode(p.code); });
+  const total = Object.values(sums).reduce((a,b)=>a+b,0);
+  const cats = Object.keys(sums).filter(c=>sums[c]>0);
+  let acc = 0;
+  const stops = cats.map(c=>{
+    const pct = (sums[c]/total)*100;
+    const seg = `${colorMap[c]||'var(--ink-faint)'} ${acc}% ${acc+pct}%`;
+    acc += pct;
+    return seg;
+  }).join(', ');
+  document.getElementById('statusDonutCircle').style.background = `conic-gradient(${stops})`;
+  document.getElementById('statusDonutLegend').innerHTML = cats.sort((a,b)=>sums[b]-sums[a]).map(c=>`
+    <div class="donut-legend-item">
+      <span class="donut-legend-left"><span class="donut-dot" style="background:${colorMap[c]||'var(--ink-faint)'}"></span>${c}</span>
+      <b>${fmtK(sums[c])}k</b>
+    </div>`).join('');
+  animateCountUp(document.getElementById('statusDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
+  setTimeout(()=>{ document.getElementById('statusDonutWrap').classList.add('shown'); }, 100);
+  const activeCount = allProjects.filter(p=>p.status==='U toku' || p.status==='Revizija').length;
+  animateCountUp(document.getElementById('finActiveProjCount'), activeCount, {duration:700});
+}
+
+function clientRevenueReal(){
+  const sums = {};
+  allProjects.forEach(p=>{ sums[p.client] = (sums[p.client]||0) + projectValueByCode(p.code); });
+  return Object.entries(sums).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
+}
+
+function renderClientRevenueBoard(){
+  const data = clientRevenueReal();
+  const max = Math.max(...data.map(([,v])=>v), 1);
+  document.getElementById('finClientLeaderboard').innerHTML = data.length ? data.map(([name,val],i)=>{
+    const grad = clientAvatarColors[i % clientAvatarColors.length];
+    return `<div class="lb-row">
+      <div class="lb-rank">#${i+1}</div>
+      <div class="lb-avatar" style="background:${grad}">${clientInitials(name)}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(name)}</div>
+        <div class="lb-track"><div class="lb-fill" data-w="${(val/max)*100}" style="width:0%"></div></div>
+      </div>
+      <div class="lb-value">${fmtK(val)}k RSD</div>
+    </div>`;
+  }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka o cenovniku.</div>';
+  setTimeout(()=>{
+    document.querySelectorAll('#finClientLeaderboard .lb-fill').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
+    });
+  }, 150);
+}
+
+function renderTopExpenses(){
+  const currM = TODAY.m - 1;
+  const top = allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===currM).sort((a,b)=>b.amount-a.amount).slice(0,5);
+  const max = Math.max(...top.map(t=>t.amount), 1);
+  document.getElementById('topExpensesList').innerHTML = top.length ? top.map((t,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">#${i+1}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(t.desc)}</div>
+        <div class="lb-track"><div class="lb-fill" data-w="${(t.amount/max)*100}" style="width:0%; background:linear-gradient(90deg, var(--coral), #a8543a);"></div></div>
+      </div>
+      <div class="lb-value">${fmtK(t.amount)}k RSD</div>
+    </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema odliva ovog meseca.</div>';
+  setTimeout(()=>{
+    document.querySelectorAll('#topExpensesList .lb-fill').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
+    });
+  }, 150);
+}
+
+function monthlyRoundsStats(){
+  const currM = TODAY.m - 1;
+  let billable = 0, internal = 0;
+  allProjects.forEach(p=>p.kadrovi.forEach(k=>k.rounds.forEach(r=>{
+    if(!r.date) return;
+    const parts = r.date.split('-');
+    if(parseInt(parts[0],10)===TODAY.y && (parseInt(parts[1],10)-1)===currM){
+      if(r.billable) billable++; else internal++;
+    }
+  })));
+  return { billable, internal };
+}
+
+function renderRoundsMiniChart(){
+  const { billable, internal } = monthlyRoundsStats();
+  const max = Math.max(billable, internal, 1);
+  document.getElementById('roundsMiniChart').innerHTML = `
+    <div class="fin-flow-col">
+      <div class="fin-flow-track"><div class="fin-flow-bar in" data-h="${(billable/max)*100}" style="height:0%" title="Naplativo: ${billable}"></div></div>
+      <div class="fin-flow-label">Naplativo (${billable})</div>
+    </div>
+    <div class="fin-flow-col">
+      <div class="fin-flow-track"><div class="fin-flow-bar out" data-h="${(internal/max)*100}" style="height:0%" title="Rev Remark: ${internal}"></div></div>
+      <div class="fin-flow-label">Rev Remark (${internal})</div>
+    </div>`;
+  setTimeout(()=>{
+    document.querySelectorAll('#roundsMiniChart .fin-flow-bar').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.height = el.dataset.h+'%'; }, i*80);
+    });
+  }, 150);
+  document.getElementById('roundsMiniSub').textContent = `${billable} naplativih rundi, ${internal} internih ispravki ovog meseca`;
 }
 
 function renderRecentTx(){
@@ -5630,6 +5840,11 @@ function initFinansije(){
   renderFinKpis();
   renderFinFlowChart();
   renderFinDonut();
+  renderNaplativostDonut();
+  renderProjectValueDonut();
+  renderClientRevenueBoard();
+  renderTopExpenses();
+  renderRoundsMiniChart();
   renderRecentTx();
   buildTxCategoryMenu();
   renderTxList();
