@@ -151,6 +151,11 @@ body{
 .vt-btn.active{ background:var(--ink); color:#FBF8F1; }
 
 /* grid mode */
+.proj-client-summary{ display:flex; gap:0; background:var(--card); border:1px solid var(--border); border-radius:16px; margin-bottom:16px; overflow:hidden; }
+.proj-client-summary-item{ flex:1; padding:14px 20px; border-right:1px solid var(--border); }
+.proj-client-summary-item:last-child{ border-right:none; }
+.proj-client-summary-label{ display:block; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px; }
+.proj-client-summary-item b{ font-family:var(--font-display); font-weight:700; font-size:16px; }
 .projects-grid-page{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .pg-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; }
 .pg-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(70,55,20,0.28); }
@@ -1511,6 +1516,8 @@ body{
           <button class="vt-btn" data-mode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
         </div>
       </div>
+
+      <div class="proj-client-summary" id="projClientSummary" style="display:none;"></div>
 
       <div class="projects-grid-page" id="projectsGrid"></div>
       <div class="projects-list-page" id="projectsListWrap" style="display:none;">
@@ -3743,8 +3750,26 @@ function projectStats(p){
 function projectEditBtn(p){
   return `<div class="pg-edit-btn" data-edit-id="${p._id}" title="Izmeni projekat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>`;
 }
+function renderClientPaymentSummary(){
+  const wrap = document.getElementById('projClientSummary');
+  if(filters.klijent === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
+  const clientProjects = allProjects.filter(p=>p.client===filters.klijent);
+  let total = 0, paid = 0, owed = 0;
+  clientProjects.forEach(p=>{
+    (projectPricing[p.code]||[]).forEach(r=>{
+      total += r.price;
+      if(r.status==='Naplaćeno') paid += r.price; else owed += r.price;
+    });
+  });
+  wrap.style.display = 'flex';
+  wrap.innerHTML = `
+    <div class="proj-client-summary-item"><span class="proj-client-summary-label">Ukupno fakturisano</span><b>${fmtRSD(total)}</b></div>
+    <div class="proj-client-summary-item"><span class="proj-client-summary-label">Plaćeno</span><b style="color:#4C8A55;">${fmtRSD(paid)}</b></div>
+    <div class="proj-client-summary-item"><span class="proj-client-summary-label">Duguje</span><b style="color:${owed>0?'var(--coral)':'var(--ink)'};">${fmtRSD(owed)}</b></div>`;
+}
 function renderProjectsPage(){
   const list = filteredProjects();
+  renderClientPaymentSummary();
   document.getElementById('projCountLabel').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
   document.getElementById('projectsEmpty').style.display = list.length ? 'none' : 'block';
   document.getElementById('projectsGrid').style.display = (viewMode==='grid' && list.length) ? 'grid' : 'none';
@@ -5706,7 +5731,7 @@ function renderRecentTx(){
     </div>`).join('');
 }
 
-const txState = { search:"", type:"Sve", category:"Sve kategorije", month:"Svi meseci", year:"Sve godine" };
+const txState = { search:"", type:"Sve", category:"Sve kategorije", month: monthNamesFull[TODAY.m-1], year: String(TODAY.y) };
 function buildTxCategoryMenu(){
   const cats = uniqueSorted(allTransactions.map(t=>t.category));
   document.getElementById('filterTxCategoryMenu').innerHTML = `<div class="cal-filter-item" data-val="Sve kategorije">Sve kategorije</div>` +
@@ -5716,12 +5741,14 @@ function buildTxCategoryMenu(){
 function buildTxMonthMenu(){
   document.getElementById('filterTxMonthMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi meseci">Svi meseci</div>` +
     monthNamesFull.map(m=>`<div class="cal-filter-item" data-val="${m}">${m}</div>`).join('');
+  document.getElementById('filterTxMonthLabel').textContent = txState.month;
   bindCalFilter('filterTxMonth', (val)=>{ txState.month = val; renderTxList(); });
 }
 function buildTxYearMenu(){
   const years = uniqueSorted(allTransactions.map(t=>t.date.slice(0,4))).sort((a,b)=>b.localeCompare(a));
   document.getElementById('filterTxYearMenu').innerHTML = `<div class="cal-filter-item" data-val="Sve godine">Sve godine</div>` +
     years.map(y=>`<div class="cal-filter-item" data-val="${y}">${y}</div>`).join('');
+  document.getElementById('filterTxYearLabel').textContent = txState.year;
   bindCalFilter('filterTxYear', (val)=>{ txState.year = val; renderTxList(); });
 }
 function bindCalFilter(id, onSelect){
