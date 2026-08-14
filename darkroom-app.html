@@ -975,6 +975,7 @@ body{
 #view-statistika.active{ overflow:hidden; }
 #view-tim.active{ display:block; overflow-y:auto; }
 #view-finansije.active{ overflow:hidden; }
+#view-projekat-detalji.active{ display:block; overflow-y:auto; }
 /* ---- toolbar ---- */
 .cal-toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:14px; }
 .cal-month{ display:flex; align-items:center; gap:14px; }
@@ -2813,17 +2814,46 @@ function praznik(holidayName, start, end){
 }
 
 const events = [
-  zadatak("Dušan Stević","DS","gold","P2026-101","Faza 01",{y:2026,m:8,d:3},{y:2026,m:8,d:9},"visoka"),
-  zadatak("Stefana Ristić","SR","plum","P2026-108","Faza 01",{y:2026,m:8,d:3},{y:2026,m:8,d:6},"srednja"),
-  zadatak("Radoslav Milanović","RM","coral","P2026-107","Faza 01",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"niska"),
-  zadatak("Dalibor Mitić","DM","sky","P2026-108","Faza 01",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"srednja"),
-  zadatak("Katarina Đorđević","KĐ","teal","P2026-109","Faza 02",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"visoka"),
-  zadatak("Aleksandra Vukašinović","AV","sage","P2026-109","Faza 01",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"niska"),
-  zadatak("Mihajlo Nagradić","MN","gold","P2026-108","Faza 01",{y:2026,m:8,d:6},{y:2026,m:8,d:6},"srednja"),
-  zadatak("Nikola Jovanović","NJ","plum","P2026-102","Faza 01",{y:2026,m:8,d:6},{y:2026,m:8,d:7},"srednja"),
-  zadatak("Anđela Pešić","AP","coral","P2026-104","Eksterijer render",{y:2026,m:8,d:11},{y:2026,m:8,d:13},"visoka"),
-  zadatak("Marija Todorović","MT","sky","P2026-104","Enterijer dnevna soba",{y:2026,m:8,d:12},{y:2026,m:8,d:14},"srednja"),
-  zadatak("Ana Krstić","AK","teal","P2026-098","Revizija fasade",{y:2026,m:8,d:18},{y:2026,m:8,d:20},"niska"),
+  zadatak("Dušan Stević", "DS", "gold", "P001", "Enterijer_01", {y:2026,m:8,d:1}, {y:2026,m:8,d:2}, "niska"),
+  zadatak("Aleksandra Vukašinović", "AV", "sage", "P001", "Enterijer_06", {y:2026,m:8,d:4}, {y:2026,m:8,d:6}, "srednja"),
+  zadatak("Ana Krstić", "AK", "teal", "P002", "Enterijer_03", {y:2026,m:8,d:7}, {y:2026,m:8,d:10}, "visoka"),
+  zadatak("Damjan Mitrović", "DM", "sky", "P003", "Enterijer_01", {y:2026,m:8,d:10}, {y:2026,m:8,d:11}, "niska"),
+  zadatak("Radoslav Milanović", "RM", "coral", "P003", "Enterijer_06", {y:2026,m:8,d:13}, {y:2026,m:8,d:15}, "srednja"),
+  zadatak("Nikola Jovanović", "NJ", "plum", "P004", "Enterijer_02", {y:2026,m:8,d:16}, {y:2026,m:8,d:19}, "visoka"),
+  zadatak("Miloš Tasić", "MT", "gold", "P005", "Amenities_01", {y:2026,m:8,d:19}, {y:2026,m:8,d:20}, "niska"),
+  zadatak("Marija Milenković", "MM", "sage", "P005", "Amenities_06", {y:2026,m:8,d:22}, {y:2026,m:8,d:24}, "srednja"),
+  zadatak("Katarina Đorđević", "KĐ", "teal", "P006", "Eksterijer_03", {y:2026,m:8,d:25}, {y:2026,m:8,d:28}, "visoka"),
+  zadatak("Marija Todorović", "MT", "sky", "P007", "Enterijer_03", {y:2026,m:8,d:28}, {y:2026,m:8,d:29}, "niska"),
+  zadatak("Lazar Pešić", "LP", "coral", "P007", "Enterijer_08", {y:2026,m:8,d:3}, {y:2026,m:8,d:5}, "srednja"),
+  zadatak("Stefana Ristić", "SR", "plum", "P007", "Enterijer_13", {y:2026,m:8,d:6}, {y:2026,m:8,d:9}, "visoka"),
+  zadatak("Mihajlo Nagradić", "MN", "gold", "P007", "Enterijer_18", {y:2026,m:8,d:9}, {y:2026,m:8,d:10}, "niska"),
+  zadatak("Miljana Cvetković", "MC", "sage", "P007", "Eksterijer_03", {y:2026,m:8,d:12}, {y:2026,m:8,d:14}, "srednja"),
+  zadatak("Aleksandar Jovanović", "AJ", "teal", "P007", "Eksterijer_08", {y:2026,m:8,d:15}, {y:2026,m:8,d:18}, "visoka"),
+  zadatak("Dalibor Mitić", "DM", "sky", "P009", "Eksterijer_01", {y:2026,m:8,d:18}, {y:2026,m:8,d:19}, "niska"),
+  zadatak("Anđela Pešić", "AP", "coral", "P009", "Animacija_01", {y:2026,m:8,d:21}, {y:2026,m:8,d:23}, "srednja"),
+  zadatak("Ivana Sazdov", "IS", "plum", "P011", "Enterijer_01", {y:2026,m:8,d:24}, {y:2026,m:8,d:27}, "visoka"),
+  zadatak("Dušan Stević", "DS", "gold", "P011", "Eksterijer_01", {y:2026,m:8,d:27}, {y:2026,m:8,d:28}, "niska"),
+  zadatak("Aleksandra Vukašinović", "AV", "sage", "P012", "Enterijer_05", {y:2026,m:8,d:2}, {y:2026,m:8,d:4}, "srednja"),
+  zadatak("Ana Krstić", "AK", "teal", "P012", "Enterijer_10", {y:2026,m:8,d:5}, {y:2026,m:8,d:8}, "visoka"),
+  zadatak("Damjan Mitrović", "DM", "sky", "P012", "Enterijer_15", {y:2026,m:8,d:8}, {y:2026,m:8,d:9}, "niska"),
+  zadatak("Radoslav Milanović", "RM", "coral", "P012", "Eksterijer_05", {y:2026,m:8,d:11}, {y:2026,m:8,d:13}, "srednja"),
+  zadatak("Nikola Jovanović", "NJ", "plum", "P013", "Enterijer_05", {y:2026,m:8,d:14}, {y:2026,m:8,d:17}, "visoka"),
+  zadatak("Miloš Tasić", "MT", "gold", "P014", "Enterijer_04", {y:2026,m:8,d:17}, {y:2026,m:8,d:18}, "niska"),
+  zadatak("Marija Milenković", "MM", "sage", "P015", "Enterijer_04", {y:2026,m:8,d:20}, {y:2026,m:8,d:22}, "srednja"),
+  zadatak("Katarina Đorđević", "KĐ", "teal", "P016", "Enterijer_03", {y:2026,m:8,d:23}, {y:2026,m:8,d:26}, "visoka"),
+  zadatak("Marija Todorović", "MT", "sky", "P016", "Eksterijer_03", {y:2026,m:8,d:26}, {y:2026,m:8,d:27}, "niska"),
+  zadatak("Lazar Pešić", "LP", "coral", "P017", "Enterijer_03", {y:2026,m:8,d:1}, {y:2026,m:8,d:3}, "srednja"),
+  zadatak("Stefana Ristić", "SR", "plum", "P017", "Eksterijer_02", {y:2026,m:8,d:4}, {y:2026,m:8,d:7}, "visoka"),
+  zadatak("Mihajlo Nagradić", "MN", "gold", "P018", "Enterijer_03", {y:2026,m:8,d:7}, {y:2026,m:8,d:8}, "niska"),
+  zadatak("Miljana Cvetković", "MC", "sage", "P018", "Eksterijer_03", {y:2026,m:8,d:10}, {y:2026,m:8,d:12}, "srednja"),
+  zadatak("Aleksandar Jovanović", "AJ", "teal", "P019", "Enterijer_03", {y:2026,m:8,d:13}, {y:2026,m:8,d:16}, "visoka"),
+  zadatak("Dalibor Mitić", "DM", "sky", "P019", "Eksterijer_02", {y:2026,m:8,d:16}, {y:2026,m:8,d:17}, "niska"),
+  zadatak("Anđela Pešić", "AP", "coral", "P020", "Enterijer_03", {y:2026,m:8,d:19}, {y:2026,m:8,d:21}, "srednja"),
+  zadatak("Ivana Sazdov", "IS", "plum", "P020", "Enterijer_08", {y:2026,m:8,d:22}, {y:2026,m:8,d:25}, "visoka"),
+  zadatak("Dušan Stević", "DS", "gold", "P020", "Enterijer_13", {y:2026,m:8,d:25}, {y:2026,m:8,d:26}, "niska"),
+  zadatak("Aleksandra Vukašinović", "AV", "sage", "P020", "Enterijer_18", {y:2026,m:8,d:28}, {y:2026,m:8,d:30}, "srednja"),
+  zadatak("Ana Krstić", "AK", "teal", "P020", "Enterijer_23", {y:2026,m:8,d:3}, {y:2026,m:8,d:6}, "visoka"),
+  zadatak("Damjan Mitrović", "DM", "sky", "P020", "Enterijer_28", {y:2026,m:8,d:6}, {y:2026,m:8,d:7}, "niska"),
 
   odsustvo("Miloš Tasić","MT","odmor",{y:2026,m:8,d:3},{y:2026,m:8,d:7}),
   odsustvo("Lazar Pešić","LP","bolovanje",{y:2026,m:8,d:4},{y:2026,m:8,d:5}),
@@ -2831,36 +2861,6 @@ const events = [
   odsustvo("Damjan Mitrović","DM","neplaceno",{y:2026,m:8,d:6},{y:2026,m:8,d:7}),
 
   praznik("Dan osnivanja studija",{y:2026,m:8,d:15},{y:2026,m:8,d:15}),
-
-  zadatak("Dušan Stević","DS","gold","P2026-106","Render review",{y:2026,m:8,d:13},{y:2026,m:8,d:14},"srednja"),
-  zadatak("Stefana Ristić","SR","plum","P2026-104","Klijent revizija",{y:2026,m:8,d:17},{y:2026,m:8,d:17},"visoka"),
-  zadatak("Radoslav Milanović","RM","coral","P2026-107","Klijent poziv",{y:2026,m:8,d:8},{y:2026,m:8,d:8},"niska"),
-  zadatak("Radoslav Milanović","RM","coral","P2026-098","Modelovanje",{y:2026,m:8,d:20},{y:2026,m:8,d:21},"srednja"),
-  zadatak("Dalibor Mitić","DM","sky","P2026-092","Enterijer dnevna soba",{y:2026,m:8,d:19},{y:2026,m:8,d:20},"srednja"),
-  zadatak("Katarina Đorđević","KĐ","teal","P2026-087","Sastanak sa klijentom",{y:2026,m:8,d:11},{y:2026,m:8,d:11},"niska"),
-  zadatak("Katarina Đorđević","KĐ","teal","P2026-081","Render — eksterijer",{y:2026,m:8,d:25},{y:2026,m:8,d:26},"visoka"),
-  zadatak("Aleksandra Vukašinović","AV","sage","P2026-109","Faza 02",{y:2026,m:8,d:18},{y:2026,m:8,d:19},"srednja"),
-  zadatak("Mihajlo Nagradić","MN","gold","P2025-076","Isporuka klijentu",{y:2026,m:8,d:13},{y:2026,m:8,d:14},"visoka"),
-  zadatak("Mihajlo Nagradić","MN","gold","P2025-134","Koncept revizija",{y:2026,m:8,d:27},{y:2026,m:8,d:28},"niska"),
-  zadatak("Nikola Jovanović","NJ","plum","P2025-120","Finalni render",{y:2026,m:8,d:20},{y:2026,m:8,d:20},"srednja"),
-  zadatak("Anđela Pešić","AP","coral","P2026-104","Priprema kamera",{y:2026,m:8,d:4},{y:2026,m:8,d:5},"niska"),
-  zadatak("Anđela Pešić","AP","coral","P2026-104","Review sa timom",{y:2026,m:8,d:14},{y:2026,m:8,d:14},"srednja"),
-  zadatak("Marija Todorović","MT","sky","P2026-104","Sastanak sa klijentom",{y:2026,m:8,d:6},{y:2026,m:8,d:6},"niska"),
-  zadatak("Ana Krstić","AK","teal","P2026-098","Priprema revizije",{y:2026,m:8,d:5},{y:2026,m:8,d:5},"srednja"),
-  zadatak("Ana Krstić","AK","teal","P2025-101","Dan/noć animacija",{y:2026,m:8,d:27},{y:2026,m:8,d:28},"visoka"),
-  zadatak("Miljana Cvetković","MC","gold","P2026-092","Modelovanje enterijera",{y:2026,m:8,d:11},{y:2026,m:8,d:12},"srednja"),
-  zadatak("Miljana Cvetković","MC","gold","P2026-098","Render pregled",{y:2026,m:8,d:20},{y:2026,m:8,d:20},"niska"),
-  zadatak("Ivana Sazdov","IS","plum","P2026-104","Teksturisanje",{y:2026,m:8,d:12},{y:2026,m:8,d:13},"srednja"),
-  zadatak("Ivana Sazdov","IS","plum","P2026-106","Finalna revizija",{y:2026,m:8,d:24},{y:2026,m:8,d:25},"visoka"),
-  zadatak("Aleksandar Jovanović","AJ","teal","P2026-109","Sastanak sa klijentom",{y:2026,m:8,d:6},{y:2026,m:8,d:6},"niska"),
-  zadatak("Aleksandar Jovanović","AJ","teal","P2026-081","Eksterijer render",{y:2026,m:8,d:19},{y:2026,m:8,d:21},"srednja"),
-  zadatak("Aleksandar Jovanović","AJ","teal","P2025-134","Predaja",{y:2026,m:8,d:27},{y:2026,m:8,d:27},"visoka"),
-  zadatak("Damjan Mitrović","DM","sky","P2026-087","Kamere — postavka",{y:2026,m:8,d:17},{y:2026,m:8,d:18},"srednja"),
-  zadatak("Damjan Mitrović","DM","sky","P2026-102","Review",{y:2026,m:8,d:26},{y:2026,m:8,d:26},"niska"),
-  zadatak("Miloš Tasić","MT","gold","P2024-054","Walkthrough",{y:2026,m:8,d:18},{y:2026,m:8,d:19},"srednja"),
-  zadatak("Lazar Pešić","LP","coral","P2026-081","Perspektiva — koncept",{y:2026,m:8,d:12},{y:2026,m:8,d:12},"niska"),
-  zadatak("Lazar Pešić","LP","coral","P2026-081","Render — finalizacija",{y:2026,m:8,d:24},{y:2026,m:8,d:25},"visoka"),
-  zadatak("Marija Milenković","MM","sage","P2024-088","Predajni set",{y:2026,m:8,d:18},{y:2026,m:8,d:18},"srednja"),
 ];
 events.forEach(e=>e._id=nextId());
 fromPersisted('events', events);
@@ -5658,7 +5658,27 @@ fromPersisted('allTransactions', allTransactions);
 const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55" };
 const openingBalance = 850000;
 
-const projectPricing = {};
+const projectPricing = {
+  "P001": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"}, {name:"Enterijer_07", price:120000, status:"Fakturisano"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"} ],
+  "P002": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"}, {name:"Enterijer_07", price:120000, status:"Fakturisano"} ],
+  "P003": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Naplaćeno"} ],
+  "P004": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"} ],
+  "P005": [ {name:"Amenities_01", price:120000, status:"Fakturisano"}, {name:"Amenities_02", price:120000, status:"Neplaćeno"}, {name:"Amenities_03", price:120000, status:"Fakturisano"}, {name:"Amenities_04", price:120000, status:"Neplaćeno"}, {name:"Amenities_05", price:120000, status:"Naplaćeno"}, {name:"Amenities_06", price:120000, status:"Neplaćeno"}, {name:"Amenities_07", price:120000, status:"Fakturisano"}, {name:"Amenities_08", price:120000, status:"Neplaćeno"} ],
+  "P006": [ {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Aerial_01", price:150000, status:"Neplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
+  "P007": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Fakturisano"}, {name:"Enterijer_10", price:120000, status:"Fakturisano"}, {name:"Enterijer_11", price:120000, status:"Neplaćeno"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Naplaćeno"}, {name:"Enterijer_14", price:120000, status:"Fakturisano"}, {name:"Enterijer_15", price:120000, status:"Neplaćeno"}, {name:"Enterijer_16", price:120000, status:"Neplaćeno"}, {name:"Enterijer_17", price:120000, status:"Naplaćeno"}, {name:"Enterijer_18", price:120000, status:"Fakturisano"}, {name:"Enterijer_19", price:120000, status:"Neplaćeno"}, {name:"Enterijer_20", price:120000, status:"Neplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_06", price:150000, status:"Fakturisano"}, {name:"Eksterijer_07", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_08", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_09", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_10", price:150000, status:"Fakturisano"}, {name:"Animacija_01", price:500000, status:"Neplaćeno"}, {name:"Animacija_02", price:500000, status:"Neplaćeno"} ],
+  "P009": [ {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
+  "P010": [ {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"} ],
+  "P011": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"} ],
+  "P012": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Fakturisano"}, {name:"Enterijer_10", price:120000, status:"Fakturisano"}, {name:"Enterijer_11", price:120000, status:"Neplaćeno"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Naplaćeno"}, {name:"Enterijer_14", price:120000, status:"Fakturisano"}, {name:"Enterijer_15", price:120000, status:"Neplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Neplaćeno"} ],
+  "P013": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Fakturisano"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"} ],
+  "P014": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Fakturisano"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"} ],
+  "P015": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"} ],
+  "P016": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Eksterijer_04", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Naplaćeno"} ],
+  "P017": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Fakturisano"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
+  "P018": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Fakturisano"}, {name:"Animacija_01", price:500000, status:"Naplaćeno"} ],
+  "P019": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Naplaćeno"} ],
+  "P020": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"}, {name:"Enterijer_07", price:120000, status:"Fakturisano"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Naplaćeno"}, {name:"Enterijer_10", price:120000, status:"Neplaćeno"}, {name:"Enterijer_11", price:120000, status:"Fakturisano"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Fakturisano"}, {name:"Enterijer_14", price:120000, status:"Neplaćeno"}, {name:"Enterijer_15", price:120000, status:"Fakturisano"}, {name:"Enterijer_16", price:120000, status:"Neplaćeno"}, {name:"Enterijer_17", price:120000, status:"Naplaćeno"}, {name:"Enterijer_18", price:120000, status:"Neplaćeno"}, {name:"Enterijer_19", price:120000, status:"Fakturisano"}, {name:"Enterijer_20", price:120000, status:"Neplaćeno"}, {name:"Enterijer_21", price:120000, status:"Naplaćeno"}, {name:"Enterijer_22", price:120000, status:"Neplaćeno"}, {name:"Enterijer_23", price:120000, status:"Fakturisano"}, {name:"Enterijer_24", price:120000, status:"Neplaćeno"}, {name:"Enterijer_25", price:120000, status:"Fakturisano"}, {name:"Enterijer_26", price:120000, status:"Neplaćeno"}, {name:"Enterijer_27", price:120000, status:"Fakturisano"}, {name:"Enterijer_28", price:120000, status:"Neplaćeno"}, {name:"Enterijer_29", price:120000, status:"Naplaćeno"}, {name:"Enterijer_30", price:120000, status:"Neplaćeno"} ],
+};
 Object.values(projectPricing).forEach(rows=>rows.forEach(r=>r._id=nextId()));
 if(_persistedRaw && _persistedRaw.projectPricing){
   Object.keys(projectPricing).forEach(k=>delete projectPricing[k]);
