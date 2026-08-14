@@ -2682,27 +2682,37 @@ function thumbStyle(seed, w){
   return `background-image:url('${url}'); background-size:cover; background-position:center;`;
 }
 
-const projects = [
-  {name:"Projekat Koncept 7", code:"P2026-106", tasks:[{n:"Faza 01", t:"CLAY", tag:"tag-clay"}], seed:1.3},
-  {name:"Vila Sunčana Padina", code:"P2026-104", tasks:[{n:"Eksterijer render", t:"FINAL", tag:"tag-final"},{n:"Enterijer dnevna soba", t:"WIP", tag:"tag-wip"}], seed:4.1},
-  {name:"Poslovni Kompleks Delta", code:"P2026-098", tasks:[{n:"Revizija fasade", t:"REVIEW", tag:"tag-review"}], seed:2.6},
-  {name:"Rezidencija Javor", code:"P2026-092", tasks:[{n:"Modelovanje terena", t:"WIP", tag:"tag-wip"}], seed:6.4},
-  {name:"Hotel Panorama", code:"P2026-087", tasks:[{n:"Finalna predaja", t:"FINAL", tag:"tag-final"}], seed:3.2},
-  {name:"Stambeni Blok Riva", code:"P2026-081", tasks:[{n:"Kamere — ptičja perspektiva", t:"CLAY", tag:"tag-clay"}], seed:5.7},
-];
-const projGrid = document.getElementById('projGrid');
-projects.forEach(p=>{
-  const card = document.createElement('div');
-  card.className = 'proj-card';
-  card.innerHTML = `
-    <div class="proj-thumb" style="${thumbStyle(p.seed,180)}"><div class="vfc tl"></div><div class="vfc br"></div></div>
-    <div class="proj-body">
-      <div class="proj-name">${p.name}</div>
-      <div class="proj-code">${p.code}</div>
-      ${p.tasks.map(t=>`<div class="task-row"><span class="task-name">${t.n}</span><span class="tag ${t.tag}">${t.t}</span></div>`).join('')}
+function renderDashboardProjects(){
+  const u = currentUser();
+  const projGridEl = document.getElementById('projGrid');
+  if(!u || !projGridEl) return;
+  let list = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===u.key && (k.status==='aktivan' || k.status==='na čekanju')));
+  const personal = list.length > 0;
+  if(!personal) list = allProjects.filter(p=>p.status!=='Završeno');
+  list = list.slice(0, 6);
+  document.querySelector('#projGrid').closest('.panel').querySelector('.panel-sub').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
+
+  projGridEl.innerHTML = list.map(p=>{
+    const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
+    const thumbStyleAttr = p.thumbnail ? `background-image:url('${p.thumbnail}');background-size:cover;background-position:center;` : thumbStyle(p.seed, 180);
+    return `
+    <div class="proj-card" data-id="${p._id}" style="cursor:pointer;">
+      <div class="proj-thumb" style="${thumbStyleAttr}"><div class="vfc tl"></div><div class="vfc br"></div></div>
+      <div class="proj-body">
+        <div class="proj-name">${escapeHtml(p.name)}</div>
+        <div class="proj-code">${escapeHtml(p.code)}</div>
+        ${rows.map(k=>`<div class="task-row"><span class="task-name">${escapeHtml(k.name)}</span><span class="tag ${kadarStatusTag[k.status]||'tag-hold'}">${k.status.toUpperCase()}</span></div>`).join('')}
+      </div>
     </div>`;
-  projGrid.appendChild(card);
-});
+  }).join('');
+
+  document.querySelectorAll('#projGrid .proj-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const proj = allProjects.find(x=>x._id===Number(card.dataset.id));
+      if(proj){ setActiveNav('projekti'); openProjectDetail(proj); }
+    });
+  });
+}
 
 /* Radna Nedelja widget je povezan sa events (kalendar) — pogledaj renderWeekWidget() niže,
    pošto zavisi od teamMembers/currentUserId koji se definišu kasnije u fajlu. */
@@ -6918,7 +6928,23 @@ function applyCurrentUser(){
     avatarEl.textContent = initials;
   }
   renderProfilePage();
+  renderDashboardProjects();
+  renderDashboardFinance();
   applyAccessGating();
+}
+function renderDashboardFinance(){
+  const u = currentUser();
+  const wrap = document.getElementById('finBlur');
+  if(!u || !wrap) return;
+  const month = TODAY.m - 1;
+  const entry = salaryFor(u.key, month);
+  const ytdTotal = salaryEntries.filter(s=>s.employee===u.key).reduce((s,e)=>s+salUkupno(e),0);
+  const monthLabel = monthNamesFull[month].toLowerCase();
+  wrap.innerHTML = `
+    <div class="fin-row"><span>Osnovica · ${monthLabel}</span><span>${entry ? fmtRSD(entry.osnovica) : '—'}</span></div>
+    <div class="fin-row"><span>Neto isplata</span><span>${entry ? fmtRSD(salNeto(entry)) : 'Nije uneto'}</span></div>
+    <div class="fin-row"><span>Status</span><span>${entry ? entry.status : '—'}</span></div>
+    <div class="fin-row"><span>Ukupno 2026.</span><span>${fmtRSD(ytdTotal)}</span></div>`;
 }
 function applyAccessGating(){
   const acc = currentAccess();
