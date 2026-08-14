@@ -1022,6 +1022,24 @@ body{
 .cal-legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-dim); }
 .cal-legend-dot{ width:9px; height:9px; border-radius:50%; }
 
+/* event modal tabs */
+.ev-tab-row{ display:flex; gap:6px; margin-bottom:16px; background:var(--card-soft); border-radius:10px; padding:4px; }
+.ev-tab-btn{ flex:1; padding:8px 0; border:none; background:none; border-radius:8px; font-family:var(--font-body); font-weight:600; font-size:12px; color:var(--ink-dim); cursor:pointer; }
+.ev-tab-btn.active{ background:var(--card); color:var(--ink); box-shadow:0 2px 6px rgba(40,30,10,0.08); }
+.ev-praznik-note{ font-size:11px; color:var(--ink-faint); line-height:1.5; margin-top:2px; }
+
+/* urgency + holiday */
+.cb-urgency{ width:9px; height:9px; border-radius:50%; margin-left:auto; flex-shrink:0; }
+.cal-holiday{ background:var(--coral-soft); border-color:var(--coral); color:#8a4128; }
+.twg-holiday-row{ border-top:1px solid var(--border); }
+.twg-holiday-row .twg-person{ background:var(--card); }
+.twg-holiday-label{ font-size:11.5px; font-weight:600; color:var(--coral); display:flex; align-items:center; gap:6px; }
+.twg-holiday-bar{ display:flex; align-items:center; justify-content:center; height:27px; border-radius:9px; background:var(--coral-soft); color:#8a4128; font-size:10.5px; font-weight:600; margin:6px 4px; cursor:pointer; overflow:hidden; white-space:nowrap; }
+
+/* hover + affordance */
+.twg-hover-plus{ position:absolute; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3a2704; display:flex; align-items:center; justify-content:center; pointer-events:none; opacity:0; transition:opacity .1s ease; z-index:2; top:50%; margin-top:-10px; }
+.twg-hover-plus svg{ width:11px; height:11px; }
+
 
 </style>
 </head>
@@ -1340,8 +1358,11 @@ body{
       <div class="cal-weeks" id="calWeeks"></div>
 
       <div class="cal-legend">
-        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:#4C8A55"></span>Odobreno</div>
-        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>Čeka odobrenje</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--sage)"></span>Niska urgentnost</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--gold-deep)"></span>Srednja urgentnost</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>Visoka urgentnost</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--ink-faint)"></span>Odsustvo</div>
+        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>🎉 Praznik</div>
       </div>
     </div>
 
@@ -2208,54 +2229,83 @@ body{
 <div class="modal-overlay" id="eventModalOverlay">
   <div class="modal-card">
     <div class="modal-title" id="evTitle">Nova stavka</div>
-    <div class="modal-field">
-      <label>Osoba</label>
-      <select id="evPerson">
-        <option value="Dušan Stević">Dušan Stević</option>
-        <option value="Stefana Ristić">Stefana Ristić</option>
-        <option value="Radoslav Milanović">Radoslav Milanović</option>
-        <option value="Dalibor Mitić">Dalibor Mitić</option>
-        <option value="Katarina Đorđević">Katarina Đorđević</option>
-        <option value="Aleksandra Vukašinović">Aleksandra Vukašinović</option>
-        <option value="Mihajlo Nagradić">Mihajlo Nagradić</option>
-        <option value="Nikola Jovanović">Nikola Jovanović</option>
-        <option value="Anđela Pešić">Anđela Pešić</option>
-        <option value="Marija Todorović">Marija Todorović</option>
-        <option value="Ana Krstić">Ana Krstić</option>
-        <option value="Miljana Cvetković">Miljana Cvetković</option>
-        <option value="Miloš Tasić">Miloš Tasić</option>
-        <option value="Ivana Sazdov">Ivana Sazdov</option>
-        <option value="Lazar Pešić">Lazar Pešić</option>
-        <option value="Damjan Mitrović">Damjan Mitrović</option>
-        <option value="Aleksandar Jovanović">Aleksandar Jovanović</option>
-        <option value="Marija Milenković">Marija Milenković</option>
-      </select>
+    <div class="ev-tab-row" id="evTabRow">
+      <button type="button" class="ev-tab-btn active" data-tab="zadatak">Zadatak</button>
+      <button type="button" class="ev-tab-btn" data-tab="odsustvo">Odsustvo</button>
+      <button type="button" class="ev-tab-btn" data-tab="praznik" id="evTabPraznikBtn">Praznik</button>
     </div>
-    <div class="modal-field">
-      <label>Status</label>
-      <select id="evStatus">
-        <option value="pending">Na čekanju</option>
-        <option value="done">Završeno</option>
-        <option value="odmor">Godišnji odmor</option>
-        <option value="bolovanje">Bolovanje</option>
-      </select>
+
+    <div class="ev-tab-panel" id="evPanelZadatak">
+      <div class="modal-field">
+        <label>Zaposleni</label>
+        <select id="evzEmployee"></select>
+      </div>
+      <div class="modal-field">
+        <label>Projekat</label>
+        <select id="evzProject"></select>
+      </div>
+      <div class="modal-field">
+        <label>Zadatak (kadar)</label>
+        <select id="evzTask"></select>
+      </div>
+      <div class="modal-field">
+        <label>Početak</label>
+        <input type="date" id="evzStart">
+      </div>
+      <div class="modal-field">
+        <label>Kraj</label>
+        <input type="date" id="evzEnd">
+      </div>
+      <div class="modal-field">
+        <label>Urgentnost</label>
+        <select id="evzUrgency">
+          <option value="niska">Niska</option>
+          <option value="srednja" selected>Srednja</option>
+          <option value="visoka">Visoka</option>
+        </select>
+      </div>
     </div>
-    <div class="modal-field" id="evCodeField">
-      <label>Kod projekta</label>
-      <input type="text" id="evCode" placeholder="npr. P2026-104">
+
+    <div class="ev-tab-panel" id="evPanelOdsustvo" style="display:none;">
+      <div class="modal-field">
+        <label>Zaposleni</label>
+        <select id="evoEmployee"></select>
+      </div>
+      <div class="modal-field">
+        <label>Tip odsustva</label>
+        <select id="evoType">
+          <option value="odmor">Godišnji odmor</option>
+          <option value="bolovanje">Bolovanje</option>
+          <option value="placeno">Plaćeno odsustvo</option>
+          <option value="neplaceno">Neplaćeno odsustvo</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>Od</label>
+        <input type="date" id="evoStart">
+      </div>
+      <div class="modal-field">
+        <label>Do</label>
+        <input type="date" id="evoEnd">
+      </div>
     </div>
-    <div class="modal-field" id="evPhaseField">
-      <label>Faza</label>
-      <input type="text" id="evPhase" placeholder="npr. Faza 01">
+
+    <div class="ev-tab-panel" id="evPanelPraznik" style="display:none;">
+      <div class="modal-field">
+        <label>Naziv praznika</label>
+        <input type="text" id="evpName" placeholder="npr. Dan državnosti">
+      </div>
+      <div class="modal-field">
+        <label>Od</label>
+        <input type="date" id="evpStart">
+      </div>
+      <div class="modal-field">
+        <label>Do</label>
+        <input type="date" id="evpEnd">
+      </div>
+      <div class="ev-praznik-note">Ovo se odnosi na ceo studio — svi zaposleni će videti ovaj praznik u kalendaru.</div>
     </div>
-    <div class="modal-field">
-      <label>Početak</label>
-      <input type="date" id="evStart">
-    </div>
-    <div class="modal-field">
-      <label>Kraj</label>
-      <input type="date" id="evEnd">
-    </div>
+
     <div class="modal-actions">
       <button class="modal-delete" id="evDelete" style="display:none;">Obriši</button>
       <button class="modal-cancel" id="evCancel">Otkaži</button>
@@ -2479,52 +2529,65 @@ document.getElementById('finEye').addEventListener('click', ()=>{
 
 const TODAY = {y:2026, m:8, d:4};
 
-const events = [
-  {person:"Dušan Stević", initials:"DS", color:"gold", code:"P2026-101", phase:"Faza 01", start:{y:2026,m:8,d:3}, end:{y:2026,m:8,d:9}, status:"pending"},
-  {person:"Stefana Ristić", initials:"SR", color:"plum", code:"P2026-108", phase:"Faza 01", start:{y:2026,m:8,d:3}, end:{y:2026,m:8,d:6}, status:"pending"},
-  {person:"Radoslav Milanović", initials:"RM", color:"coral", code:"P2026-107", phase:"Faza 01", start:{y:2026,m:8,d:5}, end:{y:2026,m:8,d:6}, status:"done"},
-  {person:"Dalibor Mitić", initials:"DM", color:"sky", code:"P2026-108", phase:"Faza 01", start:{y:2026,m:8,d:5}, end:{y:2026,m:8,d:6}, status:"done"},
-  {person:"Katarina Đorđević", initials:"KĐ", color:"teal", code:"P2026-109", phase:"Faza 02", start:{y:2026,m:8,d:5}, end:{y:2026,m:8,d:6}, status:"pending"},
-  {person:"Aleksandra Vukašinović", initials:"AV", color:"sage", code:"P2026-109", phase:"Faza 01", start:{y:2026,m:8,d:5}, end:{y:2026,m:8,d:6}, status:"done"},
-  {person:"Mihajlo Nagradić", initials:"MN", color:"gold", code:"P2026-108", phase:"Faza 01", start:{y:2026,m:8,d:6}, end:{y:2026,m:8,d:6}, status:"pending"},
-  {person:"Nikola Jovanović", initials:"NJ", color:"plum", code:"P2026-102", phase:"Faza 01", start:{y:2026,m:8,d:6}, end:{y:2026,m:8,d:7}, status:"pending"},
-  {person:"Anđela Pešić", initials:"AP", color:"coral", code:"P2026-104", phase:"Eksterijer render", start:{y:2026,m:8,d:11}, end:{y:2026,m:8,d:13}, status:"pending"},
-  {person:"Marija Todorović", initials:"MT", color:"sky", code:"P2026-104", phase:"Enterijer dnevna soba", start:{y:2026,m:8,d:12}, end:{y:2026,m:8,d:14}, status:"done"},
-  {person:"Ana Krstić", initials:"AK", color:"teal", code:"P2026-098", phase:"Revizija fasade", start:{y:2026,m:8,d:18}, end:{y:2026,m:8,d:20}, status:"pending"},
-  {person:"Miloš Tasić", initials:"MT", color:"leave", code:"", phase:"Godišnji odmor", start:{y:2026,m:8,d:3}, end:{y:2026,m:8,d:7}, status:"odmor"},
-  {person:"Lazar Pešić", initials:"LP", color:"leave", code:"", phase:"Bolovanje", start:{y:2026,m:8,d:4}, end:{y:2026,m:8,d:5}, status:"bolovanje"},
-  {person:"Marija Milenković", initials:"MM", color:"leave", code:"", phase:"Godišnji odmor", start:{y:2026,m:8,d:5}, end:{y:2026,m:8,d:9}, status:"odmor"},
-  {person:"Damjan Mitrović", initials:"DM", color:"leave", code:"", phase:"Bolovanje", start:{y:2026,m:8,d:6}, end:{y:2026,m:8,d:7}, status:"bolovanje"},
+function zadatak(person, initials, color, projectCode, taskName, start, end, urgency){
+  return { kind:"zadatak", person, initials, color, projectCode, taskName, urgency, start, end };
+}
+function odsustvo(person, initials, leaveType, start, end){
+  return { kind:"odsustvo", person, initials, color:"leave", leaveType, start, end };
+}
+function praznik(holidayName, start, end){
+  return { kind:"praznik", person:null, initials:"", color:"holiday", holidayName, start, end };
+}
 
-  {person:"Dušan Stević", initials:"DS", color:"gold", code:"P2026-106", phase:"Render review", start:{y:2026,m:8,d:13}, end:{y:2026,m:8,d:14}, status:"pending"},
-  {person:"Stefana Ristić", initials:"SR", color:"plum", code:"P2026-104", phase:"Klijent revizija", start:{y:2026,m:8,d:17}, end:{y:2026,m:8,d:17}, status:"pending"},
-  {person:"Radoslav Milanović", initials:"RM", color:"coral", code:"P2026-107", phase:"Klijent poziv", start:{y:2026,m:8,d:8}, end:{y:2026,m:8,d:8}, status:"done"},
-  {person:"Radoslav Milanović", initials:"RM", color:"coral", code:"P2026-098", phase:"Modelovanje", start:{y:2026,m:8,d:20}, end:{y:2026,m:8,d:21}, status:"pending"},
-  {person:"Dalibor Mitić", initials:"DM", color:"sky", code:"P2026-092", phase:"Enterijer dnevna soba", start:{y:2026,m:8,d:19}, end:{y:2026,m:8,d:20}, status:"pending"},
-  {person:"Katarina Đorđević", initials:"KĐ", color:"teal", code:"P2026-087", phase:"Sastanak sa klijentom", start:{y:2026,m:8,d:11}, end:{y:2026,m:8,d:11}, status:"done"},
-  {person:"Katarina Đorđević", initials:"KĐ", color:"teal", code:"P2026-081", phase:"Render — eksterijer", start:{y:2026,m:8,d:25}, end:{y:2026,m:8,d:26}, status:"pending"},
-  {person:"Aleksandra Vukašinović", initials:"AV", color:"sage", code:"P2026-109", phase:"Faza 02", start:{y:2026,m:8,d:18}, end:{y:2026,m:8,d:19}, status:"pending"},
-  {person:"Mihajlo Nagradić", initials:"MN", color:"gold", code:"P2025-076", phase:"Isporuka klijentu", start:{y:2026,m:8,d:13}, end:{y:2026,m:8,d:14}, status:"done"},
-  {person:"Mihajlo Nagradić", initials:"MN", color:"gold", code:"P2025-134", phase:"Koncept revizija", start:{y:2026,m:8,d:27}, end:{y:2026,m:8,d:28}, status:"pending"},
-  {person:"Nikola Jovanović", initials:"NJ", color:"plum", code:"P2025-120", phase:"Finalni render", start:{y:2026,m:8,d:20}, end:{y:2026,m:8,d:20}, status:"pending"},
-  {person:"Anđela Pešić", initials:"AP", color:"coral", code:"P2026-104", phase:"Priprema kamera", start:{y:2026,m:8,d:4}, end:{y:2026,m:8,d:5}, status:"done"},
-  {person:"Anđela Pešić", initials:"AP", color:"coral", code:"P2026-104", phase:"Review sa timom", start:{y:2026,m:8,d:14}, end:{y:2026,m:8,d:14}, status:"pending"},
-  {person:"Marija Todorović", initials:"MT", color:"sky", code:"P2026-104", phase:"Sastanak sa klijentom", start:{y:2026,m:8,d:6}, end:{y:2026,m:8,d:6}, status:"done"},
-  {person:"Ana Krstić", initials:"AK", color:"teal", code:"P2026-098", phase:"Priprema revizije", start:{y:2026,m:8,d:5}, end:{y:2026,m:8,d:5}, status:"done"},
-  {person:"Ana Krstić", initials:"AK", color:"teal", code:"P2025-101", phase:"Dan/noć animacija", start:{y:2026,m:8,d:27}, end:{y:2026,m:8,d:28}, status:"pending"},
-  {person:"Miljana Cvetković", initials:"MC", color:"gold", code:"P2026-092", phase:"Modelovanje enterijera", start:{y:2026,m:8,d:11}, end:{y:2026,m:8,d:12}, status:"pending"},
-  {person:"Miljana Cvetković", initials:"MC", color:"gold", code:"P2026-098", phase:"Render pregled", start:{y:2026,m:8,d:20}, end:{y:2026,m:8,d:20}, status:"pending"},
-  {person:"Ivana Sazdov", initials:"IS", color:"plum", code:"P2026-104", phase:"Teksturisanje", start:{y:2026,m:8,d:12}, end:{y:2026,m:8,d:13}, status:"pending"},
-  {person:"Ivana Sazdov", initials:"IS", color:"plum", code:"P2026-106", phase:"Finalna revizija", start:{y:2026,m:8,d:24}, end:{y:2026,m:8,d:25}, status:"pending"},
-  {person:"Aleksandar Jovanović", initials:"AJ", color:"teal", code:"P2026-109", phase:"Sastanak sa klijentom", start:{y:2026,m:8,d:6}, end:{y:2026,m:8,d:6}, status:"done"},
-  {person:"Aleksandar Jovanović", initials:"AJ", color:"teal", code:"P2026-081", phase:"Eksterijer render", start:{y:2026,m:8,d:19}, end:{y:2026,m:8,d:21}, status:"pending"},
-  {person:"Aleksandar Jovanović", initials:"AJ", color:"teal", code:"P2025-134", phase:"Predaja", start:{y:2026,m:8,d:27}, end:{y:2026,m:8,d:27}, status:"pending"},
-  {person:"Damjan Mitrović", initials:"DM", color:"sky", code:"P2026-087", phase:"Kamere — postavka", start:{y:2026,m:8,d:17}, end:{y:2026,m:8,d:18}, status:"pending"},
-  {person:"Damjan Mitrović", initials:"DM", color:"sky", code:"P2026-102", phase:"Review", start:{y:2026,m:8,d:26}, end:{y:2026,m:8,d:26}, status:"pending"},
-  {person:"Miloš Tasić", initials:"MT", color:"gold", code:"P2024-054", phase:"Walkthrough", start:{y:2026,m:8,d:18}, end:{y:2026,m:8,d:19}, status:"pending"},
-  {person:"Lazar Pešić", initials:"LP", color:"coral", code:"P2026-081", phase:"Perspektiva — koncept", start:{y:2026,m:8,d:12}, end:{y:2026,m:8,d:12}, status:"done"},
-  {person:"Lazar Pešić", initials:"LP", color:"coral", code:"P2026-081", phase:"Render — finalizacija", start:{y:2026,m:8,d:24}, end:{y:2026,m:8,d:25}, status:"pending"},
-  {person:"Marija Milenković", initials:"MM", color:"sage", code:"P2024-088", phase:"Predajni set", start:{y:2026,m:8,d:18}, end:{y:2026,m:8,d:18}, status:"pending"},
+const events = [
+  zadatak("Dušan Stević","DS","gold","P2026-101","Faza 01",{y:2026,m:8,d:3},{y:2026,m:8,d:9},"visoka"),
+  zadatak("Stefana Ristić","SR","plum","P2026-108","Faza 01",{y:2026,m:8,d:3},{y:2026,m:8,d:6},"srednja"),
+  zadatak("Radoslav Milanović","RM","coral","P2026-107","Faza 01",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"niska"),
+  zadatak("Dalibor Mitić","DM","sky","P2026-108","Faza 01",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"srednja"),
+  zadatak("Katarina Đorđević","KĐ","teal","P2026-109","Faza 02",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"visoka"),
+  zadatak("Aleksandra Vukašinović","AV","sage","P2026-109","Faza 01",{y:2026,m:8,d:5},{y:2026,m:8,d:6},"niska"),
+  zadatak("Mihajlo Nagradić","MN","gold","P2026-108","Faza 01",{y:2026,m:8,d:6},{y:2026,m:8,d:6},"srednja"),
+  zadatak("Nikola Jovanović","NJ","plum","P2026-102","Faza 01",{y:2026,m:8,d:6},{y:2026,m:8,d:7},"srednja"),
+  zadatak("Anđela Pešić","AP","coral","P2026-104","Eksterijer render",{y:2026,m:8,d:11},{y:2026,m:8,d:13},"visoka"),
+  zadatak("Marija Todorović","MT","sky","P2026-104","Enterijer dnevna soba",{y:2026,m:8,d:12},{y:2026,m:8,d:14},"srednja"),
+  zadatak("Ana Krstić","AK","teal","P2026-098","Revizija fasade",{y:2026,m:8,d:18},{y:2026,m:8,d:20},"niska"),
+
+  odsustvo("Miloš Tasić","MT","odmor",{y:2026,m:8,d:3},{y:2026,m:8,d:7}),
+  odsustvo("Lazar Pešić","LP","bolovanje",{y:2026,m:8,d:4},{y:2026,m:8,d:5}),
+  odsustvo("Marija Milenković","MM","placeno",{y:2026,m:8,d:5},{y:2026,m:8,d:9}),
+  odsustvo("Damjan Mitrović","DM","neplaceno",{y:2026,m:8,d:6},{y:2026,m:8,d:7}),
+
+  praznik("Dan osnivanja studija",{y:2026,m:8,d:15},{y:2026,m:8,d:15}),
+
+  zadatak("Dušan Stević","DS","gold","P2026-106","Render review",{y:2026,m:8,d:13},{y:2026,m:8,d:14},"srednja"),
+  zadatak("Stefana Ristić","SR","plum","P2026-104","Klijent revizija",{y:2026,m:8,d:17},{y:2026,m:8,d:17},"visoka"),
+  zadatak("Radoslav Milanović","RM","coral","P2026-107","Klijent poziv",{y:2026,m:8,d:8},{y:2026,m:8,d:8},"niska"),
+  zadatak("Radoslav Milanović","RM","coral","P2026-098","Modelovanje",{y:2026,m:8,d:20},{y:2026,m:8,d:21},"srednja"),
+  zadatak("Dalibor Mitić","DM","sky","P2026-092","Enterijer dnevna soba",{y:2026,m:8,d:19},{y:2026,m:8,d:20},"srednja"),
+  zadatak("Katarina Đorđević","KĐ","teal","P2026-087","Sastanak sa klijentom",{y:2026,m:8,d:11},{y:2026,m:8,d:11},"niska"),
+  zadatak("Katarina Đorđević","KĐ","teal","P2026-081","Render — eksterijer",{y:2026,m:8,d:25},{y:2026,m:8,d:26},"visoka"),
+  zadatak("Aleksandra Vukašinović","AV","sage","P2026-109","Faza 02",{y:2026,m:8,d:18},{y:2026,m:8,d:19},"srednja"),
+  zadatak("Mihajlo Nagradić","MN","gold","P2025-076","Isporuka klijentu",{y:2026,m:8,d:13},{y:2026,m:8,d:14},"visoka"),
+  zadatak("Mihajlo Nagradić","MN","gold","P2025-134","Koncept revizija",{y:2026,m:8,d:27},{y:2026,m:8,d:28},"niska"),
+  zadatak("Nikola Jovanović","NJ","plum","P2025-120","Finalni render",{y:2026,m:8,d:20},{y:2026,m:8,d:20},"srednja"),
+  zadatak("Anđela Pešić","AP","coral","P2026-104","Priprema kamera",{y:2026,m:8,d:4},{y:2026,m:8,d:5},"niska"),
+  zadatak("Anđela Pešić","AP","coral","P2026-104","Review sa timom",{y:2026,m:8,d:14},{y:2026,m:8,d:14},"srednja"),
+  zadatak("Marija Todorović","MT","sky","P2026-104","Sastanak sa klijentom",{y:2026,m:8,d:6},{y:2026,m:8,d:6},"niska"),
+  zadatak("Ana Krstić","AK","teal","P2026-098","Priprema revizije",{y:2026,m:8,d:5},{y:2026,m:8,d:5},"srednja"),
+  zadatak("Ana Krstić","AK","teal","P2025-101","Dan/noć animacija",{y:2026,m:8,d:27},{y:2026,m:8,d:28},"visoka"),
+  zadatak("Miljana Cvetković","MC","gold","P2026-092","Modelovanje enterijera",{y:2026,m:8,d:11},{y:2026,m:8,d:12},"srednja"),
+  zadatak("Miljana Cvetković","MC","gold","P2026-098","Render pregled",{y:2026,m:8,d:20},{y:2026,m:8,d:20},"niska"),
+  zadatak("Ivana Sazdov","IS","plum","P2026-104","Teksturisanje",{y:2026,m:8,d:12},{y:2026,m:8,d:13},"srednja"),
+  zadatak("Ivana Sazdov","IS","plum","P2026-106","Finalna revizija",{y:2026,m:8,d:24},{y:2026,m:8,d:25},"visoka"),
+  zadatak("Aleksandar Jovanović","AJ","teal","P2026-109","Sastanak sa klijentom",{y:2026,m:8,d:6},{y:2026,m:8,d:6},"niska"),
+  zadatak("Aleksandar Jovanović","AJ","teal","P2026-081","Eksterijer render",{y:2026,m:8,d:19},{y:2026,m:8,d:21},"srednja"),
+  zadatak("Aleksandar Jovanović","AJ","teal","P2025-134","Predaja",{y:2026,m:8,d:27},{y:2026,m:8,d:27},"visoka"),
+  zadatak("Damjan Mitrović","DM","sky","P2026-087","Kamere — postavka",{y:2026,m:8,d:17},{y:2026,m:8,d:18},"srednja"),
+  zadatak("Damjan Mitrović","DM","sky","P2026-102","Review",{y:2026,m:8,d:26},{y:2026,m:8,d:26},"niska"),
+  zadatak("Miloš Tasić","MT","gold","P2024-054","Walkthrough",{y:2026,m:8,d:18},{y:2026,m:8,d:19},"srednja"),
+  zadatak("Lazar Pešić","LP","coral","P2026-081","Perspektiva — koncept",{y:2026,m:8,d:12},{y:2026,m:8,d:12},"niska"),
+  zadatak("Lazar Pešić","LP","coral","P2026-081","Render — finalizacija",{y:2026,m:8,d:24},{y:2026,m:8,d:25},"visoka"),
+  zadatak("Marija Milenković","MM","sage","P2024-088","Predajni set",{y:2026,m:8,d:18},{y:2026,m:8,d:18},"srednja"),
 ];
 events.forEach(e=>e._id=nextId());
 fromPersisted('events', events);
@@ -2556,19 +2619,22 @@ function generateMonthCells(year, month){
 let calViewMode = 'month';
 let calCursor = {y:TODAY.y, m:TODAY.m, d:TODAY.d};
 
-const statusIcon = {
-  done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg>',
-  pending: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><path d="M12 7v5"/></svg>',
+const leaveIcon = {
   odmor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v2M4.2 10a7.8 7.8 0 0 1 15.6 0Z"/><path d="M2 10h20M4 10s2 8 8 8 8-8 8-8"/></svg>',
-  bolovanje: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 7v10M7 12h10"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>'
+  bolovanje: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 7v10M7 12h10"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>',
+  placeno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5a2.5 2.5 0 0 1 2.5-1.5h1a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h1a2.5 2.5 0 0 0 2.5-1.5"/></svg>',
+  neplaceno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M9 9v6M15 9v6"/></svg>'
 };
+const urgencyColor = { niska:"var(--sage)", srednja:"var(--gold-deep)", visoka:"var(--coral)" };
+const urgencyLabels = { niska:"Niska", srednja:"Srednja", visoka:"Visoka" };
+const leaveLabels = { odmor:"Godišnji odmor", bolovanje:"Bolovanje", placeno:"Plaćeno odsustvo", neplaceno:"Neplaćeno odsustvo" };
 
 const calWeeks = document.getElementById('calWeeks');
 const calFilters = { projekat:"Svi Projekti", osoba:"Ceo Tim" };
 
 function filteredEvents(){
   return events.filter(e=>
-    (calFilters.projekat==="Svi Projekti" || e.code===calFilters.projekat) &&
+    (calFilters.projekat==="Svi Projekti" || e.projectCode===calFilters.projekat) &&
     (calFilters.osoba==="Ceo Tim" || e.person===calFilters.osoba)
   );
 }
@@ -2576,6 +2642,13 @@ function filteredEvents(){
 const dowLabels = ["PON","UTO","SRE","ČET","PET","SUB","NED"];
 
 function formatDateHuman(d){ return `${d.d}. ${calMonthNames[d.m-1].toLowerCase()} ${d.y}.`; }
+function eventDisplayCode(e){ return e.kind==='zadatak' ? (e.projectCode||'') : ''; }
+function eventDisplayLabel(e){
+  if(e.kind==='zadatak') return e.taskName || '';
+  if(e.kind==='odsustvo') return leaveLabels[e.leaveType] || '';
+  if(e.kind==='praznik') return e.holidayName || '';
+  return '';
+}
 
 function renderTeamSwimlane(days, opts){
   opts = opts || {};
@@ -2613,9 +2686,21 @@ function renderTeamSwimlane(days, opts){
 
   const people = calFilters.osoba === 'Ceo Tim' ? teamMembers : teamMembers.filter(t=>t.name===calFilters.osoba);
 
+  const holidayEvents = events.filter(e=>e.kind==='praznik')
+    .map(e=>({...e, _s: daysBetween(TODAY, e.start), _e: daysBetween(TODAY, e.end)}))
+    .filter(e=>e._e >= startEpoch && e._s <= endEpoch)
+    .map(e=>({...e, colStart: Math.max(e._s, startEpoch)-startEpoch, colEnd: Math.min(e._e, endEpoch)-startEpoch}));
+  const holidayRowsHtml = holidayEvents.map(e=>`
+    <div class="twg-row twg-holiday-row">
+      <div class="twg-person"><span class="twg-holiday-label">🎉 Praznik</span></div>
+      <div class="twg-track" style="grid-template-columns:${colTemplate}; grid-template-rows:27px;">
+        <div class="twg-holiday-bar" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2};" title="${escapeHtml(e.holidayName)}">${escapeHtml(e.holidayName)}</div>
+      </div>
+    </div>`).join('');
+
   const rowsHtml = people.map(t=>{
     const personEvents = events
-      .filter(e=>e.person===t.name && (calFilters.projekat==="Svi Projekti" || e.code===calFilters.projekat))
+      .filter(e=>e.person===t.name && (calFilters.projekat==="Svi Projekti" || e.projectCode===calFilters.projekat))
       .map(e=>({...e, _s: daysBetween(TODAY, e.start), _e: daysBetween(TODAY, e.end)}))
       .filter(e=>e._e >= startEpoch && e._s <= endEpoch)
       .map(e=>({...e,
@@ -2642,12 +2727,17 @@ function renderTeamSwimlane(days, opts){
 
     const bars = personEvents.map(e=>{
       const editable = canEditCalendarFor(e.person);
+      const code = eventDisplayCode(e);
+      const label = eventDisplayLabel(e);
+      const rightIndicator = e.kind==='zadatak'
+        ? `<span class="cb-urgency" style="background:${urgencyColor[e.urgency]||'var(--ink-faint)'}" title="Urgentnost: ${urgencyLabels[e.urgency]||''}"></span>`
+        : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);">${leaveIcon[e.leaveType]||''}</span>` : '');
       return `
-      <div class="twg-bar cal-${e.color}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${e.code ? escapeHtml(e.code)+' · ' : ''}${escapeHtml(e.phase)}">
+      <div class="twg-bar cal-${e.color}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${code ? escapeHtml(code)+' · ' : ''}${escapeHtml(label)}">
         ${editable ? '<span class="cb-resize cb-resize-left"></span>' : ''}
-        ${e.code ? `<span class="cb-code">${escapeHtml(e.code)}</span>` : ''}
-        <span class="cb-phase">${escapeHtml(e.phase)}</span>
-        <span class="cb-status ${e.status}">${statusIcon[e.status]}</span>
+        ${code ? `<span class="cb-code">${escapeHtml(code)}</span>` : ''}
+        <span class="cb-phase">${escapeHtml(label)}</span>
+        ${rightIndicator}
         ${editable ? '<span class="cb-resize cb-resize-right"></span>' : ''}
         ${editable ? `<span class="cb-delete" data-id="${e._id}" title="Obriši">×</span>` : ''}
       </div>`;
@@ -2664,11 +2754,12 @@ function renderTeamSwimlane(days, opts){
       </div>
       <div class="twg-track" data-person="${escapeHtml(t.name)}" style="grid-template-columns:${colTemplate}; grid-template-rows:repeat(${maxLanes},27px);">
         ${gridlines}${bars}
+        <div class="twg-hover-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg></div>
       </div>
     </div>`;
   }).join('');
 
-  wrap.innerHTML = head + `<div class="twg-rows">${rowsHtml}</div>`;
+  wrap.innerHTML = head + `<div class="twg-rows">${holidayRowsHtml}${rowsHtml}</div>`;
   calWeeks.appendChild(wrap);
 
   if(todayEpoch >= startEpoch && todayEpoch <= endEpoch){
@@ -2680,7 +2771,22 @@ function renderTeamSwimlane(days, opts){
     wrap.querySelector('.twg-rows').appendChild(overlay);
   }
 
-  wrap.querySelectorAll('.twg-track').forEach(track=>{ track.__days = days; });
+  wrap.querySelectorAll('.twg-track').forEach(track=>{
+    track.__days = days;
+    if(!track.dataset.person) return;
+    const plusEl = track.querySelector('.twg-hover-plus');
+    if(!plusEl) return;
+    track.addEventListener('mousemove', (e)=>{
+      if(barDragState){ plusEl.style.opacity = '0'; return; }
+      if(e.target.closest('.twg-bar')){ plusEl.style.opacity = '0'; return; }
+      const rect = track.getBoundingClientRect();
+      const colWidth = rect.width / days.length;
+      const col = Math.max(0, Math.min(days.length-1, Math.floor((e.clientX-rect.left)/colWidth)));
+      plusEl.style.left = `${col*colWidth + colWidth/2 - 10}px`;
+      plusEl.style.opacity = '1';
+    });
+    track.addEventListener('mouseleave', ()=>{ plusEl.style.opacity = '0'; });
+  });
 }
 
 function renderCalendarMonth(){
@@ -2698,22 +2804,35 @@ function renderCalendarWeek(){
 }
 
 function renderCalendarDay(){
-  const list = filteredEvents().filter(e=>{
+  const list = events.filter(e=>{
     const cur = daysBetween(e.start, calCursor);
     return cur >= 0 && daysBetween(calCursor, e.end) >= 0;
-  }).sort((a,b)=> a.person.localeCompare(b.person));
+  }).filter(e=>
+    (calFilters.projekat==="Svi Projekti" || e.projectCode===calFilters.projekat) &&
+    (calFilters.osoba==="Ceo Tim" || e.person===calFilters.osoba || e.kind==='praznik')
+  ).sort((a,b)=> (a.kind==='praznik'?-1:0) - (b.kind==='praznik'?-1:0) || (a.person||'').localeCompare(b.person||''));
 
   const wrap = document.createElement('div');
   wrap.className = 'day-view-list';
-  const cards = list.map(e=>`
+  const cards = list.map(e=>{
+    const code = eventDisplayCode(e);
+    const label = eventDisplayLabel(e);
+    const avatarHtml = e.kind==='praznik'
+      ? `<span class="cb-avatar" style="width:26px;height:26px;font-size:13px;background:var(--coral);">🎉</span>`
+      : `<span class="cb-avatar" style="width:26px;height:26px;font-size:10px;">${e.initials}</span>`;
+    const rightIndicator = e.kind==='zadatak'
+      ? `<span class="cb-urgency" style="background:${urgencyColor[e.urgency]||'var(--ink-faint)'};width:18px;height:18px;" title="Urgentnost: ${urgencyLabels[e.urgency]||''}"></span>`
+      : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);width:18px;height:18px;">${leaveIcon[e.leaveType]||''}</span>` : '');
+    return `
     <div class="day-view-card cal-${e.color}" data-id="${e._id}">
-      <span class="cb-avatar" style="width:26px;height:26px;font-size:10px;">${e.initials}</span>
+      ${avatarHtml}
       <div style="flex:1; min-width:0;">
-        <div class="cb-person" style="font-size:13px;">${escapeHtml(e.person)}</div>
-        <div class="cb-phase" style="font-size:11.5px;">${escapeHtml(e.code)} · ${escapeHtml(e.phase)}</div>
+        <div class="cb-person" style="font-size:13px;">${e.kind==='praznik' ? 'Ceo studio' : escapeHtml(e.person)}</div>
+        <div class="cb-phase" style="font-size:11.5px;">${code ? escapeHtml(code)+' · ' : ''}${escapeHtml(label)}</div>
       </div>
-      <span class="cb-status ${e.status}" style="width:18px;height:18px;">${statusIcon[e.status]}</span>
-    </div>`).join('');
+      ${rightIndicator}
+    </div>`;
+  }).join('');
   wrap.innerHTML =
     (list.length ? cards : `<div class="day-view-empty">Nema stavki za ovaj dan.</div>`) +
     `<div class="day-view-add" data-date="${toISO(calCursor)}">+ Dodaj stavku</div>`;
@@ -2807,7 +2926,8 @@ function endBarDrag(){
         ? `${formatDateHuman(evObj.start)} – ${formatDateHuman(evObj.end)}`
         : formatDateHuman(evObj.start);
       const verb = mode === 'move' ? 'Pomeriti' : 'Promeniti trajanje za';
-      const label = evObj.code ? `${evObj.code} — ${evObj.phase}` : evObj.phase;
+      const code = eventDisplayCode(evObj);
+      const label = code ? `${code} — ${eventDisplayLabel(evObj)}` : eventDisplayLabel(evObj);
       if(confirm(`${verb} "${evObj.person} · ${label}" na ${rangeLabel}?`)){
         buildCalFilterMenus();
         persist();
@@ -2836,7 +2956,7 @@ calWeeks.addEventListener('click', (e)=>{
   }
   const addBtn = e.target.closest('.day-view-add');
   if(addBtn){ openEventModal(null, addBtn.dataset.date); return; }
-  const bar = e.target.closest('.twg-bar, .day-view-card');
+  const bar = e.target.closest('.twg-bar, .day-view-card, .twg-holiday-bar');
   if(bar){
     const evObj = events.find(x=>x._id===Number(bar.dataset.id));
     if(evObj) openEventModal(evObj, null);
@@ -2852,8 +2972,8 @@ calWeeks.addEventListener('click', (e)=>{
 });
 
 function buildCalFilterMenus(){
-  const codes = uniqueSorted(events.filter(e=>e.code).map(e=>e.code));
-  const people = uniqueSorted(events.map(e=>e.person));
+  const codes = uniqueSorted(events.filter(e=>e.kind==='zadatak').map(e=>e.projectCode));
+  const people = uniqueSorted(events.filter(e=>e.person).map(e=>e.person));
   document.getElementById('filterProjektiMenu').innerHTML =
     `<div class="cal-filter-item" data-val="Svi Projekti">Svi Projekti</div>` +
     codes.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
@@ -2880,48 +3000,107 @@ document.addEventListener('click', ()=>{
 
 const eventModalOverlay = document.getElementById('eventModalOverlay');
 let editingEventId = null;
+let evActiveTab = 'zadatak';
+
+const personColorMap = {
+  "Dušan Stević":"gold", "Stefana Ristić":"plum", "Radoslav Milanović":"coral", "Dalibor Mitić":"sky",
+  "Katarina Đorđević":"teal", "Aleksandra Vukašinović":"sage", "Mihajlo Nagradić":"gold", "Nikola Jovanović":"plum",
+  "Anđela Pešić":"coral", "Marija Todorović":"sky", "Ana Krstić":"teal", "Miljana Cvetković":"sage",
+  "Miloš Tasić":"gold", "Ivana Sazdov":"plum", "Lazar Pešić":"coral", "Damjan Mitrović":"sky",
+  "Aleksandar Jovanović":"teal", "Marija Milenković":"sage"
+};
+
 function closeEventModal(){
   eventModalOverlay.classList.remove('open');
   editingEventId = null;
 }
-const leaveStatuses = ['odmor', 'bolovanje'];
-const leaveLabels = { odmor:"Godišnji odmor", bolovanje:"Bolovanje" };
-function updateEvFieldsForStatus(){
-  const isLeave = leaveStatuses.includes(document.getElementById('evStatus').value);
-  document.getElementById('evCodeField').style.display = isLeave ? 'none' : '';
-  document.getElementById('evPhaseField').style.display = isLeave ? 'none' : '';
+function setEvTab(tab){
+  evActiveTab = tab;
+  document.querySelectorAll('.ev-tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('evPanelZadatak').style.display = tab==='zadatak' ? '' : 'none';
+  document.getElementById('evPanelOdsustvo').style.display = tab==='odsustvo' ? '' : 'none';
+  document.getElementById('evPanelPraznik').style.display = tab==='praznik' ? '' : 'none';
 }
-document.getElementById('evStatus').addEventListener('change', updateEvFieldsForStatus);
+document.querySelectorAll('.ev-tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ if(!btn.disabled) setEvTab(btn.dataset.tab); });
+});
+
+function populateEmployeeSelect(selectId, selected){
+  const el = document.getElementById(selectId);
+  el.innerHTML = teamMembers.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  if(selected) el.value = selected;
+}
+function refreshZadatakProjects(selected){
+  const employee = document.getElementById('evzEmployee').value;
+  const projects = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===employee));
+  const el = document.getElementById('evzProject');
+  el.innerHTML = projects.length
+    ? projects.map(p=>`<option value="${p.code}">${p.code} — ${escapeHtml(p.name)}</option>`).join('')
+    : `<option value="">Nema projekata za ovog zaposlenog</option>`;
+  if(selected && projects.some(p=>p.code===selected)) el.value = selected;
+}
+function refreshZadatakTasks(selected){
+  const projCode = document.getElementById('evzProject').value;
+  const employee = document.getElementById('evzEmployee').value;
+  const proj = allProjects.find(p=>p.code===projCode);
+  const kadrovi = proj ? proj.kadrovi.filter(k=>k.employee===employee) : [];
+  const el = document.getElementById('evzTask');
+  el.innerHTML = kadrovi.length
+    ? kadrovi.map(k=>`<option value="${escapeHtml(k.name)}">${escapeHtml(k.name)} (${escapeHtml(k.type)})</option>`).join('')
+    : `<option value="">Nema kadrova</option>`;
+  if(selected) el.value = selected;
+}
+document.getElementById('evzEmployee').addEventListener('change', ()=>{ refreshZadatakProjects(); refreshZadatakTasks(); });
+document.getElementById('evzProject').addEventListener('change', ()=>{ refreshZadatakTasks(); });
+
 function openEventModal(ev, prefillDateISO, prefillPerson){
-  const readOnly = !!ev && !canEditCalendarFor(ev.person);
+  const kind = ev ? ev.kind : 'zadatak';
+  const readOnly = !!ev && kind!=='praznik' && !canEditCalendarFor(ev.person);
+  const canManagePraznik = isSuperAdmin() || currentAccess()==='admin';
+  const prazReadOnly = !!ev && kind==='praznik' && !canManagePraznik;
+  const isReadOnly = readOnly || prazReadOnly;
   const lockPerson = currentAccess()==='user';
   editingEventId = ev ? ev._id : null;
-  document.getElementById('evTitle').textContent = readOnly ? "Pregled stavke" : (ev ? "Izmeni stavku" : "Nova stavka");
-  document.getElementById('evSubmit').style.display = readOnly ? 'none' : '';
+
+  document.getElementById('evTabPraznikBtn').style.display = canManagePraznik ? '' : 'none';
+  document.querySelectorAll('.ev-tab-btn').forEach(b=>{ b.disabled = !!ev; });
+  setEvTab(kind);
+
+  document.getElementById('evTitle').textContent = isReadOnly ? "Pregled stavke" : (ev ? "Izmeni stavku" : "Nova stavka");
+  document.getElementById('evSubmit').style.display = isReadOnly ? 'none' : '';
   document.getElementById('evSubmit').textContent = ev ? "Sačuvaj" : "Dodaj stavku";
-  document.getElementById('evDelete').style.display = (ev && !readOnly) ? 'block' : 'none';
-  ['evPerson','evCode','evPhase','evStart','evEnd','evStatus'].forEach(id=>{
-    document.getElementById(id).disabled = readOnly;
-  });
-  if(ev){
-    document.getElementById('evPerson').value = ev.person;
-    document.getElementById('evCode').value = ev.code;
-    document.getElementById('evPhase').value = ev.phase;
-    document.getElementById('evStart').value = toISO(ev.start);
-    document.getElementById('evEnd').value = toISO(ev.end);
-    document.getElementById('evStatus').value = ev.status;
-  } else {
-    document.getElementById('evCode').value = '';
-    document.getElementById('evPhase').value = '';
-    if(lockPerson) document.getElementById('evPerson').value = currentUser().name;
-    else if(prefillPerson) document.getElementById('evPerson').value = prefillPerson;
-    const iso = prefillDateISO || toISO(calCursor);
-    document.getElementById('evStart').value = iso;
-    document.getElementById('evEnd').value = iso;
-    document.getElementById('evStatus').value = 'pending';
+  document.getElementById('evDelete').style.display = (ev && !isReadOnly) ? 'block' : 'none';
+
+  const iso = prefillDateISO || toISO(calCursor);
+  const prefillEmployee = lockPerson ? currentUser().name : (prefillPerson || (teamMembers[0] && teamMembers[0].name));
+
+  if(!ev || kind==='zadatak'){
+    populateEmployeeSelect('evzEmployee', ev && kind==='zadatak' ? ev.person : prefillEmployee);
+    refreshZadatakProjects(ev && kind==='zadatak' ? ev.projectCode : undefined);
+    refreshZadatakTasks(ev && kind==='zadatak' ? ev.taskName : undefined);
+    document.getElementById('evzStart').value = (ev && kind==='zadatak') ? toISO(ev.start) : iso;
+    document.getElementById('evzEnd').value = (ev && kind==='zadatak') ? toISO(ev.end) : iso;
+    document.getElementById('evzUrgency').value = (ev && kind==='zadatak') ? ev.urgency : 'srednja';
+    const zReadOnly = kind==='zadatak' && isReadOnly;
+    ['evzEmployee','evzProject','evzTask','evzStart','evzEnd','evzUrgency'].forEach(id=>{ document.getElementById(id).disabled = zReadOnly; });
+    document.getElementById('evzEmployee').disabled = zReadOnly || lockPerson;
   }
-  document.getElementById('evPerson').disabled = readOnly || lockPerson;
-  updateEvFieldsForStatus();
+  if(!ev || kind==='odsustvo'){
+    populateEmployeeSelect('evoEmployee', ev && kind==='odsustvo' ? ev.person : prefillEmployee);
+    document.getElementById('evoType').value = (ev && kind==='odsustvo') ? ev.leaveType : 'odmor';
+    document.getElementById('evoStart').value = (ev && kind==='odsustvo') ? toISO(ev.start) : iso;
+    document.getElementById('evoEnd').value = (ev && kind==='odsustvo') ? toISO(ev.end) : iso;
+    const oReadOnly = kind==='odsustvo' && isReadOnly;
+    ['evoEmployee','evoType','evoStart','evoEnd'].forEach(id=>{ document.getElementById(id).disabled = oReadOnly; });
+    document.getElementById('evoEmployee').disabled = oReadOnly || lockPerson;
+  }
+  if(!ev || kind==='praznik'){
+    document.getElementById('evpName').value = (ev && kind==='praznik') ? ev.holidayName : '';
+    document.getElementById('evpStart').value = (ev && kind==='praznik') ? toISO(ev.start) : iso;
+    document.getElementById('evpEnd').value = (ev && kind==='praznik') ? toISO(ev.end) : iso;
+    const pReadOnly = kind==='praznik' && isReadOnly;
+    ['evpName','evpStart','evpEnd'].forEach(id=>{ document.getElementById(id).disabled = pReadOnly; });
+  }
   eventModalOverlay.classList.add('open');
 }
 document.getElementById('evCancel').addEventListener('click', closeEventModal);
@@ -2942,37 +3121,60 @@ document.getElementById('evDelete').addEventListener('click', ()=>{
   closeEventModal();
   buildCalFilterMenus();
   renderCalendar();
+  renderWeekWidget();
   persist();
 });
 document.getElementById('evSubmit').addEventListener('click', ()=>{
-  const person = document.getElementById('evPerson').value;
-  const status = document.getElementById('evStatus').value;
-  const isLeave = leaveStatuses.includes(status);
-  const code = isLeave ? '' : document.getElementById('evCode').value.trim();
-  const phase = isLeave ? leaveLabels[status] : (document.getElementById('evPhase').value.trim() || "Faza 01");
-  const startVal = document.getElementById('evStart').value;
-  const endVal = document.getElementById('evEnd').value;
-  if((!isLeave && !code) || !startVal || !endVal) return;
-  let start = fromISO(startVal), end = fromISO(endVal);
-  if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
-  const color = isLeave ? "leave" : {
-    "Dušan Stević":"gold", "Stefana Ristić":"plum", "Radoslav Milanović":"coral", "Dalibor Mitić":"sky",
-    "Katarina Đorđević":"teal", "Aleksandra Vukašinović":"sage", "Mihajlo Nagradić":"gold", "Nikola Jovanović":"plum",
-    "Anđela Pešić":"coral", "Marija Todorović":"sky", "Ana Krstić":"teal", "Miljana Cvetković":"sage",
-    "Miloš Tasić":"gold", "Ivana Sazdov":"plum", "Lazar Pešić":"coral", "Damjan Mitrović":"sky",
-    "Aleksandar Jovanović":"teal", "Marija Milenković":"sage"
-  }[person];
-  const initials = artistInitials[person] || person.slice(0,2).toUpperCase();
+  const kind = evActiveTab;
+  let newEvent;
+
+  if(kind==='zadatak'){
+    const person = document.getElementById('evzEmployee').value;
+    const projectCode = document.getElementById('evzProject').value;
+    const taskName = document.getElementById('evzTask').value;
+    const urgency = document.getElementById('evzUrgency').value;
+    const startVal = document.getElementById('evzStart').value;
+    const endVal = document.getElementById('evzEnd').value;
+    if(!person || !projectCode || !taskName || !startVal || !endVal) return;
+    let start = fromISO(startVal), end = fromISO(endVal);
+    if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
+    newEvent = {
+      kind, person, initials: artistInitials[person] || person.slice(0,2).toUpperCase(),
+      color: personColorMap[person] || 'gold', projectCode, taskName, urgency, start, end
+    };
+  } else if(kind==='odsustvo'){
+    const person = document.getElementById('evoEmployee').value;
+    const leaveType = document.getElementById('evoType').value;
+    const startVal = document.getElementById('evoStart').value;
+    const endVal = document.getElementById('evoEnd').value;
+    if(!person || !startVal || !endVal) return;
+    let start = fromISO(startVal), end = fromISO(endVal);
+    if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
+    newEvent = { kind, person, initials: artistInitials[person] || person.slice(0,2).toUpperCase(), color:'leave', leaveType, start, end };
+  } else {
+    if(!isSuperAdmin() && currentAccess()!=='admin') return;
+    const holidayName = document.getElementById('evpName').value.trim();
+    const startVal = document.getElementById('evpStart').value;
+    const endVal = document.getElementById('evpEnd').value;
+    if(!holidayName || !startVal || !endVal) return;
+    let start = fromISO(startVal), end = fromISO(endVal);
+    if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
+    newEvent = { kind, person:null, initials:'', color:'holiday', holidayName, start, end };
+  }
 
   if(editingEventId){
     const ev = events.find(e=>e._id===editingEventId);
-    if(ev) Object.assign(ev, {person, code, phase, start, end, status, color, initials});
+    if(ev){
+      Object.keys(ev).forEach(k=>{ if(!['_id'].includes(k)) delete ev[k]; });
+      Object.assign(ev, newEvent);
+    }
   } else {
-    events.push({ _id:nextId(), person, code, phase, start, end, status, color, initials });
+    events.push({ _id:nextId(), ...newEvent });
   }
   closeEventModal();
   buildCalFilterMenus();
   renderCalendar();
+  renderWeekWidget();
   persist();
 });
 
@@ -4766,7 +4968,7 @@ function renderWeekWidget(){
   const monday = mondayOf(TODAY);
   const days = [];
   for(let i=0;i<7;i++) days.push(addDays(monday, i));
-  const myEvents = u ? events.filter(e=>e.person===u.name) : [];
+  const myEvents = u ? events.filter(e=>e.person===u.name || e.kind==='praznik') : [];
   const eventsOnDay = (d)=> myEvents.filter(e=> daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0 );
 
   weekDaysVertEl.innerHTML = days.map((d,i)=>{
@@ -4783,7 +4985,7 @@ function renderWeekWidget(){
     document.getElementById('agendaTitle').textContent = `Raspored · ${dowFullNames[idx]}, ${d.d}. ${calMonthNames[d.m-1].toLowerCase()}`;
     const dayEvents = eventsOnDay(d);
     document.getElementById('agendaList').innerHTML = dayEvents.length
-      ? dayEvents.map(e=>`<div class="agenda-item"><span class="agenda-time">${e.code ? escapeHtml(e.code) : '—'}</span><span class="agenda-text">${escapeHtml(e.phase)}</span></div>`).join('')
+      ? dayEvents.map(e=>{ const code = eventDisplayCode(e); return `<div class="agenda-item"><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`; }).join('')
       : '<div class="agenda-empty">Nema zakazanih stavki.</div>';
   }
   document.querySelectorAll('#weekDaysVert .wd-row').forEach(row=>{
