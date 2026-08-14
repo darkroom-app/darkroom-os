@@ -407,11 +407,11 @@ body{
 .price-add-btn{ font-family:var(--font-mono); font-size:10px; color:var(--gold-deep); background:var(--gold-soft); border:none; border-radius:8px; padding:6px 11px; cursor:pointer; }
 
 .sal-table2{ overflow-x:auto; }
-.sal-head2, .sal-row2{ display:grid; grid-template-columns:1.7fr repeat(6, 0.85fr) 0.9fr; gap:6px; align-items:center; min-width:760px; }
+.sal-head2, .sal-row2{ display:grid; grid-template-columns:1.5fr repeat(7, 0.72fr) 0.85fr 0.9fr; gap:6px; align-items:center; min-width:820px; }
 .sal-head2{ padding:0 4px 10px; border-bottom:1px solid var(--border); margin-bottom:4px; }
 .sal-head2 span{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; text-align:center; }
 .sal-head2 span:first-child{ text-align:left; }
-.sal-row2{ padding:9px 4px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .15s; border-radius:8px; }
+.sal-row2{ padding:9px 4px; border-bottom:1px solid var(--border); transition:background .15s; border-radius:8px; }
 .sal-row2:hover{ background:var(--card-soft); }
 .sal-row2:last-child{ border-bottom:none; }
 .sal-emp{ display:flex; align-items:center; gap:8px; }
@@ -420,9 +420,14 @@ body{
 .sal-cell2{ font-family:var(--font-mono); font-size:10px; color:var(--ink-dim); text-align:center; }
 .sal-cell2.strong{ font-weight:700; color:var(--ink); }
 .sal-cell2.empty{ color:var(--ink-faint); }
-.sal-status-badge{ font-family:var(--font-mono); font-size:8.5px; padding:3px 9px; border-radius:20px; text-align:center; justify-self:center; }
+.sal-status-badge{ font-family:var(--font-mono); font-size:8.5px; padding:3px 9px; border-radius:20px; text-align:center; justify-self:center; white-space:nowrap; }
 .sal-status-badge.paid{ background:#DCEEDC; color:#2f6b38; }
-.sal-status-badge.pending{ background:var(--coral-soft); color:var(--coral); }
+.sal-status-badge.pending{ background:var(--gold-soft); color:var(--gold-deep); }
+.sal-status-badge.missing{ background:var(--coral-soft); color:var(--coral); }
+.sal-row-btn{ font-family:var(--font-mono); font-size:8.5px; padding:5px 10px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--ink-dim); cursor:pointer; white-space:nowrap; justify-self:end; }
+.sal-row-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); border-color:var(--gold-soft); }
+.sal-row-btn.primary{ background:var(--ink); color:#FBF8F1; border-color:var(--ink); }
+.sal-row-btn.primary:hover{ opacity:0.85; }
 
 .sal-change{ font-size:7.5px; margin-left:2px; }
 .sal-change.up{ color:#4C8A55; }
@@ -433,8 +438,34 @@ body{
 .sal-payrun-row b{ font-family:var(--font-display); font-weight:700; font-size:12.5px; }
 .sal-payrun-row b.pending{ color:var(--coral); }
 .sal-history-total{ font-family:var(--font-display); font-weight:700; font-size:21px; }
-.sal-stack-bar{ width:100%; max-width:26px; height:100%; display:flex; flex-direction:column-reverse; border-radius:5px 5px 2px 2px; overflow:hidden; }
-.sal-stack-seg{ width:100%; height:0%; transition:height 1s cubic-bezier(.34,1.2,.4,1); }
+
+.sal-emp-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; }
+.sal-emp-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+.sal-emp-card.missing{ border-color:var(--coral-soft); background:linear-gradient(180deg, var(--coral-soft) 0%, var(--card) 22%); }
+.sal-emp-card-top{ display:flex; align-items:center; gap:10px; }
+.sal-emp-avatar-lg{ width:38px; height:38px; border-radius:12px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:12px; color:#fff; flex-shrink:0; }
+.sal-emp-card-name{ font-family:var(--font-display); font-weight:600; font-size:12.5px; line-height:1.25; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sal-emp-card-role{ font-size:10px; color:var(--ink-faint); }
+.sal-emp-card-amt{ font-family:var(--font-mono); font-size:14px; font-weight:700; color:var(--ink); }
+.sal-emp-card-btn{ width:100%; font-family:var(--font-body); font-size:11px; font-weight:600; padding:8px; border-radius:10px; border:1px solid var(--border); background:var(--card-soft); color:var(--ink-dim); cursor:pointer; transition:background .15s; }
+.sal-emp-card-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); }
+.sal-emp-card-btn.primary{ background:var(--ink); color:#FBF8F1; border-color:var(--ink); }
+.sal-emp-card-btn.primary:hover{ opacity:0.87; }
+
+.sal-progress-row{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+.sal-progress-track{ flex:1; height:7px; background:var(--card-soft); border-radius:5px; overflow:hidden; }
+.sal-progress-fill{ height:100%; border-radius:5px; background:linear-gradient(90deg, var(--gold-deep), var(--gold)); width:0%; transition:width 1s cubic-bezier(.34,1.1,.4,1); }
+.sal-progress-fill.complete{ background:linear-gradient(90deg, #4C8A55, #6BAE76); }
+.sal-progress-label{ font-family:var(--font-mono); font-size:10px; color:var(--ink-dim); white-space:nowrap; flex-shrink:0; }
+
+.sal-confirm-bar{ display:flex; align-items:center; justify-content:space-between; margin-top:18px; padding-top:16px; border-top:1px solid var(--border); }
+.sal-confirm-bar-text{ font-size:11.5px; color:var(--ink-dim); }
+.sal-confirm-list{ max-height:260px; overflow-y:auto; margin:14px 0; display:flex; flex-direction:column; gap:2px; }
+.sal-confirm-row{ display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border); }
+.sal-confirm-row:last-child{ border-bottom:none; }
+.sal-confirm-name{ flex:1; font-size:11.5px; font-weight:600; }
+.sal-confirm-amt{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); }
+.sal-confirm-warn{ background:var(--coral-soft); color:var(--coral); border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.5; margin-top:12px; }
 .sal-modal-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
 .sal-modal-summary{ display:flex; gap:20px; background:var(--card-soft); border-radius:12px; padding:12px 16px; margin:6px 0 14px; }
 .sal-modal-summary-item{ flex:1; }
@@ -1866,13 +1897,19 @@ body{
       <div class="stat-tab-panel" id="finTabPlate">
         <div class="proj-toolbar" style="margin-bottom:16px;">
           <div class="stat-panel-title" style="font-size:15px;">💰 Pregled isplata</div>
-          <div class="cal-filter" id="filterSalMonth">
-            <div class="cal-filter-btn"><span id="filterSalMonthLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
-            <div class="cal-filter-menu" id="filterSalMonthMenu"></div>
+          <div class="proj-filters">
+            <div class="cal-filter" id="filterSalMonth">
+              <div class="cal-filter-btn"><span id="filterSalMonthLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="filterSalMonthMenu"></div>
+            </div>
+            <div class="cal-filter" id="filterSalYear">
+              <div class="cal-filter-btn"><span id="filterSalYearLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="filterSalYearMenu"></div>
+            </div>
           </div>
         </div>
 
-        <div class="kpi-row" id="salBreakdownRow" style="grid-template-columns:repeat(4,1fr);"></div>
+        <div class="kpi-row" id="salBreakdownRow" style="grid-template-columns:repeat(5,1fr);"></div>
 
         <div class="stat-grid-2" style="grid-template-columns:1fr 1.6fr;">
           <div class="stat-panel">
@@ -1895,7 +1932,7 @@ body{
               <div class="kpi-trend" id="salChartTrend"></div>
             </div>
             <div class="fin-flow-legend" id="salStackLegend"></div>
-            <div class="fin-flow-chart" id="salChart"></div>
+            <div class="line-svg-wrap"><svg id="salChart" viewBox="0 0 760 220" preserveAspectRatio="none" style="width:100%;height:220px;"></svg></div>
           </div>
         </div>
 
@@ -1907,15 +1944,24 @@ body{
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
                 <input type="text" id="salEmpSearchInput" placeholder="Pretraži zaposlenog...">
               </div>
-              <button class="btn-primary" id="newSalBtn" style="padding:8px 14px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-                Unesi platu
-              </button>
+              <div class="view-toggle">
+                <button class="vt-btn active" data-smode="grid" title="Grid prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+                <button class="vt-btn" data-smode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+              </div>
             </div>
           </div>
-          <div class="sal-table2">
-            <div class="sal-head2"><span>Zaposleni</span><span>Osnovica</span><span>Bonus</span><span>Prekovr.</span><span>Dedukcije</span><span>Porez</span><span>Neto</span><span>Ukupno</span><span>Status</span></div>
+
+          <div class="sal-progress-row" id="salProgressRow"></div>
+
+          <div class="sal-emp-grid" id="salEmpGrid"></div>
+          <div class="sal-table2" id="salTableWrap" style="display:none;">
+            <div class="sal-head2"><span>Zaposleni</span><span>Osnovica</span><span>Bonus</span><span>Prekovr.</span><span>Dedukcije</span><span>Porez</span><span>Neto</span><span>Ukupno</span><span>Status</span><span></span></div>
             <div id="salTable"></div>
+          </div>
+
+          <div class="sal-confirm-bar">
+            <div class="sal-confirm-bar-text" id="salConfirmBarText"></div>
+            <button class="btn-primary" id="salConfirmAllBtn">✓ Potvrdi sve plate</button>
           </div>
         </div>
       </div>
@@ -2094,6 +2140,19 @@ body{
       <button class="modal-delete" id="salDelete" style="display:none;">Obriši</button>
       <button class="modal-cancel" id="salCancel">Otkaži</button>
       <button class="modal-submit" id="salSubmit">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="salConfirmModalOverlay">
+  <div class="modal-card" style="width:520px; max-height:82vh;">
+    <div class="modal-title">Potvrda isplate — <span id="salConfirmTitleMonth"></span></div>
+    <div id="salConfirmWarning"></div>
+    <div class="sal-confirm-list" id="salConfirmList"></div>
+    <div class="sal-modal-summary" id="salConfirmSummary"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="salConfirmCancel">Otkaži</button>
+      <button class="modal-submit" id="salConfirmSubmit">Potvrdi i odobri isplatu</button>
     </div>
   </div>
 </div>
@@ -2556,7 +2615,7 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       allProjects, allClients, teamMembers, allTransactions, portfolioItems,
-      projectPricing, salaryEntries, events, todoItems, projCodeCounter
+      projectPricing, salaryEntries, events, todoItems, projCodeCounter, salConfirmedMonths
     }));
   } catch(e){}
 }
@@ -5844,15 +5903,29 @@ document.getElementById('kadarSubmit').addEventListener('click', ()=>{
 });
 
 let salBreakdownMonth = TODAY.m - 1;
+let salBreakdownYear = TODAY.y;
 let salEmpSearch = "";
+let salViewMode = "grid";
+let salConfirmedMonths = [];
+fromPersisted('salConfirmedMonths', salConfirmedMonths);
+const salAvailableYears = [2026];
 const salCatColors = { osnovica:'var(--gold-deep)', bonus:'var(--sage)', prekovremeno:'var(--sky)', porez:'var(--plum)' };
 const salCatLabels = { osnovica:'Osnovica', bonus:'Bonus', prekovremeno:'Prekovremeno', porez:'Porez i doprinosi' };
 
+function refreshSalMonthView(){
+  renderSalMonthMenu();
+  renderSalBreakdown();
+  renderSalPayrun();
+  renderSalProgress();
+  renderSalEmpGrid();
+  renderSalTable();
+}
+
 function renderSalMonthMenu(){
   document.getElementById('filterSalMonthMenu').innerHTML = monthNamesFull.slice(0,8).map((label,i)=>
-    `<div class="cal-filter-item" data-val="${i}">${label} 2026.</div>`).join('');
-  document.getElementById('filterSalMonthLabel').textContent = `${monthNamesFull[salBreakdownMonth]} 2026.`;
-  document.getElementById('salTableMonthLabel').textContent = monthNamesFull[salBreakdownMonth];
+    `<div class="cal-filter-item" data-val="${i}">${label}</div>`).join('');
+  document.getElementById('filterSalMonthLabel').textContent = monthNamesFull[salBreakdownMonth];
+  document.getElementById('salTableMonthLabel').textContent = `${monthNamesFull[salBreakdownMonth]} ${salBreakdownYear}.`;
   const f = document.getElementById('filterSalMonth');
   f.querySelector('.cal-filter-btn').onclick = (ev)=>{
     ev.stopPropagation();
@@ -5864,10 +5937,25 @@ function renderSalMonthMenu(){
     item.onclick = ()=>{
       salBreakdownMonth = parseInt(item.dataset.val);
       f.classList.remove('open');
-      renderSalMonthMenu();
-      renderSalBreakdown();
-      renderSalPayrun();
-      renderSalTable();
+      refreshSalMonthView();
+    };
+  });
+
+  document.getElementById('filterSalYearMenu').innerHTML = salAvailableYears.map(y=>
+    `<div class="cal-filter-item" data-val="${y}">${y}.</div>`).join('');
+  document.getElementById('filterSalYearLabel').textContent = `${salBreakdownYear}.`;
+  const fy = document.getElementById('filterSalYear');
+  fy.querySelector('.cal-filter-btn').onclick = (ev)=>{
+    ev.stopPropagation();
+    const wasOpen = fy.classList.contains('open');
+    document.querySelectorAll('.cal-filter').forEach(x=>x.classList.remove('open'));
+    if(!wasOpen) fy.classList.add('open');
+  };
+  fy.querySelectorAll('.cal-filter-item').forEach(item=>{
+    item.onclick = ()=>{
+      salBreakdownYear = parseInt(item.dataset.val);
+      fy.classList.remove('open');
+      refreshSalMonthView();
     };
   });
 }
@@ -5886,21 +5974,22 @@ function renderSalBreakdown(){
   const entries = salaryEntries.filter(s=>s.month===month);
   const prevEntries = salaryEntries.filter(s=>s.month===prevMonth);
   const sum = (arr, field) => arr.reduce((s,e)=>s+e[field],0);
+  const sumBruto = arr => arr.reduce((s,e)=>s+salUkupno(e),0);
+  const sumNeto = arr => arr.reduce((s,e)=>s+salNeto(e),0);
   const cards = [
-    { field:'osnovica', label:'Osnovica', icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>' },
-    { field:'bonus', label:'Bonus', icon:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>' },
-    { field:'prekovremeno', label:'Prekovremeno', icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>' },
-    { field:'porez', label:'Porez i doprinosi', icon:'<path d="M3 21h18M4 21V10l8-6 8 6v11M9 21v-6h6v6"/>' },
+    { label:'Ukupan bruto trošak', icon:'<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/>', color:'var(--ink)', val: sumBruto(entries), prev: sumBruto(prevEntries) },
+    { label:'Neto (isplata)', icon:'<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><circle cx="16" cy="14" r="1"/>', color:'#4C8A55', val: sumNeto(entries), prev: sumNeto(prevEntries) },
+    { label:'Bonusi', icon:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>', color:salCatColors.bonus, val: sum(entries,'bonus'), prev: sum(prevEntries,'bonus') },
+    { label:'Prekovremeno', icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', color:salCatColors.prekovremeno, val: sum(entries,'prekovremeno'), prev: sum(prevEntries,'prekovremeno') },
+    { label:'Porez i doprinosi', icon:'<path d="M3 21h18M4 21V10l8-6 8 6v11M9 21v-6h6v6"/>', color:salCatColors.porez, val: sum(entries,'porez'), prev: sum(prevEntries,'porez') },
   ];
-  document.getElementById('salBreakdownRow').innerHTML = cards.map(c=>{
-    const val = sum(entries, c.field), prev = sum(prevEntries, c.field);
-    return `<div class="kpi-card">
+  document.getElementById('salBreakdownRow').innerHTML = cards.map(c=>`
+    <div class="kpi-card">
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${c.icon}</svg></div>
-      <div class="kpi-val" style="color:${salCatColors[c.field]}"><span class="fcu" data-val="${val}">0</span></div>
-      ${trendBadgeHtml(val, prev)}
+      <div class="kpi-val" style="color:${c.color}"><span class="fcu" data-val="${c.val}">0</span></div>
+      ${trendBadgeHtml(c.val, c.prev)}
       <div class="kpi-label">${c.label}</div>
-    </div>`;
-  }).join('');
+    </div>`).join('');
   document.querySelectorAll('#salBreakdownRow .fcu').forEach(el=>{
     animateCountUp(el, parseFloat(el.dataset.val), {suffix:' RSD'});
   });
@@ -5913,12 +6002,16 @@ function renderSalPayrun(){
   const grossPay = entries.reduce((s,e)=>s+salNeto(e),0);
   const taxes = entries.reduce((s,e)=>s+e.porez,0);
   const total = grossPay + taxes;
-  const anyPending = entries.some(e=>e.status==='Na čekanju');
-  const lastDay = new Date(2026, month+1, 0).getDate();
+  const confirmed = salConfirmedMonths.includes(month);
+  const lastDay = new Date(salBreakdownYear, month+1, 0).getDate();
+  let statusLabel, statusPending;
+  if(confirmed){ statusLabel = '✓ Odobreno'; statusPending = false; }
+  else if(headcount < teamMembers.length){ statusLabel = 'Nepotpuno'; statusPending = true; }
+  else { statusLabel = 'Čeka potvrdu'; statusPending = true; }
   document.getElementById('salPayrunInfo').innerHTML = `
-    <div class="sal-payrun-row"><span>Period isplate</span><b>1–${lastDay}. ${monthNamesFull[month].toLowerCase()} 2026.</b></div>
-    <div class="sal-payrun-row"><span>Broj zaposlenih</span><b>${headcount}</b></div>
-    <div class="sal-payrun-row"><span>Status</span><b class="${anyPending?'pending':''}">${anyPending?'Na čekanju':'Isplaćeno'}</b></div>`;
+    <div class="sal-payrun-row"><span>Period isplate</span><b>1–${lastDay}. ${monthNamesFull[month].toLowerCase()} ${salBreakdownYear}.</b></div>
+    <div class="sal-payrun-row"><span>Broj zaposlenih</span><b>${headcount} / ${teamMembers.length}</b></div>
+    <div class="sal-payrun-row"><span>Status</span><b class="${statusPending?'pending':''}">${statusLabel}</b></div>`;
   const pct = total>0 ? (grossPay/total)*100 : 0;
   document.getElementById('salPayrunDonutCircle').style.background = `conic-gradient(var(--gold-deep) 0% ${pct}%, var(--plum) ${pct}% 100%)`;
   document.getElementById('salPayrunDonutLegend').innerHTML = `
@@ -5927,6 +6020,8 @@ function renderSalPayrun(){
   animateCountUp(document.getElementById('salPayrunDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('salPayrunDonutWrap').classList.add('shown'); }, 100);
 }
+
+const salAreaGrad = { osnovica:['var(--gold)','var(--gold-deep)'], bonus:['var(--sage)','var(--sage-deep)'], prekovremeno:['var(--sky)','var(--sky-deep)'], porez:['var(--plum)','var(--plum-deep)'] };
 
 function renderSalChart(){
   const cats = ['osnovica','bonus','prekovremeno','porez'];
@@ -5938,22 +6033,62 @@ function renderSalChart(){
     monthSegs.push(seg);
     monthTotals.push(cats.reduce((s,c)=>s+seg[c],0));
   }
-  const max = Math.max(...monthTotals, 1);
   document.getElementById('salStackLegend').innerHTML = cats.map(c=>`
     <div class="fin-flow-legend-item"><span class="fin-flow-legend-dot" style="background:${salCatColors[c]}"></span>${salCatLabels[c]}</div>`).join('');
-  document.getElementById('salChart').innerHTML = monthAbbrRS.map((label,i)=>{
-    const seg = monthSegs[i];
-    const segHtml = cats.map(c=>`<div class="sal-stack-seg" data-h="${(seg[c]/max)*100}" style="background:${salCatColors[c]};" title="${salCatLabels[c]} ${label}: ${fmtRSD(seg[c])}"></div>`).join('');
-    return `<div class="fin-flow-col">
-      <div class="fin-flow-track"><div class="sal-stack-bar">${segHtml}</div></div>
-      <div class="fin-flow-label">${label}</div>
-    </div>`;
+
+  const W=760, H=220, padL=6, padR=6, padT=16, padB=28;
+  const max = Math.max(...monthTotals, 1) * 1.1;
+  const n = monthAbbrRS.length;
+  const xFor = i => padL + (i/(n-1)) * (W-padL-padR);
+  const yFor = v => padT + (1 - v/max) * (H-padT-padB);
+  const baseY = yFor(0);
+
+  let defs = `<defs>${cats.map(c=>`
+    <linearGradient id="salGrad-${c}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${salAreaGrad[c][0]}" stop-opacity="0.9"/>
+      <stop offset="100%" stop-color="${salAreaGrad[c][1]}" stop-opacity="0.55"/>
+    </linearGradient>`).join('')}</defs>`;
+
+  let grid = [0,0.5,1].map(f=>{
+    const y = padT + f*(H-padT-padB);
+    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5"/>`;
   }).join('');
-  setTimeout(()=>{
-    document.querySelectorAll('#salChart .sal-stack-seg').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.height = el.dataset.h + '%'; }, i*30);
+
+  let cum = new Array(n).fill(0);
+  let areas = '';
+  cats.forEach(c=>{
+    const prevCum = [...cum];
+    cum = cum.map((v,i)=> v + monthSegs[i][c]);
+    const topPts = cum.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' L ');
+    const botPts = [...prevCum].map((v,i)=>`${xFor(i)},${yFor(v)}`).reverse().join(' L ');
+    const d = `M ${topPts} L ${botPts} Z`;
+    areas += `<path d="${d}" fill="url(#salGrad-${c})" class="sal-area-path" style="opacity:0; transition:opacity .8s ease;"><title>${salCatLabels[c]}</title></path>`;
+  });
+
+  const totalPts = cum.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' ');
+  const totalLine = `<polyline points="${totalPts}" fill="none" stroke="var(--ink)" stroke-opacity="0.3" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" class="sal-area-topline"/>`;
+
+  let dots = cum.map((v,i)=>`<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3" fill="var(--card)" stroke="var(--ink)" stroke-opacity="0.4" stroke-width="1.4"><title>${monthAbbrRS[i]}: ${fmtRSD(v)}</title></circle>`).join('');
+
+  let labels = monthAbbrRS.map((label,i)=>
+    `<text x="${xFor(i)}" y="${H-8}" font-size="9.5" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-mono)">${label}</text>`).join('');
+
+  document.getElementById('salChart').innerHTML = defs + grid + areas + totalLine + dots + labels;
+
+  requestAnimationFrame(()=>{
+    document.querySelectorAll('#salChart .sal-area-path').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.opacity = '1'; }, i*120);
     });
-  }, 150);
+    const line = document.querySelector('#salChart .sal-area-topline');
+    if(line){
+      const len = line.getTotalLength();
+      line.style.strokeDasharray = len; line.style.strokeDashoffset = len;
+      line.getBoundingClientRect();
+      line.style.transition = 'stroke-dashoffset 1.3s cubic-bezier(.34,1,.4,1)';
+      requestAnimationFrame(()=>{ line.style.strokeDashoffset = 0; });
+    }
+  });
+
   document.getElementById('salHistoryTotal').textContent = fmtRSD(yearPayrollTotal());
   const currTotal = monthTotals[7], prevTotal = monthTotals[6];
   const trend = prevTotal>0 ? ((currTotal-prevTotal)/prevTotal)*100 : 0;
@@ -5962,25 +6097,97 @@ function renderSalChart(){
   badge.textContent = `${trend>=0?'▲':'▼'} ${Math.abs(trend).toFixed(0)}% vs prošli mesec`;
 }
 
+function salFilteredEmployees(){
+  const q = salEmpSearch.trim().toLowerCase();
+  return teamMembers.filter(t=> t.name.toLowerCase().includes(q));
+}
+
+function renderSalProgress(){
+  const month = salBreakdownMonth;
+  const total = teamMembers.length;
+  const entered = teamMembers.filter(t=>salaryFor(t.key, month)).length;
+  const complete = entered === total;
+  const confirmed = salConfirmedMonths.includes(month);
+  document.getElementById('salProgressRow').innerHTML = `
+    <div class="sal-progress-label">${entered} / ${total} uneto</div>
+    <div class="sal-progress-track"><div class="sal-progress-fill ${complete?'complete':''}" data-w="${(entered/total)*100}" style="width:0%;"></div></div>
+    <div class="sal-progress-label">${confirmed ? '✓ Odobreno' : (complete ? 'Spremno za potvrdu' : '')}</div>`;
+  setTimeout(()=>{
+    const fill = document.querySelector('#salProgressRow .sal-progress-fill');
+    if(fill) fill.style.width = fill.dataset.w + '%';
+  }, 150);
+  const confirmBtn = document.getElementById('salConfirmAllBtn');
+  const confirmText = document.getElementById('salConfirmBarText');
+  if(confirmed){
+    confirmText.textContent = `Isplata za ${monthNamesFull[month]} je odobrena.`;
+    confirmBtn.textContent = '✓ Odobreno';
+    confirmBtn.disabled = true;
+  } else {
+    confirmText.textContent = complete ? `Sve plate su unete — spremno za poslednju proveru.` : `Nedostaje unos plate za ${total-entered} zaposlenih.`;
+    confirmBtn.textContent = '✓ Potvrdi sve plate';
+    confirmBtn.disabled = false;
+  }
+}
+
+function salEmpBtnHtml(key, hasEntry){
+  return `<button class="sal-emp-card-btn ${hasEntry?'':'primary'}" data-emp="${key}">${hasEntry?'Izmeni platu':'Unesi platu'}</button>`;
+}
+
+function renderSalEmpGrid(){
+  const month = salBreakdownMonth;
+  const emps = salFilteredEmployees();
+  document.getElementById('salEmpGrid').style.display = salViewMode==='grid' ? 'grid' : 'none';
+  document.getElementById('salTableWrap').style.display = salViewMode==='list' ? 'block' : 'none';
+  if(salViewMode !== 'grid') return;
+  document.getElementById('salEmpGrid').innerHTML = emps.map(e=>{
+    const entry = salaryFor(e.key, month);
+    const grad = artistGrad[e.key] || clientAvatarColors[0];
+    const initials = artistInitials[e.key] || clientInitials(e.name);
+    if(!entry){
+      return `<div class="sal-emp-card missing">
+        <div class="sal-emp-card-top">
+          <span class="sal-emp-avatar-lg" style="background:${grad}">${initials}</span>
+          <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
+        </div>
+        <span class="sal-status-badge missing" style="justify-self:start;">Nije uneto</span>
+        ${salEmpBtnHtml(e.key, false)}
+      </div>`;
+    }
+    const paid = entry.status !== 'Na čekanju';
+    return `<div class="sal-emp-card">
+      <div class="sal-emp-card-top">
+        <span class="sal-emp-avatar-lg" style="background:${grad}">${initials}</span>
+        <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
+      </div>
+      <span class="sal-status-badge ${paid?'paid':'pending'}" style="justify-self:start;">${paid?'✓':'⏳'} ${entry.status}</span>
+      <div class="sal-emp-card-amt">${fmtRSD(salUkupno(entry))}</div>
+      ${salEmpBtnHtml(e.key, true)}
+    </div>`;
+  }).join('');
+  document.querySelectorAll('#salEmpGrid .sal-emp-card-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openSalModal(btn.dataset.emp, month));
+  });
+}
+
 function renderSalTable(){
   const month = salBreakdownMonth;
-  const q = salEmpSearch.trim().toLowerCase();
-  const emps = teamMembers.filter(t=> t.name.toLowerCase().includes(q));
+  const emps = salFilteredEmployees();
   document.getElementById('salTable').innerHTML = emps.map(e=>{
     const entry = salaryFor(e.key, month);
     const prevEntry = salaryFor(e.key, month-1);
     if(!entry){
-      return `<div class="sal-row2" data-emp="${e.key}">
+      return `<div class="sal-row2">
         <div class="sal-emp"><span class="sal-emp-avatar" style="background:${artistGrad[e.key]}">${artistInitials[e.key]}</span><span class="sal-emp-name">${e.name}</span></div>
         <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
-        <div><span class="sal-status-badge pending">Nema unosa</span></div>
+        <div><span class="sal-status-badge missing">Nije uneto</span></div>
+        <button class="sal-row-btn primary" data-emp="${e.key}">Unesi platu</button>
       </div>`;
     }
     const changed = prevEntry && entry.osnovica !== prevEntry.osnovica;
     const up = changed && entry.osnovica > prevEntry.osnovica;
     const arrow = changed ? `<span class="sal-change ${up?'up':'down'}">${up?'▲':'▼'}</span>` : '';
     const paid = entry.status !== 'Na čekanju';
-    return `<div class="sal-row2" data-emp="${e.key}" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
+    return `<div class="sal-row2" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
       <div class="sal-emp"><span class="sal-emp-avatar" style="background:${artistGrad[e.key]}">${artistInitials[e.key]}</span><span class="sal-emp-name">${e.name}</span></div>
       <div class="sal-cell2">${fmtK(entry.osnovica)}${arrow}</div>
       <div class="sal-cell2">${entry.bonus ? fmtK(entry.bonus) : '—'}</div>
@@ -5990,18 +6197,26 @@ function renderSalTable(){
       <div class="sal-cell2 strong">${fmtK(salNeto(entry))}</div>
       <div class="sal-cell2 strong">${fmtK(salUkupno(entry))}</div>
       <div><span class="sal-status-badge ${paid?'paid':'pending'}">${entry.status}</span></div>
+      <button class="sal-row-btn" data-emp="${e.key}">Izmeni</button>
     </div>`;
   }).join('');
 
-  document.querySelectorAll('#salTable .sal-row2').forEach(row=>{
-    row.addEventListener('click', ()=>{
-      openSalModal(row.dataset.emp, month);
-    });
+  document.querySelectorAll('#salTable .sal-row-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> openSalModal(btn.dataset.emp, month));
   });
 }
 document.getElementById('salEmpSearchInput').addEventListener('input', (e)=>{
   salEmpSearch = e.target.value;
+  renderSalEmpGrid();
   renderSalTable();
+});
+document.querySelectorAll('.vt-btn[data-smode]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.vt-btn[data-smode]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    salViewMode = btn.dataset.smode;
+    renderSalEmpGrid();
+  });
 });
 
 function renderSalTrendMini(emp){
@@ -6039,8 +6254,49 @@ function renderSalTrendMini(emp){
 
 const salModalOverlay = document.getElementById('salModalOverlay');
 function refreshAfterSalChange(){
-  renderSalBreakdown(); renderSalPayrun(); renderSalChart(); renderSalTable(); renderFinKpis(); renderFinFlowChart(); renderFinDonut();
+  renderSalBreakdown(); renderSalPayrun(); renderSalChart(); renderSalProgress(); renderSalEmpGrid(); renderSalTable();
+  renderFinKpis(); renderFinFlowChart(); renderFinDonut();
 }
+
+const salConfirmModalOverlay = document.getElementById('salConfirmModalOverlay');
+function openSalConfirmModal(){
+  const month = salBreakdownMonth;
+  const missing = teamMembers.filter(t=>!salaryFor(t.key, month));
+  const present = teamMembers.filter(t=>salaryFor(t.key, month));
+  document.getElementById('salConfirmTitleMonth').textContent = `${monthNamesFull[month]} ${salBreakdownYear}.`;
+  const warnEl = document.getElementById('salConfirmWarning');
+  warnEl.innerHTML = missing.length
+    ? `<div class="sal-confirm-warn">⚠ ${missing.length} zaposlenih nema unetu platu za ${monthNamesFull[month]}: ${missing.map(m=>escapeHtml(m.name)).join(', ')}. Unesi plate za sve pre potvrde.</div>`
+    : '';
+  document.getElementById('salConfirmList').innerHTML = present.map(t=>{
+    const e = salaryFor(t.key, month);
+    return `<div class="sal-confirm-row">
+      <span class="sal-emp-avatar" style="background:${artistGrad[t.key]}">${artistInitials[t.key]}</span>
+      <span class="sal-confirm-name">${escapeHtml(t.name)}</span>
+      <span class="sal-confirm-amt">${fmtRSD(salUkupno(e))}</span>
+    </div>`;
+  }).join('');
+  const total = present.reduce((s,t)=>s+salUkupno(salaryFor(t.key, month)),0);
+  document.getElementById('salConfirmSummary').innerHTML = `
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(total)}</div><div class="sal-modal-summary-label">Ukupno za isplatu</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${present.length} / ${teamMembers.length}</div><div class="sal-modal-summary-label">Zaposlenih uneto</div></div>`;
+  document.getElementById('salConfirmSubmit').disabled = missing.length>0;
+  document.getElementById('salConfirmSubmit').style.opacity = missing.length>0 ? '0.5' : '1';
+  document.getElementById('salConfirmSubmit').style.cursor = missing.length>0 ? 'not-allowed' : 'pointer';
+  salConfirmModalOverlay.classList.add('open');
+}
+document.getElementById('salConfirmAllBtn').addEventListener('click', openSalConfirmModal);
+document.getElementById('salConfirmCancel').addEventListener('click', ()=> salConfirmModalOverlay.classList.remove('open'));
+wireOverlayClose(salConfirmModalOverlay, ()=> salConfirmModalOverlay.classList.remove('open'));
+document.getElementById('salConfirmSubmit').addEventListener('click', ()=>{
+  if(document.getElementById('salConfirmSubmit').disabled) return;
+  const month = salBreakdownMonth;
+  salaryEntries.filter(s=>s.month===month).forEach(e=>{ e.status = 'Isplaćeno'; });
+  if(!salConfirmedMonths.includes(month)) salConfirmedMonths.push(month);
+  salConfirmModalOverlay.classList.remove('open');
+  refreshAfterSalChange();
+  persist();
+});
 function closeSalModal(){ salModalOverlay.classList.remove('open'); }
 
 function updateSalModalLive(){
@@ -6092,23 +6348,6 @@ function openSalModal(emp, month){
   updateSalModalLive();
   salModalOverlay.classList.add('open');
 }
-document.getElementById('newSalBtn').addEventListener('click', ()=>{
-  document.getElementById('salTitle').textContent = "Unos plate";
-  document.getElementById('salSubmit').textContent = "Sačuvaj";
-  document.getElementById('salDelete').style.display = 'none';
-  document.getElementById('salEmpInput').disabled = false;
-  document.getElementById('salMonthInput').disabled = false;
-  document.getElementById('salMonthInput').value = String(salBreakdownMonth);
-  const emp = document.getElementById('salEmpInput').value;
-  document.getElementById('salOsnovicaInput').value = salaryBase[emp] || '';
-  document.getElementById('salBonusInput').value = 0;
-  document.getElementById('salPrekoInput').value = 0;
-  document.getElementById('salDedukcijeInput').value = 0;
-  document.getElementById('salPorezInput').value = Math.round((salaryBase[emp]||0)*0.345);
-  document.getElementById('salStatusInput').value = 'Isplaćeno';
-  updateSalModalLive();
-  salModalOverlay.classList.add('open');
-});
 document.getElementById('salCancel').addEventListener('click', closeSalModal);
 wireOverlayClose(salModalOverlay, closeSalModal);
 document.getElementById('salDelete').addEventListener('click', ()=>{
@@ -6158,6 +6397,8 @@ function initFinansije(){
   renderSalBreakdown();
   renderSalPayrun();
   renderSalChart();
+  renderSalProgress();
+  renderSalEmpGrid();
   renderSalTable();
 
   document.querySelectorAll('#view-finansije .fin-tab-btn').forEach(btn=>{
