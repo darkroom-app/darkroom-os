@@ -1916,8 +1916,13 @@ body{
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
               <input type="text" id="priceSearchInput" placeholder="Pretraži projekte...">
             </div>
+            <div class="cal-filter" id="filterPriceKlijent">
+              <div class="cal-filter-btn"><span id="filterPriceKlijentLabel">Svi klijenti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="filterPriceKlijentMenu"></div>
+            </div>
           </div>
         </div>
+        <div class="proj-client-summary" id="priceClientSummary" style="display:none;"></div>
         <div id="priceProjectList"></div>
       </div>
 
@@ -3750,22 +3755,28 @@ function projectStats(p){
 function projectEditBtn(p){
   return `<div class="pg-edit-btn" data-edit-id="${p._id}" title="Izmeni projekat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>`;
 }
-function renderClientPaymentSummary(){
-  const wrap = document.getElementById('projClientSummary');
-  if(filters.klijent === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
-  const clientProjects = allProjects.filter(p=>p.client===filters.klijent);
+function clientPaymentTotals(clientName){
   let total = 0, paid = 0, owed = 0;
-  clientProjects.forEach(p=>{
+  allProjects.filter(p=>p.client===clientName).forEach(p=>{
     (projectPricing[p.code]||[]).forEach(r=>{
       total += r.price;
       if(r.status==='Naplaćeno') paid += r.price; else owed += r.price;
     });
   });
-  wrap.style.display = 'flex';
-  wrap.innerHTML = `
+  return { total, paid, owed };
+}
+function clientSummaryHtml(clientName){
+  const { total, paid, owed } = clientPaymentTotals(clientName);
+  return `
     <div class="proj-client-summary-item"><span class="proj-client-summary-label">Ukupno fakturisano</span><b>${fmtRSD(total)}</b></div>
     <div class="proj-client-summary-item"><span class="proj-client-summary-label">Plaćeno</span><b style="color:#4C8A55;">${fmtRSD(paid)}</b></div>
     <div class="proj-client-summary-item"><span class="proj-client-summary-label">Duguje</span><b style="color:${owed>0?'var(--coral)':'var(--ink)'};">${fmtRSD(owed)}</b></div>`;
+}
+function renderClientPaymentSummary(){
+  const wrap = document.getElementById('projClientSummary');
+  if(filters.klijent === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = clientSummaryHtml(filters.klijent);
 }
 function renderProjectsPage(){
   const list = filteredProjects();
@@ -5865,10 +5876,25 @@ document.getElementById('txSubmit').addEventListener('click', ()=>{
 });
 
 let activePriceProject = null;
-const priceState = { search:"" };
+const priceState = { search:"", client:"Svi klijenti" };
+function buildPriceClientMenu(){
+  const clients = uniqueSorted(allProjects.filter(p=>projectPricing[p.code]).map(p=>p.client));
+  document.getElementById('filterPriceKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
+    clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
+  bindCalFilter('filterPriceKlijent', (val)=>{ priceState.client = val; renderPricingList(); });
+}
+function renderPriceClientSummary(){
+  const wrap = document.getElementById('priceClientSummary');
+  if(priceState.client === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
+  wrap.style.display = 'flex';
+  wrap.innerHTML = clientSummaryHtml(priceState.client);
+}
 function renderPricingList(){
+  renderPriceClientSummary();
   const q = priceState.search.trim().toLowerCase();
-  const list = allProjects.filter(p=> projectPricing[p.code] && (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)));
+  const list = allProjects.filter(p=> projectPricing[p.code] &&
+    (priceState.client==="Svi klijenti" || p.client===priceState.client) &&
+    (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)));
   document.getElementById('priceProjectList').innerHTML = list.map(p=>{
     const kadrovi = projectPricing[p.code] || [];
     const total = kadrovi.reduce((s,k)=>s+k.price,0);
@@ -6431,6 +6457,7 @@ function initFinansije(){
   buildTxMonthMenu();
   buildTxYearMenu();
   renderTxList();
+  buildPriceClientMenu();
   renderPricingList();
   renderSalMonthMenu();
   renderSalBreakdown();
