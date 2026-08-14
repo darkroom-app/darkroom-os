@@ -202,7 +202,7 @@ body{
 /* modal */
 .modal-overlay{ position:fixed; inset:0; background:rgba(35,31,24,0.45); display:none; align-items:center; justify-content:center; z-index:100; }
 .modal-overlay.open{ display:flex; }
-.modal-card{ background:var(--card); border-radius:20px; padding:24px; width:380px; max-width:90vw; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4); }
+.modal-card{ background:var(--card); border-radius:20px; padding:24px; width:380px; max-width:90vw; max-height:90vh; overflow-y:auto; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4); }
 .modal-title{ font-family:var(--font-display); font-weight:700; font-size:16px; margin-bottom:16px; }
 .modal-field{ margin-bottom:12px; }
 .modal-field label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:5px; }
@@ -271,6 +271,10 @@ body{
 .nc-avatar-row{ display:flex; align-items:center; gap:14px; }
 .nc-avatar-preview{ width:52px; height:52px; border-radius:50%; background:var(--card-soft); background-size:cover; background-position:center; border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--ink-faint); }
 .nc-avatar-row input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
+.team-section-divider{ grid-column:1/-1; display:flex; align-items:center; gap:10px; margin:8px 0 2px; font-family:var(--font-display); font-weight:700; font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-faint); }
+.team-section-divider::after{ content:""; flex:1; height:1px; background:var(--border); }
+.team-card-inactive{ opacity:0.55; filter:grayscale(0.6); }
+.clist-row-inactive{ opacity:0.55; filter:grayscale(0.6); }
 
 .clients-list-page{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; }
 .clist-head{ display:grid; grid-template-columns:2fr 1.5fr 1.8fr 1.2fr 1fr 0.9fr; gap:10px; padding:12px 18px; border-bottom:1px solid var(--border); }
@@ -1577,7 +1581,7 @@ body{
             <div class="cal-filter-menu">
               <div class="cal-filter-item" data-val="Svi statusi">Svi statusi</div>
               <div class="cal-filter-item" data-val="Aktivan"><span class="cal-filter-dot" style="background:#4C8A55"></span>Aktivan</div>
-              <div class="cal-filter-item" data-val="Na odsustvu"><span class="cal-filter-dot" style="background:var(--coral)"></span>Na odsustvu</div>
+              <div class="cal-filter-item" data-val="Neaktivan"><span class="cal-filter-dot" style="background:var(--ink-faint)"></span>Neaktivan</div>
             </div>
           </div>
         </div>
@@ -1873,18 +1877,37 @@ body{
       <input type="text" id="ntRole" placeholder="npr. 3D Generalist">
     </div>
     <div class="modal-field">
-      <label>Email</label>
-      <input type="text" id="ntEmail" placeholder="npr. ana.petrovic@darkroom.rs">
+      <label>Email (poslovni)</label>
+      <input type="text" id="ntEmailBusiness" placeholder="npr. ana.petrovic@darkroom.rs">
+    </div>
+    <div class="modal-field">
+      <label>Email (privatni)</label>
+      <input type="text" id="ntEmailPrivate" placeholder="npr. ana.petrovic@gmail.com">
     </div>
     <div class="modal-field">
       <label>Telefon</label>
       <input type="text" id="ntPhone" placeholder="npr. 060 123 4567">
     </div>
     <div class="modal-field">
+      <label>Datum zaposlenja</label>
+      <input type="date" id="ntHireDate">
+    </div>
+    <div class="modal-field">
+      <label>Datum rođenja</label>
+      <input type="date" id="ntBirthDate">
+    </div>
+    <div class="modal-field">
+      <label>Profilna slika</label>
+      <div class="nc-avatar-row">
+        <div class="nc-avatar-preview" id="ntAvatarPreview"></div>
+        <input type="file" id="ntAvatarInput" accept="image/*">
+      </div>
+    </div>
+    <div class="modal-field">
       <label>Status</label>
       <select id="ntStatus">
         <option value="Aktivan">Aktivan</option>
-        <option value="Na odsustvu">Na odsustvu</option>
+        <option value="Neaktivan">Neaktivan</option>
       </select>
     </div>
     <div class="modal-field" id="ntAccessField">
@@ -3996,24 +4019,24 @@ function initStatistika(){
 let statistikaInited = false;
 
 let teamMembers = [
-  {name:"Dušan Stević", key:"Dušan Stević", role:"Član tima", access:"superadmin", email:"dusan.stevic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Stefana Ristić", key:"Stefana Ristić", role:"Član tima", access:"user", email:"stefana.ristic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Radoslav Milanović", key:"Radoslav Milanović", role:"Član tima", access:"user", email:"radoslav.milanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Dalibor Mitić", key:"Dalibor Mitić", role:"Član tima", access:"user", email:"dalibor.mitic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Katarina Đorđević", key:"Katarina Đorđević", role:"Član tima", access:"user", email:"katarina.djordjevic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Aleksandra Vukašinović", key:"Aleksandra Vukašinović", role:"Član tima", access:"user", email:"aleksandra.vukasinovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Mihajlo Nagradić", key:"Mihajlo Nagradić", role:"Član tima", access:"user", email:"mihajlo.nagradic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Nikola Jovanović", key:"Nikola Jovanović", role:"Član tima", access:"user", email:"nikola.jovanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Anđela Pešić", key:"Anđela Pešić", role:"Član tima", access:"user", email:"andjela.pesic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Marija Todorović", key:"Marija Todorović", role:"Član tima", access:"user", email:"marija.todorovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Ana Krstić", key:"Ana Krstić", role:"Član tima", access:"user", email:"ana.krstic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Miljana Cvetković", key:"Miljana Cvetković", role:"Član tima", access:"user", email:"miljana.cvetkovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Miloš Tasić", key:"Miloš Tasić", role:"Član tima", access:"user", email:"milos.tasic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Ivana Sazdov", key:"Ivana Sazdov", role:"Član tima", access:"user", email:"ivana.sazdov@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Lazar Pešić", key:"Lazar Pešić", role:"Član tima", access:"user", email:"lazar.pesic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Damjan Mitrović", key:"Damjan Mitrović", role:"Član tima", access:"user", email:"damjan.mitrovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Aleksandar Jovanović", key:"Aleksandar Jovanović", role:"Član tima", access:"user", email:"aleksandar.jovanovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
-  {name:"Marija Milenković", key:"Marija Milenković", role:"Član tima", access:"user", email:"marija.milenkovic@darkroom.rs", phone:"—", status:"Aktivan", since:2026, skills:[]},
+  {name:"Dušan Stević", key:"Dušan Stević", role:"Član tima", access:"superadmin", emailBusiness:"dusan.stevic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Stefana Ristić", key:"Stefana Ristić", role:"Član tima", access:"user", emailBusiness:"stefana.ristic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Radoslav Milanović", key:"Radoslav Milanović", role:"Član tima", access:"user", emailBusiness:"radoslav.milanovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Dalibor Mitić", key:"Dalibor Mitić", role:"Član tima", access:"user", emailBusiness:"dalibor.mitic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Katarina Đorđević", key:"Katarina Đorđević", role:"Član tima", access:"user", emailBusiness:"katarina.djordjevic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Aleksandra Vukašinović", key:"Aleksandra Vukašinović", role:"Član tima", access:"user", emailBusiness:"aleksandra.vukasinovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Mihajlo Nagradić", key:"Mihajlo Nagradić", role:"Član tima", access:"user", emailBusiness:"mihajlo.nagradic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Nikola Jovanović", key:"Nikola Jovanović", role:"Član tima", access:"user", emailBusiness:"nikola.jovanovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Anđela Pešić", key:"Anđela Pešić", role:"Član tima", access:"user", emailBusiness:"andjela.pesic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Marija Todorović", key:"Marija Todorović", role:"Član tima", access:"user", emailBusiness:"marija.todorovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Ana Krstić", key:"Ana Krstić", role:"Član tima", access:"user", emailBusiness:"ana.krstic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Miljana Cvetković", key:"Miljana Cvetković", role:"Član tima", access:"user", emailBusiness:"miljana.cvetkovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Miloš Tasić", key:"Miloš Tasić", role:"Član tima", access:"user", emailBusiness:"milos.tasic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Ivana Sazdov", key:"Ivana Sazdov", role:"Član tima", access:"user", emailBusiness:"ivana.sazdov@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Lazar Pešić", key:"Lazar Pešić", role:"Član tima", access:"user", emailBusiness:"lazar.pesic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Damjan Mitrović", key:"Damjan Mitrović", role:"Član tima", access:"user", emailBusiness:"damjan.mitrovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Aleksandar Jovanović", key:"Aleksandar Jovanović", role:"Član tima", access:"user", emailBusiness:"aleksandar.jovanovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
+  {name:"Marija Milenković", key:"Marija Milenković", role:"Član tima", access:"user", emailBusiness:"marija.milenkovic@darkroom.rs", emailPrivate:"", phone:"—", status:"Aktivan", hireDate:"2026-01-15", birthDate:"", avatar:null, skills:[]},
 ];
 teamMembers.forEach(t=>t._id=nextId());
 fromPersisted('teamMembers', teamMembers);
@@ -4038,6 +4061,8 @@ function filteredTeam(){
 
 function renderTeamPage(){
   const list = filteredTeam();
+  const activeList = list.filter(t=>t.status==='Aktivan');
+  const inactiveList = list.filter(t=>t.status!=='Aktivan');
   const canManage = isSuperAdmin();
   document.getElementById('newTeamBtn').style.display = canManage ? '' : 'none';
   document.getElementById('teamCountLabel').textContent = list.length + (list.length===1 ? ' član' : ' članova');
@@ -4045,22 +4070,24 @@ function renderTeamPage(){
   document.getElementById('teamGrid').style.display = (teamViewMode==='grid' && list.length) ? 'grid' : 'none';
   document.getElementById('teamListWrap').style.display = (teamViewMode==='list' && list.length) ? 'block' : 'none';
 
-  document.getElementById('teamGrid').innerHTML = list.map((t,i)=>{
+  const teamCard = (t,i)=>{
     const grad = artistGrad[t.key] || clientAvatarColors[i % clientAvatarColors.length];
     const initials = artistInitials[t.key] || clientInitials(t.name);
+    const avatarHtml = t.avatar ? `style="background-image:url('${t.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
     const activeProj = teamActiveProjects(t.key);
     const hours = typeof empYearTotal === 'function' ? empYearTotal(t.key) : 0;
+    const inactive = t.status!=='Aktivan';
     return `
-    <div class="client-card team-card" data-id="${t._id}" style="cursor:pointer;">
+    <div class="client-card team-card${inactive ? ' team-card-inactive' : ''}" data-id="${t._id}" style="cursor:pointer;">
       <div class="team-card-top-row">
         <div class="cc-top" style="margin-bottom:0;">
-          <div class="cc-avatar" style="background:${grad}; border-radius:50%;">${initials}</div>
+          <div class="cc-avatar" ${avatarHtml}>${t.avatar ? '' : initials}</div>
           <div class="cc-name-wrap"><div class="cc-name">${escapeHtml(t.name)}</div><div class="cc-contact">${escapeHtml(t.role)}</div></div>
         </div>
         ${canManage ? `<div class="team-delete" data-id="${t._id}" title="Ukloni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>` : ''}
       </div>
       <div class="cc-info" style="margin-top:13px;">
-        <div class="cc-info-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(t.email)}</span></div>
+        <div class="cc-info-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(t.emailBusiness)}</span></div>
         <div class="cc-info-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .6 2.9a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.5 2.9.6a2 2 0 0 1 1.8 2.1Z"/></svg><span>${escapeHtml(t.phone)}</span></div>
       </div>
       <div class="team-skills">${t.skills.map(s=>`<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}</div>
@@ -4069,22 +4096,28 @@ function renderTeamPage(){
         <span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span>
       </div>
     </div>`;
-  }).join('');
+  };
+  document.getElementById('teamGrid').innerHTML =
+    activeList.map(teamCard).join('') +
+    (inactiveList.length ? `<div class="team-section-divider">Neaktivni</div>` + inactiveList.map(teamCard).join('') : '');
 
-  document.getElementById('teamList').innerHTML = list.map((t,i)=>{
+  const teamRow = (t,i)=>{
     const grad = artistGrad[t.key] || clientAvatarColors[i % clientAvatarColors.length];
     const initials = artistInitials[t.key] || clientInitials(t.name);
+    const avatarHtml = t.avatar ? `style="background-image:url('${t.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
     const activeProj = teamActiveProjects(t.key);
+    const inactive = t.status!=='Aktivan';
     return `
-    <div class="clist-row" data-id="${t._id}" style="cursor:pointer;">
-      <div class="clist-name-wrap"><div class="clist-avatar" style="background:${grad}; border-radius:50%;">${initials}</div><div class="clist-name">${escapeHtml(t.name)}</div></div>
+    <div class="clist-row${inactive ? ' clist-row-inactive' : ''}" data-id="${t._id}" style="cursor:pointer;">
+      <div class="clist-name-wrap"><div class="clist-avatar" ${avatarHtml}>${t.avatar ? '' : initials}</div><div class="clist-name">${escapeHtml(t.name)}</div></div>
       <div class="clist-cell">${escapeHtml(t.role)}</div>
-      <div class="clist-cell">${escapeHtml(t.email)}</div>
+      <div class="clist-cell">${escapeHtml(t.emailBusiness)}</div>
       <div class="clist-cell">${escapeHtml(t.phone)}</div>
       <div class="clist-cell">${activeProj}</div>
       <div><span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span></div>
     </div>`;
-  }).join('');
+  };
+  document.getElementById('teamList').innerHTML = activeList.map(teamRow).join('') + inactiveList.map(teamRow).join('');
 
   document.querySelectorAll('.team-delete').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
@@ -4138,6 +4171,28 @@ document.querySelectorAll('.vt-btn[data-tmode]').forEach(btn=>{
 
 const teamModalOverlay = document.getElementById('teamModalOverlay');
 let editingTeamId = null;
+let pendingTeamAvatar = undefined;
+
+function setTeamAvatarPreview(name, avatar){
+  const el = document.getElementById('ntAvatarPreview');
+  if(avatar){
+    el.style.backgroundImage = `url('${avatar}')`;
+    el.textContent = '';
+  } else {
+    el.style.backgroundImage = '';
+    el.textContent = name ? clientInitials(name) : '';
+  }
+}
+document.getElementById('ntAvatarInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    pendingTeamAvatar = reader.result;
+    setTeamAvatarPreview(document.getElementById('ntName').value, pendingTeamAvatar);
+  };
+  reader.readAsDataURL(file);
+});
 
 function closeTeamModal(){
   teamModalOverlay.classList.remove('open');
@@ -4151,11 +4206,17 @@ function openTeamModal(member){
   document.getElementById('ntName').value = member.name;
   document.getElementById('ntName').disabled = true;
   document.getElementById('ntRole').value = member.role;
-  document.getElementById('ntEmail').value = member.email;
+  document.getElementById('ntEmailBusiness').value = member.emailBusiness || '';
+  document.getElementById('ntEmailPrivate').value = member.emailPrivate || '';
   document.getElementById('ntPhone').value = member.phone;
+  document.getElementById('ntHireDate').value = member.hireDate || '';
+  document.getElementById('ntBirthDate').value = member.birthDate || '';
   document.getElementById('ntStatus').value = member.status;
   document.getElementById('ntAccess').value = member.access || 'user';
   document.getElementById('ntAccessField').style.display = isSuperAdmin() ? '' : 'none';
+  document.getElementById('ntAvatarInput').value = '';
+  pendingTeamAvatar = undefined;
+  setTeamAvatarPreview(member.name, member.avatar);
   teamModalOverlay.classList.add('open');
 }
 document.getElementById('newTeamBtn').addEventListener('click', ()=>{
@@ -4164,32 +4225,39 @@ document.getElementById('newTeamBtn').addEventListener('click', ()=>{
   document.getElementById('ntTitle').textContent = "Novi član tima";
   document.getElementById('ntSubmit').textContent = "Dodaj člana";
   document.getElementById('ntName').disabled = false;
-  ['ntName','ntRole','ntEmail','ntPhone'].forEach(id=>document.getElementById(id).value='');
+  ['ntName','ntRole','ntEmailBusiness','ntEmailPrivate','ntPhone','ntHireDate','ntBirthDate'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ntStatus').value = 'Aktivan';
   document.getElementById('ntAccess').value = 'user';
   document.getElementById('ntAccessField').style.display = '';
+  document.getElementById('ntAvatarInput').value = '';
+  pendingTeamAvatar = undefined;
+  setTeamAvatarPreview('', null);
   teamModalOverlay.classList.add('open');
 });
 document.getElementById('ntCancel').addEventListener('click', closeTeamModal);
 wireOverlayClose(teamModalOverlay, closeTeamModal);
 document.getElementById('ntSubmit').addEventListener('click', ()=>{
   const role = document.getElementById('ntRole').value.trim() || "Član tima";
-  const email = document.getElementById('ntEmail').value.trim() || "—";
+  const emailBusiness = document.getElementById('ntEmailBusiness').value.trim() || "—";
+  const emailPrivate = document.getElementById('ntEmailPrivate').value.trim();
   const phone = document.getElementById('ntPhone').value.trim() || "—";
+  const hireDate = document.getElementById('ntHireDate').value;
+  const birthDate = document.getElementById('ntBirthDate').value;
   const status = document.getElementById('ntStatus').value;
   const access = document.getElementById('ntAccess').value;
 
   if(editingTeamId){
     const member = teamMembers.find(t=>t._id===editingTeamId);
     if(member){
-      Object.assign(member, {role, email, phone, status});
+      const avatar = pendingTeamAvatar!==undefined ? pendingTeamAvatar : member.avatar;
+      Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, status, avatar});
       if(isSuperAdmin()) member.access = access;
     }
   } else {
     if(!isSuperAdmin()) return;
     const name = document.getElementById('ntName').value.trim();
     if(!name) return;
-    teamMembers.unshift({ _id:nextId(), name, key:name, role, email, phone, status, access, since:new Date().getFullYear(), skills:[] });
+    teamMembers.unshift({ _id:nextId(), name, key:name, role, emailBusiness, emailPrivate, phone, hireDate, birthDate, status, access, avatar:pendingTeamAvatar||null, skills:[] });
   }
   closeTeamModal();
   renderTeamPage();
@@ -4860,24 +4928,37 @@ function populateLoginSelect(){
 function avatarFor(member){
   return {
     grad: artistGrad[member.key] || clientAvatarColors[0],
-    initials: artistInitials[member.key] || clientInitials(member.name)
+    initials: artistInitials[member.key] || clientInitials(member.name),
+    avatar: member.avatar || null
   };
+}
+function formatIsoDateHuman(iso){
+  return iso ? formatDateHuman(fromISO(iso)) : null;
 }
 function applyCurrentUser(){
   const u = teamMembers.find(t=>t._id===currentUserId);
   if(!u){ logout(); return; }
-  const { grad, initials } = avatarFor(u);
+  const { grad, initials, avatar } = avatarFor(u);
   const firstName = u.name.split(' ')[0];
   const greetEl = document.querySelector('.greet-title');
   if(greetEl) greetEl.textContent = `Zdravo, ${firstName}!`;
   const empNameEl = document.querySelector('.emp-name');
   const empRoleEl = document.querySelector('.emp-role');
   if(empNameEl) empNameEl.textContent = u.name;
-  if(empRoleEl) empRoleEl.textContent = `Studio DARKROOM · od ${u.since}.`;
+  if(empRoleEl) empRoleEl.textContent = `Studio DARKROOM · od ${formatIsoDateHuman(u.hireDate) || '—'}`;
   document.querySelector('.profile-name').textContent = firstName;
   const avatarEl = document.querySelector('.profile-avatar');
-  avatarEl.style.background = grad;
-  avatarEl.textContent = initials;
+  if(avatar){
+    avatarEl.style.background = '';
+    avatarEl.style.backgroundImage = `url('${avatar}')`;
+    avatarEl.style.backgroundSize = 'cover';
+    avatarEl.style.backgroundPosition = 'center';
+    avatarEl.textContent = '';
+  } else {
+    avatarEl.style.backgroundImage = '';
+    avatarEl.style.background = grad;
+    avatarEl.textContent = initials;
+  }
   renderProfilePage();
   applyAccessGating();
 }
@@ -4925,16 +5006,21 @@ function renderProfilePage(){
   const u = teamMembers.find(t=>t._id===currentUserId);
   const card = document.getElementById('profilePageCard');
   if(!u || !card) return;
-  const { grad, initials } = avatarFor(u);
+  const { grad, initials, avatar } = avatarFor(u);
+  const avatarHtml = avatar ? `style="background-image:url('${avatar}');background-size:cover;background-position:center;"` : `style="background:${grad};"`;
+  const hireLabel = formatIsoDateHuman(u.hireDate);
+  const birthLabel = formatIsoDateHuman(u.birthDate);
   card.innerHTML = `
-    <div class="profile-page-avatar" style="background:${grad};">${initials}</div>
+    <div class="profile-page-avatar" ${avatarHtml}>${avatar ? '' : initials}</div>
     <div class="profile-page-name">${escapeHtml(u.name)}</div>
     <div class="profile-page-role">${escapeHtml(u.role)}</div>
     <span class="tag ${u.status==='Aktivan' ? 'tag-final' : 'tag-review'}" style="margin-top:8px; display:inline-block;">${u.status}</span>
     <div class="profile-page-info">
-      <div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(u.email)}</span></div>
+      <div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(u.emailBusiness || '—')} (poslovni)</span></div>
+      ${u.emailPrivate ? `<div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(u.emailPrivate)} (privatni)</span></div>` : ''}
       <div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6 19.8 19.8 0 0 1-3.1-8.7A2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .3 2 .6 2.9a2 2 0 0 1-.5 2.1L8 9.9a16 16 0 0 0 6 6l1.2-1.2a2 2 0 0 1 2.1-.5c.9.3 1.9.5 2.9.6a2 2 0 0 1 1.8 2.1Z"/></svg><span>${escapeHtml(u.phone)}</span></div>
-      <div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Član od ${u.since}.</span></div>
+      <div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Zaposlen/a od ${hireLabel || '—'}</span></div>
+      ${birthLabel ? `<div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg><span>Rođen/a ${birthLabel}</span></div>` : ''}
     </div>
     ${u.skills.length ? `<div class="team-skills" style="margin-top:14px;">${u.skills.map(s=>`<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}</div>` : ''}
     <div class="profile-page-actions">
