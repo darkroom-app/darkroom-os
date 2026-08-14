@@ -5,7 +5,10 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://127.0.0.1:8791/darkroom-app.html)",
       "Read(//tmp/**)",
       "Bash(powershell -Command \"Stop-Process -Id 55920 -Force\")",
-      "Bash(curl -s http://127.0.0.1:8791/darkroom-app.html)"
+      "Bash(curl -s http://127.0.0.1:8791/darkroom-app.html)",
+      "Bash(ls -lt --time-style=full-iso \"/c/Users/Render Boy 01/AppData/Local/Temp/\"*.png 2>/dev/null | head -10)",
+      "Bash(python3 -c ' *)",
+      "Bash(node scripts/embed-assets.js)"
     ]
   }
 }
