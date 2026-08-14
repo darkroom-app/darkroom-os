@@ -2991,8 +2991,7 @@ function renderTeamSwimlane(days, opts){
     });
     const maxLanes = Math.max(1, laneEnds.length);
 
-    const grad = artistGrad[t.key] || clientAvatarColors[0];
-    const initials = artistInitials[t.key] || clientInitials(t.name);
+    const { bg: avBg, inner: avInner } = avatarBgInner(t.key);
 
     let gridlines = '<div class="twg-gridlines">';
     for(let i=1;i<n;i++){ gridlines += `<i style="left:${(i/n*100)}%"></i>`; }
@@ -3019,7 +3018,7 @@ function renderTeamSwimlane(days, opts){
     return `
     <div class="twg-row">
       <div class="twg-person">
-        <span class="cb-avatar" style="width:28px;height:28px;font-size:10.5px;background:${grad};">${initials}</span>
+        <span class="cb-avatar" style="width:28px;height:28px;font-size:10.5px;${avBg}">${avInner}</span>
         <div>
           <div class="twg-person-name">${escapeHtml(t.name)}</div>
           <div class="twg-person-role">${escapeHtml(t.role)}</div>
@@ -3102,7 +3101,7 @@ function renderCalendarDay(){
     const label = eventDisplayLabel(e);
     const avatarHtml = e.kind==='praznik'
       ? `<span class="cb-avatar" style="width:26px;height:26px;font-size:13px;background:var(--coral);">🎉</span>`
-      : `<span class="cb-avatar" style="width:26px;height:26px;font-size:10px;">${e.initials}</span>`;
+      : (()=>{ const av = avatarBgInner(e.person); return `<span class="cb-avatar" style="width:26px;height:26px;font-size:10px;${av.bg}">${av.inner}</span>`; })();
     const rightIndicator = e.kind==='zadatak'
       ? `<span class="cb-urgency" style="background:${urgencyColor[e.urgency]||'var(--ink-faint)'};width:18px;height:18px;" title="Urgentnost: ${urgencyLabels[e.urgency]||''}"></span>`
       : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);width:18px;height:18px;">${leaveIcon[e.leaveType]||''}</span>` : '');
@@ -4680,7 +4679,7 @@ function renderPortfolioGrid(){
         <div class="port-title">${escapeHtml(p.title)}</div>
         <div class="port-meta">${escapeHtml(p.code)} · ${escapeHtml(p.project)}</div>
         <div class="port-foot">
-          <div class="port-artist"><span class="port-avatar" style="background:${artistGrad[p.artist]}">${artistInitials[p.artist]}</span><span>${p.artist}</span></div>
+          <div class="port-artist"><span class="port-avatar" style="${avatarBgInner(p.artist).bg}">${avatarBgInner(p.artist).inner}</span><span>${p.artist}</span></div>
           <span class="port-year">${p.year}</span>
         </div>
       </div>
@@ -4707,11 +4706,11 @@ function artistStats(name){
 
 function renderArtistChips(){
   const artists = Object.keys(artistGrad);
-  document.getElementById('artistChipRow').innerHTML = artists.map(a=>`
+  document.getElementById('artistChipRow').innerHTML = artists.map(a=>{ const av = avatarBgInner(a); return `
     <div class="artist-chip ${compareSelection.includes(a)?'selected':''}" data-artist="${a}">
-      <span class="ac-avatar" style="background:${artistGrad[a]}">${artistInitials[a]}</span>
+      <span class="ac-avatar" style="${av.bg}">${av.inner}</span>
       <span class="ac-name">${a}</span>
-    </div>`).join('');
+    </div>`; }).join('');
   document.querySelectorAll('.artist-chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       const a = chip.dataset.artist;
@@ -4743,7 +4742,7 @@ function compareCardHTML(name){
     </div>`).join('');
   return `
     <div class="cc-artist-head">
-      <div class="cc-artist-avatar" style="background:${artistGrad[name]}">${artistInitials[name]}</div>
+      <div class="cc-artist-avatar" style="${avatarBgInner(name).bg}">${avatarBgInner(name).inner}</div>
       <div><div class="cc-artist-name">${name}</div><div class="cc-artist-role">Umetnik</div></div>
     </div>
     <div class="cc-stack">${stackSegs}</div>
@@ -4825,9 +4824,6 @@ document.getElementById('portSubmit').addEventListener('click', ()=>{
 });
 
 buildPortFilterMenus();
-renderPortfolioGrid();
-renderArtistChips();
-renderCompare();
 
 function animateCountUp(el, target, opts={}){
   const duration = opts.duration || 1100;
@@ -4989,11 +4985,11 @@ let peopleSelection = ["Dušan Stević","Stefana Ristić"];
 
 function renderPeopleChips(){
   const artists = Object.keys(artistGrad);
-  document.getElementById('peopleChipRow').innerHTML = artists.map(a=>`
+  document.getElementById('peopleChipRow').innerHTML = artists.map(a=>{ const av = avatarBgInner(a); return `
     <div class="artist-chip ${peopleSelection.includes(a)?'selected':''}" data-artist="${a}">
-      <span class="ac-avatar" style="background:${artistGrad[a]}">${artistInitials[a]}</span>
+      <span class="ac-avatar" style="${av.bg}">${av.inner}</span>
       <span class="ac-name">${a}</span>
-    </div>`).join('');
+    </div>`; }).join('');
   document.querySelectorAll('#peopleChipRow .artist-chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       const a = chip.dataset.artist;
@@ -5016,17 +5012,17 @@ function renderPeopleKpis(){
     const utilization = Math.min(100, Math.round((total/(12*160))*100));
     cards.push({name, total, avg, peak:monthNamesShort[peakIdx], utilization});
   });
-  document.getElementById('peopleKpiRow').innerHTML = cards.map(c=>`
+  document.getElementById('peopleKpiRow').innerHTML = cards.map(c=>{ const av = avatarBgInner(c.name); return `
     <div class="pkpi-card">
-      <div class="pkpi-artist"><span class="pkpi-artist-avatar" style="background:${artistGrad[c.name]}">${artistInitials[c.name]}</span><span class="pkpi-artist-name">${c.name}</span></div>
+      <div class="pkpi-artist"><span class="pkpi-artist-avatar" style="${av.bg}">${av.inner}</span><span class="pkpi-artist-name">${c.name}</span></div>
       <div class="pkpi-val">${c.total}h</div>
       <div class="pkpi-label">Ukupno sati · 2026</div>
     </div>
     <div class="pkpi-card">
-      <div class="pkpi-artist"><span class="pkpi-artist-avatar" style="background:${artistGrad[c.name]}">${artistInitials[c.name]}</span><span class="pkpi-artist-name">${c.name}</span></div>
+      <div class="pkpi-artist"><span class="pkpi-artist-avatar" style="${av.bg}">${av.inner}</span><span class="pkpi-artist-name">${c.name}</span></div>
       <div class="pkpi-val">${c.avg}h</div>
       <div class="pkpi-label">Prosek / mesec · najviše ${c.peak}</div>
-    </div>`).join('');
+    </div>`; }).join('');
 }
 
 function renderLineChart(){
@@ -5079,16 +5075,16 @@ function renderEmpLeaderboard(){
   const artists = Object.keys(artistGrad);
   const ranked = artists.map(a=>({name:a, total:empYearTotal(a)})).sort((a,b)=>b.total-a.total);
   const max = ranked[0].total;
-  document.getElementById('empLeaderboard').innerHTML = ranked.map((r,i)=>`
+  document.getElementById('empLeaderboard').innerHTML = ranked.map((r,i)=>{ const av = avatarBgInner(r.name); return `
     <div class="lb-row">
       <div class="lb-rank">#${i+1}</div>
-      <div class="lb-avatar" style="background:${artistGrad[r.name]}">${artistInitials[r.name]}</div>
+      <div class="lb-avatar" style="${av.bg}">${av.inner}</div>
       <div class="lb-info">
         <div class="lb-name">${r.name}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(r.total/max)*100}" style="width:0%"></div></div>
       </div>
       <div class="lb-value">${r.total}h</div>
-    </div>`).join('');
+    </div>`; }).join('');
   setTimeout(()=>{
     document.querySelectorAll('#empLeaderboard .lb-fill').forEach((el,i)=>{
       setTimeout(()=>{ el.style.width = el.dataset.w + '%'; }, i*70);
@@ -5140,6 +5136,10 @@ let teamMembers = [
 ];
 teamMembers.forEach(t=>t._id=nextId());
 fromPersisted('teamMembers', teamMembers);
+
+renderPortfolioGrid();
+renderArtistChips();
+renderCompare();
 
 buildCalFilterMenus();
 renderCalendar();
@@ -6202,12 +6202,11 @@ function renderSalEmpGrid(){
   if(salViewMode !== 'grid') return;
   document.getElementById('salEmpGrid').innerHTML = emps.map(e=>{
     const entry = salaryFor(e.key, month);
-    const grad = artistGrad[e.key] || clientAvatarColors[0];
-    const initials = artistInitials[e.key] || clientInitials(e.name);
+    const av = avatarBgInner(e.key);
     if(!entry){
       return `<div class="sal-emp-card">
         <div class="sal-emp-card-top">
-          <span class="sal-emp-avatar-lg" style="background:${grad}">${initials}</span>
+          <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
           <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
         </div>
         <div class="sal-emp-card-amt empty">Nije uneto</div>
@@ -6217,7 +6216,7 @@ function renderSalEmpGrid(){
     const paid = entry.status !== 'Na čekanju';
     return `<div class="sal-emp-card entered">
       <div class="sal-emp-card-top">
-        <span class="sal-emp-avatar-lg" style="background:${grad}">${initials}</span>
+        <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
         <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
       </div>
       <div class="sal-emp-card-amt">${fmtRSD(salUkupno(entry))}</div>
@@ -6236,9 +6235,10 @@ function renderSalTable(){
   document.getElementById('salTable').innerHTML = emps.map(e=>{
     const entry = salaryFor(e.key, month);
     const prevEntry = salaryFor(e.key, month-1);
+    const av = avatarBgInner(e.key);
     if(!entry){
       return `<div class="sal-row2">
-        <div class="sal-emp"><span class="sal-emp-avatar" style="background:${artistGrad[e.key]}">${artistInitials[e.key]}</span><span class="sal-emp-name">${e.name}</span></div>
+        <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
         <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
         <div><span class="sal-status-badge missing">Nije uneto</span></div>
         <button class="sal-row-btn primary" data-emp="${e.key}">Unesi platu</button>
@@ -6249,7 +6249,7 @@ function renderSalTable(){
     const arrow = changed ? `<span class="sal-change ${up?'up':'down'}">${up?'▲':'▼'}</span>` : '';
     const paid = entry.status !== 'Na čekanju';
     return `<div class="sal-row2 entered" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
-      <div class="sal-emp"><span class="sal-emp-avatar" style="background:${artistGrad[e.key]}">${artistInitials[e.key]}</span><span class="sal-emp-name">${e.name}</span></div>
+      <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
       <div class="sal-cell2">${fmtK(entry.osnovica)}${arrow}</div>
       <div class="sal-cell2">${entry.bonus ? fmtK(entry.bonus) : '—'}</div>
       <div class="sal-cell2">${entry.prekovremeno ? fmtK(entry.prekovremeno) : '—'}</div>
@@ -6331,8 +6331,9 @@ function openSalConfirmModal(){
     : '';
   document.getElementById('salConfirmList').innerHTML = present.map(t=>{
     const e = salaryFor(t.key, month);
+    const av = avatarBgInner(t.key);
     return `<div class="sal-confirm-row">
-      <span class="sal-emp-avatar" style="background:${artistGrad[t.key]}">${artistInitials[t.key]}</span>
+      <span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span>
       <span class="sal-confirm-name">${escapeHtml(t.name)}</span>
       <span class="sal-confirm-amt">${fmtRSD(salUkupno(e))}</span>
     </div>`;
@@ -6653,6 +6654,16 @@ function avatarFor(member){
     initials: artistInitials[member.key] || clientInitials(member.name),
     avatar: member.avatar || null
   };
+}
+function avatarBgInner(key){
+  const t = teamMembers.find(m=>m.key===key || m.name===key);
+  if(t){
+    const { grad, initials, avatar } = avatarFor(t);
+    return avatar
+      ? { bg:`background-image:url('${avatar}');background-size:cover;background-position:center;`, inner:'' }
+      : { bg:`background:${grad};`, inner: initials };
+  }
+  return { bg:`background:${artistGrad[key] || clientAvatarColors[0]};`, inner: artistInitials[key] || clientInitials(key) };
 }
 function formatIsoDateHuman(iso){
   return iso ? formatDateHuman(fromISO(iso)) : null;
