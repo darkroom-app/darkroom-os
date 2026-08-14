@@ -3649,36 +3649,252 @@ function mkRound(label, billable, date){ return { _id:nextId(), label, billable,
 function mkKadar(type, name, employee, status, rounds){ return { _id:nextId(), type, name, employee, status, rounds: rounds || [] }; }
 
 let allProjects = [
-  {name:"Projekat Koncept 7", code:"P001", client:"Gensler Dubai", year:2026, startDate:"2026-06-01", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:1.3, kadrovi:[
-    mkKadar("enterijer","Enterijer_DnevnaSoba","Dušan Stević","aktivan",[ mkRound("Round 01",true,"2026-07-10") ]),
-    mkKadar("eksterijer","Eksterijer_Glavna_Fasada","Ivana Sazdov","odobren",[ mkRound("Round 01",true,"2026-07-05"), mkRound("Round 02",true,"2026-07-18"), mkRound("Rev Remark",false,"2026-07-20") ]),
-    mkKadar("model","3D_Model_Baza","Miloš Tasić","na čekanju",[]),
+  {name:"Dubai Island", code:"P001", client:"Gensler Dubai", year:2026, startDate:"2026-05-04", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:1, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Dušan Stević", "odobren", [mkRound("Round 01", true, "2026-05-08"), mkRound("Round 02", true, "2026-05-13")]),
+    mkKadar("enterijer", "Enterijer_02", "Stefana Ristić", "aktivan", [mkRound("Round 01", true, "2026-05-11")]),
+    mkKadar("enterijer", "Enterijer_03", "Radoslav Milanović", "aktivan", [mkRound("Round 01", true, "2026-05-14")]),
+    mkKadar("enterijer", "Enterijer_04", "Dalibor Mitić", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Katarina Đorđević", "odobren", [mkRound("Round 01", true, "2026-05-20"), mkRound("Round 02", true, "2026-05-25")]),
+    mkKadar("enterijer", "Enterijer_06", "Aleksandra Vukašinović", "aktivan", [mkRound("Round 01", true, "2026-05-23")]),
+    mkKadar("enterijer", "Enterijer_07", "Mihajlo Nagradić", "aktivan", [mkRound("Round 01", true, "2026-05-26")]),
+    mkKadar("enterijer", "Enterijer_08", "Nikola Jovanović", "na čekanju", [])
   ]},
-  {name:"Vila Sunčana Padina", code:"P002", client:"Gensler San Francisco", year:2026, startDate:"2026-06-10", managerName:"Stefana Ristić", status:"U toku", thumbnail:null, seed:4.1, kadrovi:[
-    mkKadar("eksterijer","Eksterijer_Dan","Stefana Ristić","odobren",[ mkRound("Round 01",true,"2026-07-02") ]),
-    mkKadar("eksterijer","Eksterijer_Noć","Stefana Ristić","aktivan",[]),
-    mkKadar("animacija","Walkthrough_Prizemlje","Radoslav Milanović","aktivan",[ mkRound("Round 01",true,"2026-07-15") ]),
+  {name:"Crown Plaza", code:"P002", client:"Gensler Dubai", year:2026, startDate:"2026-05-18", managerName:"Stefana Ristić", status:"U toku", thumbnail:null, seed:2.7, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Anđela Pešić", "odobren", [mkRound("Round 01", true, "2026-05-22"), mkRound("Round 02", true, "2026-05-27")]),
+    mkKadar("enterijer", "Enterijer_02", "Marija Todorović", "aktivan", [mkRound("Round 01", true, "2026-05-25")]),
+    mkKadar("enterijer", "Enterijer_03", "Ana Krstić", "aktivan", [mkRound("Round 01", true, "2026-05-28")]),
+    mkKadar("enterijer", "Enterijer_04", "Miljana Cvetković", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Miloš Tasić", "odobren", [mkRound("Round 01", true, "2026-06-03"), mkRound("Round 02", true, "2026-06-08")]),
+    mkKadar("enterijer", "Enterijer_06", "Ivana Sazdov", "aktivan", [mkRound("Round 01", true, "2026-06-06")]),
+    mkKadar("enterijer", "Enterijer_07", "Lazar Pešić", "aktivan", [mkRound("Round 01", true, "2026-06-09")])
   ]},
-  {name:"Poslovni Kompleks Delta", code:"P003", client:"Arvi Studios", year:2026, startDate:"2026-05-20", managerName:"Radoslav Milanović", status:"Revizija", thumbnail:null, seed:2.6, kadrovi:[
-    mkKadar("eksterijer","Revizija_Fasade","Radoslav Milanović","otkazan",[]),
-    mkKadar("aerial","Ptičja_Perspektiva","Dalibor Mitić","aktivan",[]),
+  {name:"Airport Dubai", code:"P003", client:"Gensler Dubai", year:2026, startDate:"2026-06-01", managerName:"Radoslav Milanović", status:"U toku", thumbnail:null, seed:4.4, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Damjan Mitrović", "odobren", [mkRound("Round 01", true, "2026-06-05"), mkRound("Round 02", true, "2026-06-10")]),
+    mkKadar("enterijer", "Enterijer_02", "Aleksandar Jovanović", "aktivan", [mkRound("Round 01", true, "2026-06-08")]),
+    mkKadar("enterijer", "Enterijer_03", "Marija Milenković", "aktivan", [mkRound("Round 01", true, "2026-06-11")]),
+    mkKadar("enterijer", "Enterijer_04", "Dušan Stević", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Stefana Ristić", "odobren", [mkRound("Round 01", true, "2026-06-17"), mkRound("Round 02", true, "2026-06-22")]),
+    mkKadar("enterijer", "Enterijer_06", "Radoslav Milanović", "aktivan", [mkRound("Round 01", true, "2026-06-20")]),
+    mkKadar("enterijer", "Enterijer_07", "Dalibor Mitić", "aktivan", [mkRound("Round 01", true, "2026-06-23")]),
+    mkKadar("enterijer", "Enterijer_08", "Katarina Đorđević", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_09", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-06-29"), mkRound("Round 02", true, "2026-07-04")])
   ]},
-  {name:"Rezidencija Javor", code:"P004", client:"Rilea Group", year:2026, startDate:"2026-05-01", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:6.4, kadrovi:[]},
-  {name:"Hotel Panorama", code:"P005", client:"Growcott Freer", year:2026, startDate:"2026-03-15", managerName:"Stefana Ristić", status:"Završeno", thumbnail:null, seed:3.2, kadrovi:[]},
-  {name:"Stambeni Blok Riva", code:"P006", client:"One World Properties", year:2026, startDate:"2026-04-20", managerName:"Radoslav Milanović", status:"U toku", thumbnail:null, seed:5.7, kadrovi:[]},
-  {name:"Enterijer Penthouse K", code:"P007", client:"Woods Bagot", year:2025, startDate:"2025-10-01", managerName:"Dušan Stević", status:"Završeno", thumbnail:null, seed:7.2, kadrovi:[]},
-  {name:"Poslovna Zgrada Vertex", code:"P008", client:"One Line Design", year:2025, startDate:"2025-11-05", managerName:"Stefana Ristić", status:"Na čekanju", thumbnail:null, seed:8.5, kadrovi:[]},
-  {name:"Vikendica Zlatibor", code:"P009", client:"Woods Bagot", year:2025, startDate:"2025-08-12", managerName:"Radoslav Milanović", status:"Završeno", thumbnail:null, seed:9.1, kadrovi:[]},
-  {name:"Šoping Centar Aurora", code:"P010", client:"Southern Land Company", year:2025, startDate:"2025-07-01", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:1.9, kadrovi:[]},
-  {name:"Rezidencijalni Kompleks Nova", code:"P011", client:"Arvi Studios", year:2024, startDate:"2024-09-01", managerName:"Stefana Ristić", status:"Završeno", thumbnail:null, seed:3.8, kadrovi:[]},
-  {name:"Apartman Studio M", code:"P012", client:"Woods Bagot", year:2024, startDate:"2024-04-01", managerName:"Radoslav Milanović", status:"Završeno", thumbnail:null, seed:5.2, kadrovi:[]},
+  {name:"Wadi al Safar", code:"P004", client:"Gensler Dubai", year:2026, startDate:"2026-06-15", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:6.1, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Mihajlo Nagradić", "odobren", [mkRound("Round 01", true, "2026-06-19"), mkRound("Round 02", true, "2026-06-24")]),
+    mkKadar("enterijer", "Enterijer_02", "Nikola Jovanović", "aktivan", [mkRound("Round 01", true, "2026-06-22")]),
+    mkKadar("enterijer", "Enterijer_03", "Anđela Pešić", "aktivan", [mkRound("Round 01", true, "2026-06-25")]),
+    mkKadar("enterijer", "Enterijer_04", "Marija Todorović", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Ana Krstić", "odobren", [mkRound("Round 01", true, "2026-07-01"), mkRound("Round 02", true, "2026-07-06")]),
+    mkKadar("enterijer", "Enterijer_06", "Miljana Cvetković", "aktivan", [mkRound("Round 01", true, "2026-07-04")])
+  ]},
+  {name:"Provenance", code:"P005", client:"Gensler San Francisco", year:2026, startDate:"2026-06-08", managerName:"Stefana Ristić", status:"U toku", thumbnail:null, seed:7.8, kadrovi:[
+    mkKadar("enterijer", "Amenities_01", "Miloš Tasić", "odobren", [mkRound("Round 01", true, "2026-06-12"), mkRound("Round 02", true, "2026-06-17")]),
+    mkKadar("enterijer", "Amenities_02", "Ivana Sazdov", "aktivan", [mkRound("Round 01", true, "2026-06-15")]),
+    mkKadar("enterijer", "Amenities_03", "Lazar Pešić", "aktivan", [mkRound("Round 01", true, "2026-06-18")]),
+    mkKadar("enterijer", "Amenities_04", "Damjan Mitrović", "na čekanju", []),
+    mkKadar("enterijer", "Amenities_05", "Aleksandar Jovanović", "odobren", [mkRound("Round 01", true, "2026-06-24"), mkRound("Round 02", true, "2026-06-29")]),
+    mkKadar("enterijer", "Amenities_06", "Marija Milenković", "aktivan", [mkRound("Round 01", true, "2026-06-27")]),
+    mkKadar("enterijer", "Amenities_07", "Dušan Stević", "aktivan", [mkRound("Round 01", true, "2026-06-30")]),
+    mkKadar("enterijer", "Amenities_08", "Stefana Ristić", "na čekanju", [])
+  ]},
+  {name:"Warehouse", code:"P006", client:"Arvi Studios", year:2026, startDate:"2026-06-22", managerName:"Radoslav Milanović", status:"U toku", thumbnail:null, seed:9.5, kadrovi:[
+    mkKadar("eksterijer", "Eksterijer_01", "Radoslav Milanović", "odobren", [mkRound("Round 01", true, "2026-06-26"), mkRound("Round 02", true, "2026-07-01")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Dalibor Mitić", "aktivan", [mkRound("Round 01", true, "2026-06-29")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Katarina Đorđević", "aktivan", [mkRound("Round 01", true, "2026-07-02")]),
+    mkKadar("aerial", "Aerial_01", "Aleksandra Vukašinović", "na čekanju", []),
+    mkKadar("animacija", "Animacija_01", "Mihajlo Nagradić", "odobren", [mkRound("Round 01", true, "2026-07-08"), mkRound("Round 02", true, "2026-07-13")])
+  ]},
+  {name:"Rider", code:"P007", client:"Rilea Group", year:2026, startDate:"2026-04-06", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:2.2, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Nikola Jovanović", "odobren", [mkRound("Round 01", true, "2026-04-10"), mkRound("Round 02", true, "2026-04-15")]),
+    mkKadar("enterijer", "Enterijer_02", "Anđela Pešić", "aktivan", [mkRound("Round 01", true, "2026-04-13")]),
+    mkKadar("enterijer", "Enterijer_03", "Marija Todorović", "aktivan", [mkRound("Round 01", true, "2026-04-16")]),
+    mkKadar("enterijer", "Enterijer_04", "Ana Krstić", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Miljana Cvetković", "odobren", [mkRound("Round 01", true, "2026-04-22"), mkRound("Round 02", true, "2026-04-27")]),
+    mkKadar("enterijer", "Enterijer_06", "Miloš Tasić", "aktivan", [mkRound("Round 01", true, "2026-04-25")]),
+    mkKadar("enterijer", "Enterijer_07", "Ivana Sazdov", "aktivan", [mkRound("Round 01", true, "2026-04-28")]),
+    mkKadar("enterijer", "Enterijer_08", "Lazar Pešić", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_09", "Damjan Mitrović", "odobren", [mkRound("Round 01", true, "2026-05-04"), mkRound("Round 02", true, "2026-05-09")]),
+    mkKadar("enterijer", "Enterijer_10", "Aleksandar Jovanović", "aktivan", [mkRound("Round 01", true, "2026-04-12")]),
+    mkKadar("enterijer", "Enterijer_11", "Marija Milenković", "aktivan", [mkRound("Round 01", true, "2026-04-15")]),
+    mkKadar("enterijer", "Enterijer_12", "Dušan Stević", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_13", "Stefana Ristić", "odobren", [mkRound("Round 01", true, "2026-04-21"), mkRound("Round 02", true, "2026-04-26")]),
+    mkKadar("enterijer", "Enterijer_14", "Radoslav Milanović", "aktivan", [mkRound("Round 01", true, "2026-04-24")]),
+    mkKadar("enterijer", "Enterijer_15", "Dalibor Mitić", "aktivan", [mkRound("Round 01", true, "2026-04-27")]),
+    mkKadar("enterijer", "Enterijer_16", "Katarina Đorđević", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_17", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-05-03"), mkRound("Round 02", true, "2026-05-08")]),
+    mkKadar("enterijer", "Enterijer_18", "Mihajlo Nagradić", "aktivan", [mkRound("Round 01", true, "2026-04-11")]),
+    mkKadar("enterijer", "Enterijer_19", "Nikola Jovanović", "aktivan", [mkRound("Round 01", true, "2026-04-14")]),
+    mkKadar("enterijer", "Enterijer_20", "Anđela Pešić", "na čekanju", []),
+    mkKadar("eksterijer", "Eksterijer_01", "Marija Todorović", "odobren", [mkRound("Round 01", true, "2026-04-20"), mkRound("Round 02", true, "2026-04-25")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Ana Krstić", "aktivan", [mkRound("Round 01", true, "2026-04-23")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Miljana Cvetković", "aktivan", [mkRound("Round 01", true, "2026-04-26")]),
+    mkKadar("eksterijer", "Eksterijer_04", "Miloš Tasić", "na čekanju", []),
+    mkKadar("eksterijer", "Eksterijer_05", "Ivana Sazdov", "odobren", [mkRound("Round 01", true, "2026-05-02"), mkRound("Round 02", true, "2026-05-07")]),
+    mkKadar("eksterijer", "Eksterijer_06", "Lazar Pešić", "aktivan", [mkRound("Round 01", true, "2026-04-10")]),
+    mkKadar("eksterijer", "Eksterijer_07", "Damjan Mitrović", "aktivan", [mkRound("Round 01", true, "2026-04-13")]),
+    mkKadar("eksterijer", "Eksterijer_08", "Aleksandar Jovanović", "na čekanju", []),
+    mkKadar("eksterijer", "Eksterijer_09", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-04-19"), mkRound("Round 02", true, "2026-04-24")]),
+    mkKadar("eksterijer", "Eksterijer_10", "Dušan Stević", "aktivan", [mkRound("Round 01", true, "2026-04-22")]),
+    mkKadar("animacija", "Animacija_01", "Stefana Ristić", "aktivan", [mkRound("Round 01", true, "2026-04-25")]),
+    mkKadar("animacija", "Animacija_02", "Radoslav Milanović", "na čekanju", [])
+  ]},
+  {name:"Navi", code:"P008", client:"Rilea Group", year:2026, startDate:"2026-08-10", managerName:"Stefana Ristić", status:"Na čekanju", thumbnail:null, seed:3.9, kadrovi:[
+
+  ]},
+  {name:"Mohawk", code:"P009", client:"Rilea Group", year:2026, startDate:"2026-07-01", managerName:"Radoslav Milanović", status:"U toku", thumbnail:null, seed:5.6, kadrovi:[
+    mkKadar("eksterijer", "Eksterijer_01", "Dalibor Mitić", "odobren", [mkRound("Round 01", true, "2026-07-05"), mkRound("Round 02", true, "2026-07-10")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Katarina Đorđević", "aktivan", [mkRound("Round 01", true, "2026-07-08")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Aleksandra Vukašinović", "aktivan", [mkRound("Round 01", true, "2026-07-11")]),
+    mkKadar("eksterijer", "Eksterijer_04", "Mihajlo Nagradić", "na čekanju", []),
+    mkKadar("eksterijer", "Eksterijer_05", "Nikola Jovanović", "odobren", [mkRound("Round 01", true, "2026-07-17"), mkRound("Round 02", true, "2026-07-22")]),
+    mkKadar("animacija", "Animacija_01", "Anđela Pešić", "aktivan", [mkRound("Round 01", true, "2026-07-20")])
+  ]},
+  {name:"97 Leinster", code:"P010", client:"Growcott Freer", year:2026, startDate:"2026-07-08", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:7.3, kadrovi:[
+    mkKadar("eksterijer", "Eksterijer_01", "Marija Todorović", "odobren", [mkRound("Round 01", true, "2026-07-12"), mkRound("Round 02", true, "2026-07-17")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Ana Krstić", "aktivan", [mkRound("Round 01", true, "2026-07-15")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Miljana Cvetković", "aktivan", [mkRound("Round 01", true, "2026-07-18")]),
+    mkKadar("eksterijer", "Eksterijer_04", "Miloš Tasić", "na čekanju", [])
+  ]},
+  {name:"27 Upton Street", code:"P011", client:"Growcott Freer", year:2026, startDate:"2026-07-15", managerName:"Stefana Ristić", status:"U toku", thumbnail:null, seed:9, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Ivana Sazdov", "odobren", [mkRound("Round 01", true, "2026-07-19"), mkRound("Round 02", true, "2026-07-24")]),
+    mkKadar("enterijer", "Enterijer_02", "Lazar Pešić", "aktivan", [mkRound("Round 01", true, "2026-07-22")]),
+    mkKadar("enterijer", "Enterijer_03", "Damjan Mitrović", "aktivan", [mkRound("Round 01", true, "2026-07-25")]),
+    mkKadar("enterijer", "Enterijer_04", "Aleksandar Jovanović", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-07-31"), mkRound("Round 02", true, "2026-08-05")]),
+    mkKadar("eksterijer", "Eksterijer_01", "Dušan Stević", "aktivan", [mkRound("Round 01", true, "2026-08-03")])
+  ]},
+  {name:"Nobe Parc", code:"P012", client:"One World Properties", year:2026, startDate:"2026-05-11", managerName:"Radoslav Milanović", status:"U toku", thumbnail:null, seed:1.7, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Stefana Ristić", "odobren", [mkRound("Round 01", true, "2026-05-15"), mkRound("Round 02", true, "2026-05-20")]),
+    mkKadar("enterijer", "Enterijer_02", "Radoslav Milanović", "aktivan", [mkRound("Round 01", true, "2026-05-18")]),
+    mkKadar("enterijer", "Enterijer_03", "Dalibor Mitić", "aktivan", [mkRound("Round 01", true, "2026-05-21")]),
+    mkKadar("enterijer", "Enterijer_04", "Katarina Đorđević", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-05-27"), mkRound("Round 02", true, "2026-06-01")]),
+    mkKadar("enterijer", "Enterijer_06", "Mihajlo Nagradić", "aktivan", [mkRound("Round 01", true, "2026-05-30")]),
+    mkKadar("enterijer", "Enterijer_07", "Nikola Jovanović", "aktivan", [mkRound("Round 01", true, "2026-06-02")]),
+    mkKadar("enterijer", "Enterijer_08", "Anđela Pešić", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_09", "Marija Todorović", "odobren", [mkRound("Round 01", true, "2026-06-08"), mkRound("Round 02", true, "2026-06-13")]),
+    mkKadar("enterijer", "Enterijer_10", "Ana Krstić", "aktivan", [mkRound("Round 01", true, "2026-05-17")]),
+    mkKadar("enterijer", "Enterijer_11", "Miljana Cvetković", "aktivan", [mkRound("Round 01", true, "2026-05-20")]),
+    mkKadar("enterijer", "Enterijer_12", "Miloš Tasić", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_13", "Ivana Sazdov", "odobren", [mkRound("Round 01", true, "2026-05-26"), mkRound("Round 02", true, "2026-05-31")]),
+    mkKadar("enterijer", "Enterijer_14", "Lazar Pešić", "aktivan", [mkRound("Round 01", true, "2026-05-29")]),
+    mkKadar("enterijer", "Enterijer_15", "Damjan Mitrović", "aktivan", [mkRound("Round 01", true, "2026-06-01")]),
+    mkKadar("eksterijer", "Eksterijer_01", "Aleksandar Jovanović", "na čekanju", []),
+    mkKadar("eksterijer", "Eksterijer_02", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-06-07"), mkRound("Round 02", true, "2026-06-12")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Dušan Stević", "aktivan", [mkRound("Round 01", true, "2026-05-16")]),
+    mkKadar("eksterijer", "Eksterijer_04", "Stefana Ristić", "aktivan", [mkRound("Round 01", true, "2026-05-19")]),
+    mkKadar("eksterijer", "Eksterijer_05", "Radoslav Milanović", "na čekanju", [])
+  ]},
+  {name:"Blok 4", code:"P013", client:"One Line Design", year:2026, startDate:"2026-02-02", managerName:"Dušan Stević", status:"Završeno", thumbnail:null, seed:3.4, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Dalibor Mitić", "odobren", [mkRound("Round 01", true, "2026-02-06"), mkRound("Round 02", true, "2026-02-11")]),
+    mkKadar("enterijer", "Enterijer_02", "Katarina Đorđević", "odobren", [mkRound("Round 01", true, "2026-02-09"), mkRound("Round 02", true, "2026-02-14")]),
+    mkKadar("enterijer", "Enterijer_03", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-02-12"), mkRound("Round 02", true, "2026-02-17")]),
+    mkKadar("enterijer", "Enterijer_04", "Mihajlo Nagradić", "odobren", [mkRound("Round 01", true, "2026-02-15"), mkRound("Round 02", true, "2026-02-20")]),
+    mkKadar("enterijer", "Enterijer_05", "Nikola Jovanović", "odobren", [mkRound("Round 01", true, "2026-02-18"), mkRound("Round 02", true, "2026-02-23")]),
+    mkKadar("enterijer", "Enterijer_06", "Anđela Pešić", "odobren", [mkRound("Round 01", true, "2026-02-21"), mkRound("Round 02", true, "2026-02-26")])
+  ]},
+  {name:"South Shore", code:"P014", client:"One Line Design", year:2026, startDate:"2026-02-16", managerName:"Stefana Ristić", status:"Završeno", thumbnail:null, seed:5.1, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Marija Todorović", "odobren", [mkRound("Round 01", true, "2026-02-20"), mkRound("Round 02", true, "2026-02-25")]),
+    mkKadar("enterijer", "Enterijer_02", "Ana Krstić", "odobren", [mkRound("Round 01", true, "2026-02-23"), mkRound("Round 02", true, "2026-02-28")]),
+    mkKadar("enterijer", "Enterijer_03", "Miljana Cvetković", "odobren", [mkRound("Round 01", true, "2026-02-26"), mkRound("Round 02", true, "2026-03-03")]),
+    mkKadar("enterijer", "Enterijer_04", "Miloš Tasić", "odobren", [mkRound("Round 01", true, "2026-03-01"), mkRound("Round 02", true, "2026-03-06")]),
+    mkKadar("enterijer", "Enterijer_05", "Ivana Sazdov", "odobren", [mkRound("Round 01", true, "2026-03-04"), mkRound("Round 02", true, "2026-03-09")])
+  ]},
+  {name:"Doral Westside", code:"P015", client:"One Line Design", year:2026, startDate:"2026-03-02", managerName:"Radoslav Milanović", status:"Završeno", thumbnail:null, seed:6.8, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Lazar Pešić", "odobren", [mkRound("Round 01", true, "2026-03-06"), mkRound("Round 02", true, "2026-03-11")]),
+    mkKadar("enterijer", "Enterijer_02", "Damjan Mitrović", "odobren", [mkRound("Round 01", true, "2026-03-09"), mkRound("Round 02", true, "2026-03-14")]),
+    mkKadar("enterijer", "Enterijer_03", "Aleksandar Jovanović", "odobren", [mkRound("Round 01", true, "2026-03-12"), mkRound("Round 02", true, "2026-03-17")]),
+    mkKadar("enterijer", "Enterijer_04", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-03-15"), mkRound("Round 02", true, "2026-03-20")]),
+    mkKadar("enterijer", "Enterijer_05", "Dušan Stević", "odobren", [mkRound("Round 01", true, "2026-03-18"), mkRound("Round 02", true, "2026-03-23")]),
+    mkKadar("enterijer", "Enterijer_06", "Stefana Ristić", "odobren", [mkRound("Round 01", true, "2026-03-21"), mkRound("Round 02", true, "2026-03-26")])
+  ]},
+  {name:"Fairington", code:"P016", client:"Southern Land Company", year:2026, startDate:"2026-01-12", managerName:"Dušan Stević", status:"Završeno", thumbnail:null, seed:8.5, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Radoslav Milanović", "odobren", [mkRound("Round 01", true, "2026-01-16"), mkRound("Round 02", true, "2026-01-21")]),
+    mkKadar("enterijer", "Enterijer_02", "Dalibor Mitić", "odobren", [mkRound("Round 01", true, "2026-01-19"), mkRound("Round 02", true, "2026-01-24")]),
+    mkKadar("enterijer", "Enterijer_03", "Katarina Đorđević", "odobren", [mkRound("Round 01", true, "2026-01-22"), mkRound("Round 02", true, "2026-01-27")]),
+    mkKadar("enterijer", "Enterijer_04", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-01-25"), mkRound("Round 02", true, "2026-01-30")]),
+    mkKadar("enterijer", "Enterijer_05", "Mihajlo Nagradić", "odobren", [mkRound("Round 01", true, "2026-01-28"), mkRound("Round 02", true, "2026-02-02")]),
+    mkKadar("eksterijer", "Eksterijer_01", "Nikola Jovanović", "odobren", [mkRound("Round 01", true, "2026-01-31"), mkRound("Round 02", true, "2026-02-05")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Anđela Pešić", "odobren", [mkRound("Round 01", true, "2026-02-03"), mkRound("Round 02", true, "2026-02-08")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Marija Todorović", "odobren", [mkRound("Round 01", true, "2026-02-06"), mkRound("Round 02", true, "2026-02-11")]),
+    mkKadar("eksterijer", "Eksterijer_04", "Ana Krstić", "odobren", [mkRound("Round 01", true, "2026-02-09"), mkRound("Round 02", true, "2026-02-14")]),
+    mkKadar("animacija", "Animacija_01", "Miljana Cvetković", "odobren", [mkRound("Round 01", true, "2026-01-18"), mkRound("Round 02", true, "2026-01-23")])
+  ]},
+  {name:"Julliete", code:"P017", client:"Southern Land Company", year:2026, startDate:"2026-01-26", managerName:"Stefana Ristić", status:"Završeno", thumbnail:null, seed:1.2, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Miloš Tasić", "odobren", [mkRound("Round 01", true, "2026-01-30"), mkRound("Round 02", true, "2026-02-04")]),
+    mkKadar("enterijer", "Enterijer_02", "Ivana Sazdov", "odobren", [mkRound("Round 01", true, "2026-02-02"), mkRound("Round 02", true, "2026-02-07")]),
+    mkKadar("enterijer", "Enterijer_03", "Lazar Pešić", "odobren", [mkRound("Round 01", true, "2026-02-05"), mkRound("Round 02", true, "2026-02-10")]),
+    mkKadar("enterijer", "Enterijer_04", "Damjan Mitrović", "odobren", [mkRound("Round 01", true, "2026-02-08"), mkRound("Round 02", true, "2026-02-13")]),
+    mkKadar("enterijer", "Enterijer_05", "Aleksandar Jovanović", "odobren", [mkRound("Round 01", true, "2026-02-11"), mkRound("Round 02", true, "2026-02-16")]),
+    mkKadar("enterijer", "Enterijer_06", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-02-14"), mkRound("Round 02", true, "2026-02-19")]),
+    mkKadar("eksterijer", "Eksterijer_01", "Dušan Stević", "odobren", [mkRound("Round 01", true, "2026-02-17"), mkRound("Round 02", true, "2026-02-22")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Stefana Ristić", "odobren", [mkRound("Round 01", true, "2026-02-20"), mkRound("Round 02", true, "2026-02-25")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Radoslav Milanović", "odobren", [mkRound("Round 01", true, "2026-02-23"), mkRound("Round 02", true, "2026-02-28")]),
+    mkKadar("animacija", "Animacija_01", "Dalibor Mitić", "odobren", [mkRound("Round 01", true, "2026-02-01"), mkRound("Round 02", true, "2026-02-06")])
+  ]},
+  {name:"Westhaven", code:"P018", client:"Southern Land Company", year:2026, startDate:"2026-02-09", managerName:"Radoslav Milanović", status:"Završeno", thumbnail:null, seed:2.9, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Katarina Đorđević", "odobren", [mkRound("Round 01", true, "2026-02-13"), mkRound("Round 02", true, "2026-02-18")]),
+    mkKadar("enterijer", "Enterijer_02", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-02-16"), mkRound("Round 02", true, "2026-02-21")]),
+    mkKadar("enterijer", "Enterijer_03", "Mihajlo Nagradić", "odobren", [mkRound("Round 01", true, "2026-02-19"), mkRound("Round 02", true, "2026-02-24")]),
+    mkKadar("enterijer", "Enterijer_04", "Nikola Jovanović", "odobren", [mkRound("Round 01", true, "2026-02-22"), mkRound("Round 02", true, "2026-02-27")]),
+    mkKadar("enterijer", "Enterijer_05", "Anđela Pešić", "odobren", [mkRound("Round 01", true, "2026-02-25"), mkRound("Round 02", true, "2026-03-02")]),
+    mkKadar("eksterijer", "Eksterijer_01", "Marija Todorović", "odobren", [mkRound("Round 01", true, "2026-02-28"), mkRound("Round 02", true, "2026-03-05")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Ana Krstić", "odobren", [mkRound("Round 01", true, "2026-03-03"), mkRound("Round 02", true, "2026-03-08")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Miljana Cvetković", "odobren", [mkRound("Round 01", true, "2026-03-06"), mkRound("Round 02", true, "2026-03-11")]),
+    mkKadar("eksterijer", "Eksterijer_04", "Miloš Tasić", "odobren", [mkRound("Round 01", true, "2026-03-09"), mkRound("Round 02", true, "2026-03-14")]),
+    mkKadar("animacija", "Animacija_01", "Ivana Sazdov", "odobren", [mkRound("Round 01", true, "2026-02-15"), mkRound("Round 02", true, "2026-02-20")])
+  ]},
+  {name:"Marketplace", code:"P019", client:"Southern Land Company", year:2026, startDate:"2026-02-23", managerName:"Dušan Stević", status:"Završeno", thumbnail:null, seed:4.6, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Lazar Pešić", "odobren", [mkRound("Round 01", true, "2026-02-27"), mkRound("Round 02", true, "2026-03-04")]),
+    mkKadar("enterijer", "Enterijer_02", "Damjan Mitrović", "odobren", [mkRound("Round 01", true, "2026-03-02"), mkRound("Round 02", true, "2026-03-07")]),
+    mkKadar("enterijer", "Enterijer_03", "Aleksandar Jovanović", "odobren", [mkRound("Round 01", true, "2026-03-05"), mkRound("Round 02", true, "2026-03-10")]),
+    mkKadar("enterijer", "Enterijer_04", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-03-08"), mkRound("Round 02", true, "2026-03-13")]),
+    mkKadar("enterijer", "Enterijer_05", "Dušan Stević", "odobren", [mkRound("Round 01", true, "2026-03-11"), mkRound("Round 02", true, "2026-03-16")]),
+    mkKadar("enterijer", "Enterijer_06", "Stefana Ristić", "odobren", [mkRound("Round 01", true, "2026-03-14"), mkRound("Round 02", true, "2026-03-19")]),
+    mkKadar("eksterijer", "Eksterijer_01", "Radoslav Milanović", "odobren", [mkRound("Round 01", true, "2026-03-17"), mkRound("Round 02", true, "2026-03-22")]),
+    mkKadar("eksterijer", "Eksterijer_02", "Dalibor Mitić", "odobren", [mkRound("Round 01", true, "2026-03-20"), mkRound("Round 02", true, "2026-03-25")]),
+    mkKadar("eksterijer", "Eksterijer_03", "Katarina Đorđević", "odobren", [mkRound("Round 01", true, "2026-03-23"), mkRound("Round 02", true, "2026-03-28")]),
+    mkKadar("animacija", "Animacija_01", "Aleksandra Vukašinović", "odobren", [mkRound("Round 01", true, "2026-03-01"), mkRound("Round 02", true, "2026-03-06")])
+  ]},
+  {name:"Bay Island", code:"P020", client:"Woods Bagot", year:2026, startDate:"2026-05-25", managerName:"Stefana Ristić", status:"U toku", thumbnail:null, seed:6.3, kadrovi:[
+    mkKadar("enterijer", "Enterijer_01", "Mihajlo Nagradić", "odobren", [mkRound("Round 01", true, "2026-05-29"), mkRound("Round 02", true, "2026-06-03")]),
+    mkKadar("enterijer", "Enterijer_02", "Nikola Jovanović", "aktivan", [mkRound("Round 01", true, "2026-06-01")]),
+    mkKadar("enterijer", "Enterijer_03", "Anđela Pešić", "aktivan", [mkRound("Round 01", true, "2026-06-04")]),
+    mkKadar("enterijer", "Enterijer_04", "Marija Todorović", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_05", "Ana Krstić", "odobren", [mkRound("Round 01", true, "2026-06-10"), mkRound("Round 02", true, "2026-06-15")]),
+    mkKadar("enterijer", "Enterijer_06", "Miljana Cvetković", "aktivan", [mkRound("Round 01", true, "2026-06-13")]),
+    mkKadar("enterijer", "Enterijer_07", "Miloš Tasić", "aktivan", [mkRound("Round 01", true, "2026-06-16")]),
+    mkKadar("enterijer", "Enterijer_08", "Ivana Sazdov", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_09", "Lazar Pešić", "odobren", [mkRound("Round 01", true, "2026-06-22"), mkRound("Round 02", true, "2026-06-27")]),
+    mkKadar("enterijer", "Enterijer_10", "Damjan Mitrović", "aktivan", [mkRound("Round 01", true, "2026-05-31")]),
+    mkKadar("enterijer", "Enterijer_11", "Aleksandar Jovanović", "aktivan", [mkRound("Round 01", true, "2026-06-03")]),
+    mkKadar("enterijer", "Enterijer_12", "Marija Milenković", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_13", "Dušan Stević", "odobren", [mkRound("Round 01", true, "2026-06-09"), mkRound("Round 02", true, "2026-06-14")]),
+    mkKadar("enterijer", "Enterijer_14", "Stefana Ristić", "aktivan", [mkRound("Round 01", true, "2026-06-12")]),
+    mkKadar("enterijer", "Enterijer_15", "Radoslav Milanović", "aktivan", [mkRound("Round 01", true, "2026-06-15")]),
+    mkKadar("enterijer", "Enterijer_16", "Dalibor Mitić", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_17", "Katarina Đorđević", "odobren", [mkRound("Round 01", true, "2026-06-21"), mkRound("Round 02", true, "2026-06-26")]),
+    mkKadar("enterijer", "Enterijer_18", "Aleksandra Vukašinović", "aktivan", [mkRound("Round 01", true, "2026-05-30")]),
+    mkKadar("enterijer", "Enterijer_19", "Mihajlo Nagradić", "aktivan", [mkRound("Round 01", true, "2026-06-02")]),
+    mkKadar("enterijer", "Enterijer_20", "Nikola Jovanović", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_21", "Anđela Pešić", "odobren", [mkRound("Round 01", true, "2026-06-08"), mkRound("Round 02", true, "2026-06-13")]),
+    mkKadar("enterijer", "Enterijer_22", "Marija Todorović", "aktivan", [mkRound("Round 01", true, "2026-06-11")]),
+    mkKadar("enterijer", "Enterijer_23", "Ana Krstić", "aktivan", [mkRound("Round 01", true, "2026-06-14")]),
+    mkKadar("enterijer", "Enterijer_24", "Miljana Cvetković", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_25", "Miloš Tasić", "odobren", [mkRound("Round 01", true, "2026-06-20"), mkRound("Round 02", true, "2026-06-25")]),
+    mkKadar("enterijer", "Enterijer_26", "Ivana Sazdov", "aktivan", [mkRound("Round 01", true, "2026-05-29")]),
+    mkKadar("enterijer", "Enterijer_27", "Lazar Pešić", "aktivan", [mkRound("Round 01", true, "2026-06-01")]),
+    mkKadar("enterijer", "Enterijer_28", "Damjan Mitrović", "na čekanju", []),
+    mkKadar("enterijer", "Enterijer_29", "Aleksandar Jovanović", "odobren", [mkRound("Round 01", true, "2026-06-07"), mkRound("Round 02", true, "2026-06-12")]),
+    mkKadar("enterijer", "Enterijer_30", "Marija Milenković", "aktivan", [mkRound("Round 01", true, "2026-06-10")])
+  ]},
 ];
 allProjects.forEach(p=>p._id=nextId());
 fromPersisted('allProjects', allProjects);
 
 const filters = { godina:"Sve godine", klijent:"Svi klijenti", umetnik:"Svi umetnici", search:"" };
 let viewMode = "grid";
-let projCodeCounter = 12;
+let projCodeCounter = 20;
 if(_persistedRaw && typeof _persistedRaw.projCodeCounter === 'number') projCodeCounter = _persistedRaw.projCodeCounter;
 
 function uniqueSorted(arr){ return [...new Set(arr)].sort(); }
@@ -5442,20 +5658,7 @@ fromPersisted('allTransactions', allTransactions);
 const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55" };
 const openingBalance = 850000;
 
-const projectPricing = {
-  "P001":[ {name:"Eksterijer_01", price:65000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:65000, status:"Fakturisano"} ],
-  "P002":[ {name:"Eksterijer_Dan", price:70000, status:"Naplaćeno"}, {name:"Eksterijer_Noć", price:70000, status:"Naplaćeno"}, {name:"Enterijer_DnevnaSoba", price:55000, status:"Fakturisano"} ],
-  "P003":[ {name:"Fasada_Rev01", price:48000, status:"Neplaćeno"} ],
-  "P004":[ {name:"Enterijer_DnevnaSoba", price:52000, status:"Naplaćeno"} ],
-  "P005":[ {name:"Eksterijer_Hotel", price:88000, status:"Naplaćeno"}, {name:"Lobby_Enterijer", price:60000, status:"Naplaćeno"} ],
-  "P006":[ {name:"Ptičja_Perspektiva", price:75000, status:"Fakturisano"} ],
-  "P007":[ {name:"Enterijer_Kompletno", price:120000, status:"Naplaćeno"} ],
-  "P008":[ {name:"Koncept_01", price:40000, status:"Neplaćeno"} ],
-  "P009":[ {name:"Enterijer_Finalni", price:58000, status:"Naplaćeno"} ],
-  "P010":[ {name:"Eksterijer_Dan", price:66000, status:"Naplaćeno"}, {name:"Eksterijer_Noć", price:66000, status:"Naplaćeno"} ],
-  "P011":[ {name:"Fasada_Final", price:70000, status:"Naplaćeno"} ],
-  "P012":[ {name:"Enterijer_Walkthrough", price:95000, status:"Naplaćeno"} ],
-};
+const projectPricing = {};
 Object.values(projectPricing).forEach(rows=>rows.forEach(r=>r._id=nextId()));
 if(_persistedRaw && _persistedRaw.projectPricing){
   Object.keys(projectPricing).forEach(k=>delete projectPricing[k]);
