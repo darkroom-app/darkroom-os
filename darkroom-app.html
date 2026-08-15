@@ -615,9 +615,17 @@ body{
 .artist-chip.selected{ border-color:var(--gold); background:var(--gold-soft); }
 .ac-avatar{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:9px; color:#fff; flex-shrink:0; }
 .ac-name{ font-size:11.5px; font-weight:600; }
-#taskEmployeeChipRow .artist-chip{ padding:7px 16px 7px 7px; }
-#taskEmployeeChipRow .ac-avatar{ width:36px; height:36px; font-size:13px; }
-#taskEmployeeChipRow .ac-name{ font-size:12.5px; }
+
+.task-emp-grid{ display:grid; grid-template-columns:repeat(2, 1fr); gap:9px; max-height:340px; overflow-y:auto; padding-right:4px; margin-bottom:6px; }
+.task-emp-card{ display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:14px; border:2px solid var(--border); background:var(--card); cursor:pointer; transition:border-color .15s ease, background .15s ease; text-align:left; }
+.task-emp-card:hover{ border-color:var(--gold-soft); }
+.task-emp-card.selected{ border-color:var(--gold); background:var(--gold-soft); }
+.task-emp-card-avatar{ width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:12px; color:#fff; flex-shrink:0; }
+.task-emp-card-info{ min-width:0; flex:1; }
+.task-emp-card-name{ font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.task-emp-card-avail{ font-family:var(--font-mono); font-size:8px; margin-top:2px; text-transform:uppercase; letter-spacing:0.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.task-emp-card-avail.free{ color:#4C8A55; }
+.task-emp-card-avail.busy{ color:var(--ink-faint); }
 
 .compare-grid{ display:grid; grid-template-columns:1fr auto 1fr; gap:24px; align-items:start; }
 .compare-vs{ font-family:var(--font-display); font-weight:700; font-size:13px; color:var(--ink-faint); align-self:center; }
@@ -2349,7 +2357,7 @@ body{
 </div>
 
 <div class="modal-overlay" id="taskModalOverlay">
-  <div class="modal-card">
+  <div class="modal-card" style="width:520px; max-height:88vh;">
     <div class="modal-title" id="taskTitle">Novi kadar</div>
     <div class="modal-field">
       <label>Naziv kadra</label>
@@ -2370,7 +2378,7 @@ body{
     </div>
     <div class="modal-field">
       <label>Izvršilac</label>
-      <div class="artist-chip-row" id="taskEmployeeChipRow"></div>
+      <div class="task-emp-grid" id="taskEmployeeChipRow"></div>
     </div>
     <div class="modal-field">
       <label>Status</label>
@@ -4352,21 +4360,48 @@ let activeTaskProjectId = null;
 let editingTaskId = null;
 let pendingTaskEmployee = null;
 
+function weeklyFreeDays(key){
+  const dayLabels = ['Pon','Uto','Sre','Čet','Pet'];
+  const monday = mondayOf(TODAY);
+  const freeDays = [];
+  for(let i=0;i<5;i++){
+    const day = addDays(monday, i);
+    const busy = events.some(e=>
+      e.person===key && (e.kind==='zadatak' || e.kind==='odsustvo') &&
+      daysBetween(e.start, day) >= 0 && daysBetween(day, e.end) >= 0
+    );
+    if(!busy) freeDays.push(dayLabels[i]);
+  }
+  return freeDays;
+}
+function formatAvailability(freeDays){
+  const dayLabels = ['Pon','Uto','Sre','Čet','Pet'];
+  if(freeDays.length === 0) return { text:'Puna nedelja', cls:'busy' };
+  if(freeDays.length === 5) return { text:'Slobodna cela nedelja', cls:'free' };
+  const indices = freeDays.map(d=>dayLabels.indexOf(d));
+  const isContiguous = indices.length > 1 && indices.every((v,i)=> i===0 || v === indices[i-1]+1);
+  if(isContiguous) return { text:`Slobodno ${freeDays[0]}–${freeDays[freeDays.length-1]}`, cls:'free' };
+  return { text:`Slobodno: ${freeDays.join(', ')}`, cls:'free' };
+}
 function renderTaskEmployeeChips(selected){
   const sortedMembers = [...teamMembers].sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById('taskEmployeeChipRow').innerHTML = sortedMembers.map(t=>{
     const { grad, initials, avatar } = avatarFor(t);
     const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
+    const avail = formatAvailability(weeklyFreeDays(t.key));
     return `
-    <div class="artist-chip ${t.name===selected ? 'selected' : ''}" data-name="${escapeHtml(t.name)}">
-      <span class="ac-avatar" style="${avatarStyle}">${avatar ? '' : initials}</span>
-      <span class="ac-name">${escapeHtml(t.name)}</span>
+    <div class="task-emp-card ${t.name===selected ? 'selected' : ''}" data-name="${escapeHtml(t.name)}">
+      <span class="task-emp-card-avatar" style="${avatarStyle}">${avatar ? '' : initials}</span>
+      <span class="task-emp-card-info">
+        <span class="task-emp-card-name">${escapeHtml(t.name)}</span>
+        <span class="task-emp-card-avail ${avail.cls}">${avail.text}</span>
+      </span>
     </div>`;
   }).join('');
-  document.querySelectorAll('#taskEmployeeChipRow .artist-chip').forEach(chip=>{
+  document.querySelectorAll('#taskEmployeeChipRow .task-emp-card').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       pendingTaskEmployee = chip.dataset.name;
-      document.querySelectorAll('#taskEmployeeChipRow .artist-chip').forEach(c=>c.classList.remove('selected'));
+      document.querySelectorAll('#taskEmployeeChipRow .task-emp-card').forEach(c=>c.classList.remove('selected'));
       chip.classList.add('selected');
     });
   });
