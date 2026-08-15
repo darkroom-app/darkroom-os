@@ -226,9 +226,14 @@ body{
 .pd-hero-overlay{ position:absolute; left:24px; right:24px; bottom:18px; z-index:2; }
 .pd-hero-title{ font-family:var(--font-display); font-weight:700; font-size:24px; color:#fff; }
 .pd-hero-client{ font-size:13px; color:rgba(255,255,255,0.85); margin-top:3px; }
-.pd-stat-bar{ display:flex; flex-wrap:wrap; gap:22px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-md); padding:14px 20px; margin-bottom:20px; }
+.pd-stat-bar{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:18px 28px; background:var(--card); border:1px solid var(--border); border-radius:var(--r-md); padding:14px 20px; margin-bottom:20px; }
+.pd-stat-metrics{ display:flex; flex-wrap:wrap; align-items:center; gap:22px; }
 .pd-stat-item{ font-size:12px; color:var(--ink-dim); }
 .pd-stat-item b{ color:var(--ink); font-weight:700; }
+.pd-stat-meta{ display:flex; align-items:center; gap:18px; flex-shrink:0; }
+.pd-stat-manager{ display:flex; align-items:center; gap:9px; }
+.pd-stat-manager-label{ font-family:var(--font-mono); font-size:7.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; }
+.pd-stat-manager-name{ font-size:12px; font-weight:700; color:var(--ink); line-height:1.3; }
 .pd-tasks-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
 .pd-tasks-title{ font-family:var(--font-display); font-weight:700; font-size:14px; }
 .round-choice-row{ display:flex; gap:8px; }
@@ -245,12 +250,15 @@ body{
 .pd-kadar-title{ font-size:12.5px; color:var(--ink); }
 .pd-kadar-title span{ color:var(--ink-faint); }
 .pd-round-scroll{ display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; }
-.pd-round-add{ width:60px; height:44px; border-radius:10px; border:1.5px dashed var(--border); background:none; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
+.pd-round-add{ width:64px; height:64px; border-radius:10px; border:1.5px dashed var(--border); background:none; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
 .pd-round-add:hover{ border-color:var(--gold); color:var(--gold-deep); }
 .pd-round-add svg{ width:16px; height:16px; }
-.pd-round-pill{ min-width:76px; height:44px; border-radius:10px; border:none; cursor:pointer; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:0 8px; }
-.pd-round-pill.billable{ background:var(--sage-soft); color:#3d6b3d; }
-.pd-round-pill.internal{ background:var(--card-soft); color:var(--ink-dim); border:1px solid var(--border); }
+.pd-round-pill{ min-width:84px; height:64px; border-radius:10px; border:none; cursor:pointer; flex-shrink:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:0 8px; position:relative; overflow:hidden; background-size:cover; background-position:center; }
+.pd-round-pill.billable{ background-color:var(--sage-soft); color:#3d6b3d; }
+.pd-round-pill.internal{ background-color:var(--card-soft); color:var(--ink-dim); border:1px solid var(--border); }
+.pd-round-pill.has-image::before{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(20,16,8,0.1) 30%, rgba(20,16,8,0.62) 100%); }
+.pd-round-pill.has-image .pd-round-pill-label,
+.pd-round-pill.has-image .pd-round-pill-date{ position:relative; z-index:1; color:#fff; }
 .pd-round-pill-label{ font-family:var(--font-body); font-weight:700; font-size:10.5px; }
 .pd-round-pill-date{ font-family:var(--font-mono); font-size:8.5px; opacity:0.85; }
 .round-view-img{ width:100%; height:280px; border-radius:var(--r-md); background:var(--card-soft); background-size:cover; background-position:center; }
@@ -4198,15 +4206,16 @@ document.getElementById('npSubmit').addEventListener('click', ()=>{
 /* ==== PROJECT DETAIL (kadrovi) — full page ==== */
 let activeProjectDetailId = null;
 
-function pdAvatarHtml(name){
+function pdAvatarHtml(name, size, fontSize){
+  size = size || 20; fontSize = fontSize || 8;
   const t = teamMembers.find(m=>m.name===name);
   if(t){
     const { grad, initials, avatar } = avatarFor(t);
     return avatar
-      ? `<span class="cb-avatar" style="width:20px;height:20px;font-size:8px;background-image:url('${avatar}');background-size:cover;background-position:center;"></span>`
-      : `<span class="cb-avatar" style="width:20px;height:20px;font-size:8px;background:${grad};">${initials}</span>`;
+      ? `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background-image:url('${avatar}');background-size:cover;background-position:center;"></span>`
+      : `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:${grad};">${initials}</span>`;
   }
-  return `<span class="cb-avatar" style="width:20px;height:20px;font-size:8px;background:var(--ink-faint);">${clientInitials(name)}</span>`;
+  return `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:var(--ink-faint);">${clientInitials(name)}</span>`;
 }
 
 function openProjectDetail(proj){
@@ -4218,12 +4227,22 @@ function openProjectDetail(proj){
   const s = projectStats(proj);
   const totalRoundsAll = proj.kadrovi.reduce((sum,k)=>sum + k.rounds.length, 0);
   document.getElementById('pdStatBar').innerHTML = `
-    <div class="pd-stat-item">Datum početka <b>${formatIsoDateHuman(proj.startDate) || proj.startDate}</b></div>
-    <div class="pd-stat-item">Broj rendera <b>${s.total}${s.typeBreakdown ? ' ('+escapeHtml(s.typeBreakdown)+')' : ''}</b></div>
-    <div class="pd-stat-item">Odobreno <b>${s.approved} / ${s.total}</b></div>
-    <div class="pd-stat-item">Broj revizija <b>${totalRoundsAll}</b></div>
-    <div class="pd-stat-item">Menadžer ${pdAvatarHtml(proj.managerName)} <b>${escapeHtml(proj.managerName)}</b></div>
-    <div class="pd-stat-item"><span class="tag ${statusTag[proj.status]}">${proj.status}</span></div>`;
+    <div class="pd-stat-metrics">
+      <div class="pd-stat-item">Datum početka <b>${formatIsoDateHuman(proj.startDate) || proj.startDate}</b></div>
+      <div class="pd-stat-item">Broj rendera <b>${s.total}${s.typeBreakdown ? ' ('+escapeHtml(s.typeBreakdown)+')' : ''}</b></div>
+      <div class="pd-stat-item">Odobreno <b>${s.approved} / ${s.total}</b></div>
+      <div class="pd-stat-item">Broj revizija <b>${totalRoundsAll}</b></div>
+    </div>
+    <div class="pd-stat-meta">
+      <div class="pd-stat-manager">
+        ${pdAvatarHtml(proj.managerName, 30, 11)}
+        <div>
+          <div class="pd-stat-manager-label">Menadžer</div>
+          <div class="pd-stat-manager-name">${escapeHtml(proj.managerName)}</div>
+        </div>
+      </div>
+      <span class="tag ${statusTag[proj.status]}">${proj.status}</span>
+    </div>`;
   renderProjectDetailKadrovi();
   showView('projekat-detalji');
   setActiveNav('projekti');
@@ -4242,11 +4261,14 @@ function renderProjectDetailKadrovi(){
   });
   const employees = [...groups.keys()].sort((a,b)=> groups.get(b).length - groups.get(a).length);
 
-  const roundPillHtml = (k)=> k.rounds.map(r=>`
-      <button class="pd-round-pill ${r.billable ? 'billable' : 'internal'}" data-task-id="${k._id}" data-round-id="${r._id}" type="button">
+  const roundPillHtml = (k)=> k.rounds.map(r=>{
+    const imgStyle = r.image ? `background-image:url('${r.image}');` : '';
+    return `
+      <button class="pd-round-pill ${r.billable ? 'billable' : 'internal'} ${r.image ? 'has-image' : ''}" style="${imgStyle}" data-task-id="${k._id}" data-round-id="${r._id}" type="button">
         <span class="pd-round-pill-label">${escapeHtml(r.label)}</span>
         <span class="pd-round-pill-date">${formatIsoDateHuman(r.date) || r.date}</span>
-      </button>`).join('');
+      </button>`;
+  }).join('');
 
   document.getElementById('pdTaskList').innerHTML = employees.map(name=>{
     const items = groups.get(name);
