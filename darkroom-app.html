@@ -98,8 +98,9 @@ body{
 .nav a.active svg{ opacity:1; }
 .nav-gap{ height:16px; }
 
-.sidebar-foot{ margin-top:auto; padding-top:12px; }
+.sidebar-foot{ margin-top:auto; padding-top:12px; display:flex; align-items:center; gap:8px; }
 .profile-chip{
+  flex:1; min-width:0;
   display:flex; align-items:center; gap:9px;
   padding:9px 12px; border-radius:13px; background:var(--card);
   border:1px solid var(--border); cursor:pointer;
@@ -110,6 +111,53 @@ body{
   color:#fff; font-weight:700; font-size:10.5px; font-family:var(--font-display);
 }
 .profile-name{ font-size:12.5px; font-weight:600; }
+
+.notif-bell{
+  position:relative; flex-shrink:0; width:38px; height:38px; border-radius:12px;
+  background:var(--card); border:1px solid var(--border); cursor:pointer;
+  display:flex; align-items:center; justify-content:center; color:var(--ink-dim);
+  transition:background .15s ease, color .15s ease;
+}
+.notif-bell:hover{ background:#F0EADA; color:var(--ink); }
+.notif-bell svg{ width:17px; height:17px; }
+.notif-badge{
+  position:absolute; top:-4px; right:-4px; min-width:16px; height:16px; padding:0 4px;
+  border-radius:20px; background:var(--coral); color:#fff; font-family:var(--font-mono);
+  font-size:9px; font-weight:700; align-items:center; justify-content:center;
+  border:2px solid var(--bg-sidebar);
+}
+@keyframes notifRing{
+  0%,100%{ transform:rotate(0); }
+  15%{ transform:rotate(14deg); }
+  30%{ transform:rotate(-12deg); }
+  45%{ transform:rotate(9deg); }
+  60%{ transform:rotate(-7deg); }
+  75%{ transform:rotate(4deg); }
+}
+.notif-bell.notif-ring{ animation:notifRing .55s ease; color:var(--gold-deep); }
+
+.notif-panel{
+  position:fixed; left:18px; bottom:78px; width:330px; max-height:420px;
+  background:var(--bg-app); border:1px solid var(--border); border-radius:18px; z-index:210;
+  display:flex; flex-direction:column; overflow:hidden; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4);
+  transform:scale(0.94) translateY(8px); opacity:0; pointer-events:none;
+  transition:transform .18s cubic-bezier(.34,1.1,.4,1), opacity .15s ease; transform-origin:bottom left;
+}
+.notif-panel.open{ transform:scale(1) translateY(0); opacity:1; pointer-events:auto; }
+.notif-panel-head{ display:flex; align-items:center; justify-content:space-between; padding:13px 15px; border-bottom:1px solid var(--border); background:var(--card); flex-shrink:0; font-family:var(--font-display); font-weight:700; font-size:13px; }
+.notif-mark-all{ font-family:var(--font-body); font-size:10.5px; font-weight:600; color:var(--gold-deep); background:none; border:none; cursor:pointer; }
+.notif-mark-all:hover{ text-decoration:underline; }
+.notif-list{ overflow-y:auto; flex:1; min-height:0; }
+.notif-item{ display:flex; gap:10px; align-items:flex-start; padding:11px 15px; border-bottom:1px solid var(--border); cursor:pointer; position:relative; transition:background .12s ease; }
+.notif-item:last-child{ border-bottom:none; }
+.notif-item:hover{ background:var(--card-soft); }
+.notif-item.unread{ background:rgba(198,145,40,0.06); }
+.notif-item-icon{ font-size:15px; flex-shrink:0; margin-top:1px; }
+.notif-item-body{ min-width:0; flex:1; }
+.notif-item-text{ font-size:11.5px; line-height:1.45; color:var(--ink); padding-right:10px; }
+.notif-item-time{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:3px; }
+.notif-item-dot{ position:absolute; top:14px; right:13px; width:7px; height:7px; border-radius:50%; background:var(--gold); flex-shrink:0; }
+.notif-empty{ padding:30px 15px; text-align:center; font-size:11.5px; color:var(--ink-faint); }
 
 /* ============ MAIN ============ */
 .main{
@@ -1218,10 +1266,22 @@ body{
     </nav>
 
     <div class="sidebar-foot">
+      <button class="notif-bell" id="notifBell" type="button" title="Obaveštenja">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        <span class="notif-badge" id="notifBadge" style="display:none;"></span>
+      </button>
       <div class="profile-chip">
         <div class="profile-avatar"></div>
         <div class="profile-name">Profil</div>
       </div>
+    </div>
+
+    <div class="notif-panel" id="notifPanel">
+      <div class="notif-panel-head">
+        <span>Obaveštenja</span>
+        <button class="notif-mark-all" id="notifMarkAll" type="button">Obeleži sve</button>
+      </div>
+      <div class="notif-list" id="notifList"></div>
     </div>
   </aside>
 
@@ -2668,7 +2728,7 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       allProjects, allClients, teamMembers, allTransactions, portfolioItems,
-      projectPricing, salaryEntries, events, todoItems, projCodeCounter, salConfirmedMonths
+      projectPricing, salaryEntries, events, todoItems, projCodeCounter, salConfirmedMonths, notifications
     }));
   } catch(e){}
 }
@@ -4476,12 +4536,20 @@ document.getElementById('taskSubmit').addEventListener('click', ()=>{
   const proj = allProjects.find(p=>p._id===activeTaskProjectId);
   if(!proj) return;
 
+  let notifText = null, notifIcon = '🔔';
   if(editingTaskId){
     const kadar = proj.kadrovi.find(k=>k._id===editingTaskId);
-    if(kadar) Object.assign(kadar, {name, type, employee:pendingTaskEmployee, status});
+    if(kadar){
+      if(status==='odobren' && kadar.status!=='odobren'){ notifText = `Kadar "${name}" je odobren u projektu ${proj.name}`; notifIcon = '✅'; }
+      else if(status==='otkazan' && kadar.status!=='otkazan'){ notifText = `Kadar "${name}" je otkazan u projektu ${proj.name}`; notifIcon = '⛔'; }
+      Object.assign(kadar, {name, type, employee:pendingTaskEmployee, status});
+    }
   } else {
     proj.kadrovi.push(mkKadar(type, name, pendingTaskEmployee, status, []));
+    notifText = `Dodat je novi kadar "${name}" u projekat ${proj.name}`;
+    notifIcon = '🆕';
   }
+  if(notifText) pushNotification(notifRecipientId(proj.managerName), notifIcon, notifText, proj._id);
   closeTaskModal();
   buildFilterMenus();
   renderProjectDetailStats();
@@ -4563,6 +4631,7 @@ document.getElementById('roundSubmit').addEventListener('click', ()=>{
   }
   kadar.rounds.push(mkRound(label, billable, date));
   if(pendingRoundImage) kadar.rounds[kadar.rounds.length-1].image = pendingRoundImage;
+  pushNotification(notifRecipientId(proj.managerName), '🖼️', `Nova ${billable ? 'runda' : 'revizija'} (${label}) dodata za kadar "${kadar.name}" u projektu ${proj.name}`, proj._id);
   closeRoundModal();
   renderProjectsPage();
   if(activeProjectDetailId){ renderProjectDetailStats(); renderProjectDetailKadrovi(); }
@@ -6807,6 +6876,97 @@ document.querySelectorAll('.nav a').forEach(a=>{
   });
 });
 
+/* ==== NOTIFICATIONS ==== */
+let notifications = [];
+fromPersisted('notifications', notifications);
+
+function notifRecipientId(managerName){
+  const mgr = teamMembers.find(t=>t.name===managerName);
+  return mgr ? mgr._id : null;
+}
+function myNotifications(){
+  return notifications.filter(n=>n.recipientId===currentUserId).sort((a,b)=>b.createdAt-a.createdAt);
+}
+function notifTimeAgo(ts){
+  const diffMin = Math.max(0, Math.floor((Date.now()-ts)/60000));
+  if(diffMin < 1) return 'upravo sada';
+  if(diffMin < 60) return `pre ${diffMin} min`;
+  const h = Math.floor(diffMin/60);
+  if(h < 24) return `pre ${h}h`;
+  return `pre ${Math.floor(h/24)}d`;
+}
+function pushNotification(recipientId, icon, text, projectId){
+  if(recipientId==null || recipientId===currentUserId) return;
+  notifications.unshift({ _id:nextId(), recipientId, icon, text, projectId, read:false, createdAt:Date.now() });
+  persist();
+  renderNotifBell();
+  ringNotifBell();
+}
+function renderNotifBell(){
+  const badge = document.getElementById('notifBadge');
+  if(!badge) return;
+  const unread = myNotifications().filter(n=>!n.read).length;
+  badge.textContent = unread > 9 ? '9+' : String(unread);
+  badge.style.display = unread ? 'flex' : 'none';
+}
+function ringNotifBell(){
+  const bell = document.getElementById('notifBell');
+  if(!bell) return;
+  bell.classList.remove('notif-ring');
+  void bell.offsetWidth;
+  bell.classList.add('notif-ring');
+}
+function renderNotifPanel(){
+  const list = myNotifications();
+  const body = document.getElementById('notifList');
+  if(!body) return;
+  body.innerHTML = list.length ? list.map(n=>`
+    <div class="notif-item ${n.read ? '' : 'unread'}" data-id="${n._id}">
+      <span class="notif-item-icon">${n.icon}</span>
+      <div class="notif-item-body">
+        <div class="notif-item-text">${n.text}</div>
+        <div class="notif-item-time">${notifTimeAgo(n.createdAt)}</div>
+      </div>
+      ${n.read ? '' : '<span class="notif-item-dot"></span>'}
+    </div>`).join('') : '<div class="notif-empty">Nemate obaveštenja.</div>';
+  body.querySelectorAll('.notif-item').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      const n = notifications.find(x=>x._id===Number(el.dataset.id));
+      if(!n) return;
+      n.read = true;
+      persist();
+      renderNotifBell();
+      renderNotifPanel();
+      toggleNotifPanel(false);
+      const proj = n.projectId ? allProjects.find(p=>p._id===n.projectId) : null;
+      if(proj) openProjectDetail(proj);
+    });
+  });
+}
+let notifOpen = false;
+function toggleNotifPanel(force){
+  notifOpen = force !== undefined ? force : !notifOpen;
+  document.getElementById('notifPanel').classList.toggle('open', notifOpen);
+  if(notifOpen) renderNotifPanel();
+}
+document.getElementById('notifBell').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  toggleNotifPanel();
+});
+document.getElementById('notifMarkAll').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  myNotifications().forEach(n=>n.read=true);
+  persist();
+  renderNotifBell();
+  renderNotifPanel();
+});
+document.addEventListener('click', (e)=>{
+  if(!notifOpen) return;
+  const panel = document.getElementById('notifPanel');
+  const bell = document.getElementById('notifBell');
+  if(panel && bell && !panel.contains(e.target) && !bell.contains(e.target)) toggleNotifPanel(false);
+});
+
 /* ==== AI ASSISTANT ==== */
 function setActiveNav(viewName){
   document.querySelectorAll('.nav a').forEach(a=> a.classList.toggle('active', a.dataset.view===viewName));
@@ -6997,6 +7157,7 @@ function applyCurrentUser(){
   renderProfilePage();
   renderDashboardProjects();
   renderDashboardFinance();
+  renderNotifBell();
   applyAccessGating();
 }
 function renderDashboardFinance(){
@@ -7039,6 +7200,7 @@ function logout(){
   currentUserId = null;
   localStorage.removeItem(CURRENT_USER_KEY);
   toggleChat(false);
+  toggleNotifPanel(false);
   shellEl.style.display = 'none';
   document.getElementById('chatFab').style.display = 'none';
   populateLoginSelect();
