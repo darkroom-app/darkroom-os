@@ -615,6 +615,9 @@ body{
 .artist-chip.selected{ border-color:var(--gold); background:var(--gold-soft); }
 .ac-avatar{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:9px; color:#fff; flex-shrink:0; }
 .ac-name{ font-size:11.5px; font-weight:600; }
+#taskEmployeeChipRow .artist-chip{ padding:7px 16px 7px 7px; }
+#taskEmployeeChipRow .ac-avatar{ width:36px; height:36px; font-size:13px; }
+#taskEmployeeChipRow .ac-name{ font-size:12.5px; }
 
 .compare-grid{ display:grid; grid-template-columns:1fr auto 1fr; gap:24px; align-items:start; }
 .compare-vs{ font-family:var(--font-display); font-weight:700; font-size:13px; color:var(--ink-faint); align-self:center; }
@@ -2359,6 +2362,7 @@ body{
         <option value="eksterijer">eksterijer</option>
         <option value="aerial">aerial</option>
         <option value="animacija">animacija</option>
+        <option value="Navi">Navi</option>
         <option value="VR">VR</option>
         <option value="model">model</option>
         <option value="ostalo">ostalo</option>
@@ -3746,10 +3750,8 @@ let allProjects = [
     mkKadar("eksterijer", "Eksterijer_09", "Marija Milenković", "odobren", [mkRound("Round 01", true, "2026-04-19"), mkRound("Round 02", true, "2026-04-24")]),
     mkKadar("eksterijer", "Eksterijer_10", "Dušan Stević", "aktivan", [mkRound("Round 01", true, "2026-04-22")]),
     mkKadar("animacija", "Animacija_01", "Stefana Ristić", "aktivan", [mkRound("Round 01", true, "2026-04-25")]),
-    mkKadar("animacija", "Animacija_02", "Radoslav Milanović", "na čekanju", [])
-  ]},
-  {name:"Navi", code:"P008", client:"Rilea Group", year:2026, startDate:"2026-08-10", managerName:"Stefana Ristić", status:"Na čekanju", thumbnail:null, seed:3.9, kadrovi:[
-
+    mkKadar("animacija", "Animacija_02", "Radoslav Milanović", "na čekanju", []),
+    mkKadar("Navi", "Navi_01", "Katarina Đorđević", "aktivan", [mkRound("Round 01", true, "2026-05-06")])
   ]},
   {name:"Mohawk", code:"P009", client:"Rilea Group", year:2026, startDate:"2026-07-01", managerName:"Radoslav Milanović", status:"U toku", thumbnail:null, seed:5.6, kadrovi:[
     mkKadar("eksterijer", "Eksterijer_01", "Dalibor Mitić", "odobren", [mkRound("Round 01", true, "2026-07-05"), mkRound("Round 02", true, "2026-07-10")]),
@@ -4247,7 +4249,7 @@ function renderProjectDetailKadrovi(){
     <div class="price-project open">
       <div class="price-project-head">
         <div style="display:flex;align-items:center;gap:10px;">
-          <span class="pg-avatar" style="width:28px;height:28px;font-size:10px;${avatarStyle}">${avatar ? '' : initials}</span>
+          <span class="pg-avatar" style="width:44px;height:44px;font-size:15px;${avatarStyle}">${avatar ? '' : initials}</span>
           <div>
             <div class="price-project-name">${escapeHtml(name)}</div>
             <div class="price-project-meta">${items.length} ${items.length===1 ? 'kadar' : 'kadra'}</div>
@@ -4351,7 +4353,8 @@ let editingTaskId = null;
 let pendingTaskEmployee = null;
 
 function renderTaskEmployeeChips(selected){
-  document.getElementById('taskEmployeeChipRow').innerHTML = teamMembers.map(t=>{
+  const sortedMembers = [...teamMembers].sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById('taskEmployeeChipRow').innerHTML = sortedMembers.map(t=>{
     const { grad, initials, avatar } = avatarFor(t);
     const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
     return `
@@ -5675,7 +5678,7 @@ const projectPricing = {
   "P004": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"} ],
   "P005": [ {name:"Amenities_01", price:120000, status:"Fakturisano"}, {name:"Amenities_02", price:120000, status:"Neplaćeno"}, {name:"Amenities_03", price:120000, status:"Fakturisano"}, {name:"Amenities_04", price:120000, status:"Neplaćeno"}, {name:"Amenities_05", price:120000, status:"Naplaćeno"}, {name:"Amenities_06", price:120000, status:"Neplaćeno"}, {name:"Amenities_07", price:120000, status:"Fakturisano"}, {name:"Amenities_08", price:120000, status:"Neplaćeno"} ],
   "P006": [ {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Aerial_01", price:150000, status:"Neplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
-  "P007": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Fakturisano"}, {name:"Enterijer_10", price:120000, status:"Fakturisano"}, {name:"Enterijer_11", price:120000, status:"Neplaćeno"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Naplaćeno"}, {name:"Enterijer_14", price:120000, status:"Fakturisano"}, {name:"Enterijer_15", price:120000, status:"Neplaćeno"}, {name:"Enterijer_16", price:120000, status:"Neplaćeno"}, {name:"Enterijer_17", price:120000, status:"Naplaćeno"}, {name:"Enterijer_18", price:120000, status:"Fakturisano"}, {name:"Enterijer_19", price:120000, status:"Neplaćeno"}, {name:"Enterijer_20", price:120000, status:"Neplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_06", price:150000, status:"Fakturisano"}, {name:"Eksterijer_07", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_08", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_09", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_10", price:150000, status:"Fakturisano"}, {name:"Animacija_01", price:500000, status:"Neplaćeno"}, {name:"Animacija_02", price:500000, status:"Neplaćeno"} ],
+  "P007": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Fakturisano"}, {name:"Enterijer_10", price:120000, status:"Fakturisano"}, {name:"Enterijer_11", price:120000, status:"Neplaćeno"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Naplaćeno"}, {name:"Enterijer_14", price:120000, status:"Fakturisano"}, {name:"Enterijer_15", price:120000, status:"Neplaćeno"}, {name:"Enterijer_16", price:120000, status:"Neplaćeno"}, {name:"Enterijer_17", price:120000, status:"Naplaćeno"}, {name:"Enterijer_18", price:120000, status:"Fakturisano"}, {name:"Enterijer_19", price:120000, status:"Neplaćeno"}, {name:"Enterijer_20", price:120000, status:"Neplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_06", price:150000, status:"Fakturisano"}, {name:"Eksterijer_07", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_08", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_09", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_10", price:150000, status:"Fakturisano"}, {name:"Animacija_01", price:500000, status:"Neplaćeno"}, {name:"Animacija_02", price:500000, status:"Neplaćeno"}, {name:"Navi_01", price:500000, status:"Fakturisano"} ],
   "P009": [ {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
   "P010": [ {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"} ],
   "P011": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"} ],
