@@ -3650,13 +3650,102 @@ document.getElementById('evSubmit').addEventListener('click', ()=>{
   persist();
 });
 
+/* ==== NEDELJNI CILJ (fun-goal) — procenat po danu + rotirajuće poruke ==== */
+const weeklyGoalMessages = {
+  low: [
+    "Nedelja tek počinje — ritam se gradi polako 💪",
+    "Ponedeljak energija: kafa u ruci, ciljevi u fokusu ☕",
+    "Svaki veliki projekat počinje jednim renderom 🎬",
+    "Lagano se zagrevamo — ostatak nedelje je pred nama",
+    "Prvi koraci su najvažniji. Nastavi tako!",
+    "Sedmica je maraton, ne sprint — polako do cilja",
+    "Rano je, ali tempo raste iz dana u dan 📈",
+    "Svaka minuta se računa — dobar start!",
+    "Ugrej motore, studio te čeka 🔥",
+    "Novi zadaci, nova energija — krećemo!",
+    "Fokus na danas, cilj se sam nameće",
+    "Mali koraci danas, veliki rezultati u petak"
+  ],
+  mid: [
+    "Na dobrom si putu — nastavi ovim tempom 🚀",
+    "Pola puta iza, pola ispred — drži fokus",
+    "Sredina nedelje, ali tempo ne posustaje",
+    "Odlično napreduješ prema nedeljnom cilju",
+    "Svaki render te bliži cilju — samo napred",
+    "Momentum je tu, iskoristi ga 💫",
+    "Solidan tempo — ekipa broji na tebe",
+    "Napredak se vidi, nastavi da guraš",
+    "Već si prešao/la pola puta do cilja",
+    "Studio radi punom parom, i ti si deo toga",
+    "Konzistentnost pobeđuje — bravo za tempo",
+    "Još malo pa je cilj nadohvat ruke",
+    "Sredina nedelje, forma na vrhuncu 💪"
+  ],
+  high: [
+    "Skoro si stigao/la — još samo malo! 🏁",
+    "Finiš je na vidiku, ne popuštaj sada",
+    "Odlična nedelja — cilj je gotovo osvojen",
+    "Još par sati i nedeljni cilj je tvoj",
+    "Ovo je taj deo nedelje kad se sve isplati",
+    "Petak je blizu, a ti si skoro na vrhu 🔝",
+    "Impresivan tempo cele nedelje — nastavi tako",
+    "Cilj se ne krije više — skoro je tu",
+    "Samo još koji render i nedelja je zapakovana",
+    "Tvoj trud se vidi u brojkama — sjajno!",
+    "Ulazimo u finiš — drži fokus do kraja",
+    "Skoro pa savršena nedelja u nastajanju",
+    "Još koji korak i slaviš nedeljni cilj 🎉"
+  ],
+  done: [
+    "Nedeljni cilj oboren — čestitamo! 🎉",
+    "Sjajna nedelja iza tebe — zasluženi odmor stiže",
+    "100% posvećenosti, 100% rezultata 💯",
+    "Cilj postignut — vreme je za kafu bez brige ☕",
+    "Ekipa DARKROOM opet dokazala klasu",
+    "Ovo se zove profesionalizam — bravo!",
+    "Nedelja završena kako treba — u stilu",
+    "Cilj oboren pre roka — impresivno",
+    "Uživaj u vikendu, zaslužio/la si ga",
+    "Ponosni smo na ovaj tempo cele nedelje",
+    "Misija izvršena — nedeljni cilj u džepu",
+    "Ovako izgleda odlično odrađen posao 🙌"
+  ]
+};
+function weeklyGoalPercent(){
+  const now = new Date();
+  const dow = (now.getDay()+6)%7; // 0=pon..6=ned
+  const base = [22, 38, 54, 70, 86, 96, 98][dow];
+  const dayOfYear = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
+  const jitter = (dayOfYear % 11) - 5; // stabilno tokom istog dana, -5..+5
+  return Math.max(5, Math.min(100, base + jitter));
+}
+function weeklyGoalTier(pct){
+  if(pct < 40) return 'low';
+  if(pct < 70) return 'mid';
+  if(pct < 95) return 'high';
+  return 'done';
+}
+function renderWeeklyGoal(){
+  const pct = weeklyGoalPercent();
+  const tier = weeklyGoalTier(pct);
+  const pool = weeklyGoalMessages[tier];
+  const message = pool[Math.floor(Math.random()*pool.length)];
+  const hours = (pct/100*40).toFixed(1);
+  const pctEl = document.querySelector('.fun-goal .ring-pct');
+  const titleEl = document.querySelector('.fg-title');
+  const noteEl = document.querySelector('.fg-note');
+  if(pctEl) pctEl.textContent = `${pct}%`;
+  if(titleEl) titleEl.textContent = `${hours}h / 40h`;
+  if(noteEl) noteEl.textContent = message;
+  if(goalRing){
+    goalRing.style.strokeDasharray = ringC;
+    goalRing.style.strokeDashoffset = ringC;
+    setTimeout(()=>{ goalRing.style.strokeDashoffset = ringC * (1 - pct/100); }, 200);
+  }
+}
 const ringC = 2 * Math.PI * 42;
 const goalRing = document.getElementById('goalRing');
-if(goalRing){
-  goalRing.style.strokeDasharray = ringC;
-  goalRing.style.strokeDashoffset = ringC;
-  setTimeout(()=>{ goalRing.style.strokeDashoffset = ringC * (1 - 0.76); }, 200);
-}
+renderWeeklyGoal();
 
 const artistColors = {
   "Dušan Stević":"var(--gold-deep)", "Stefana Ristić":"var(--plum)", "Radoslav Milanović":"var(--coral)",
@@ -7157,6 +7246,7 @@ function applyCurrentUser(){
   renderProfilePage();
   renderDashboardProjects();
   renderDashboardFinance();
+  renderWeeklyGoal();
   renderNotifBell();
   applyAccessGating();
 }
