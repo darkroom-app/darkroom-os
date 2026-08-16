@@ -1758,7 +1758,7 @@ body{
 
       <div class="stat-tab-panel active" id="statTabProjekti">
 
-        <div class="kpi-row" id="kpiRow"></div>
+        <div class="kpi-row" id="kpiRow" style="grid-template-columns:repeat(5,1fr);"></div>
 
         <div class="stat-grid-2">
           <div class="stat-panel">
@@ -1789,6 +1789,11 @@ body{
             <div class="stat-panel-head"><div class="stat-panel-title">📋 Status kadrova</div></div>
             <div id="phaseList"></div>
           </div>
+        </div>
+
+        <div class="stat-panel">
+          <div class="stat-panel-head"><div class="stat-panel-title">🏅 Top projekti po vrednosti</div></div>
+          <div class="lb-list" id="projectValueLeaderboard"></div>
         </div>
 
       </div>
@@ -5409,6 +5414,7 @@ function renderKpiRow(){
   const totalProjects = allProjects.length;
   const avgDuration = avgProjectDuration();
   const totalRevenue = allProjects.reduce((s,p)=>s+projectValueByCode(p.code),0);
+  const avgProjectValue = totalProjects ? Math.round(totalRevenue/totalProjects) : 0;
   const monthly = monthlyOutput(allRounds());
   const topMonthIdx = monthly.indexOf(Math.max(...monthly));
   const kpis = [
@@ -5416,6 +5422,7 @@ function renderKpiRow(){
     { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', val:avgDuration, suffix:" dana", label:"Prosečno trajanje projekta" },
     { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalRevenue, decimals:0, prefix:"", suffix:" RSD", label:"Ukupan prihod (2026)" },
     { icon:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', val:null, label:"Najaktivniji mesec", text:monthNamesFull[topMonthIdx] },
+    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:avgProjectValue, decimals:0, suffix:" RSD", label:"Prosečna vrednost projekta" },
   ];
   document.getElementById('kpiRow').innerHTML = kpis.map(k=>`
     <div class="kpi-card">
@@ -5427,6 +5434,35 @@ function renderKpiRow(){
   cuEls[0] && animateCountUp(cuEls[0], totalProjects);
   cuEls[1] && animateCountUp(cuEls[1], avgDuration);
   cuEls[2] && animateCountUp(cuEls[2], totalRevenue);
+  cuEls[3] && animateCountUp(cuEls[3], avgProjectValue);
+}
+
+function projectValueLeaderboard(){
+  return allProjects.map(p=>({ name:p.name, client:p.client, value: projectValueByCode(p.code) }))
+    .filter(p=>p.value>0).sort((a,b)=>b.value-a.value).slice(0,6);
+}
+function renderProjectValueLeaderboard(){
+  const data = projectValueLeaderboard();
+  const max = Math.max(...data.map(p=>p.value), 1);
+  document.getElementById('projectValueLeaderboard').innerHTML = data.length ? data.map((p,i)=>{
+    const clientIdx = allClients.findIndex(c=>c.name===p.client);
+    const grad = clientAvatarColors[(clientIdx>=0?clientIdx:i) % clientAvatarColors.length];
+    return `
+    <div class="lb-row">
+      <div class="lb-rank">#${i+1}</div>
+      <div class="lb-avatar" style="background:${grad}">${clientInitials(p.client)}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(p.name)} · ${escapeHtml(p.client)}</div>
+        <div class="lb-track"><div class="lb-fill" data-w="${(p.value/max)*100}" style="width:0%"></div></div>
+      </div>
+      <div class="lb-value">${fmtK(p.value)} RSD</div>
+    </div>`;
+  }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka.</div>';
+  setTimeout(()=>{
+    document.querySelectorAll('#projectValueLeaderboard .lb-fill').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.width = el.dataset.w + '%'; }, i*70);
+    });
+  }, 150);
 }
 
 function renderMonthChart(){
@@ -5724,6 +5760,7 @@ function initStatistika(){
   renderMonthChart();
   renderDonut();
   renderClientLeaderboard();
+  renderProjectValueLeaderboard();
   renderKadarStatusFunnel();
   renderQualityKpis();
   renderReviseByType();
