@@ -1752,6 +1752,7 @@ body{
 
       <div class="stat-tabs">
         <button class="stat-tab-btn active" data-tab="projekti">📁 Projekti &amp; Klijenti</button>
+        <button class="stat-tab-btn" data-tab="kvalitet">🎯 Kvalitet &amp; Efikasnost</button>
         <button class="stat-tab-btn" data-tab="tim">👥 Statistika tima</button>
       </div>
 
@@ -1785,8 +1786,25 @@ body{
             <div class="lb-list" id="clientLeaderboard"></div>
           </div>
           <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title">⏱ Prosečno trajanje po fazi</div></div>
+            <div class="stat-panel-head"><div class="stat-panel-title">📋 Status kadrova</div></div>
             <div id="phaseList"></div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="stat-tab-panel" id="statTabKvalitet">
+
+        <div class="kpi-row" id="qualityKpiRow"></div>
+
+        <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">🔁 Prosečan broj revizija po tipu kadra</div></div>
+            <div id="reviseByTypeList"></div>
+          </div>
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">👤 Prosečan broj revizija po zaposlenom</div></div>
+            <div class="lb-list" id="revByPersonList"></div>
           </div>
         </div>
 
@@ -1801,6 +1819,8 @@ body{
 
         <div class="people-kpi-row" id="peopleKpiRow"></div>
 
+        <div class="stat-grid-2" id="peopleProductionGrid" style="grid-template-columns:1fr 1fr; margin-bottom:16px;"></div>
+
         <div class="line-chart-panel">
           <div class="line-legend" id="lineLegend"></div>
           <div class="line-svg-wrap" id="lineSvgWrap"></div>
@@ -1811,7 +1831,7 @@ body{
         </div>
 
         <div class="stat-panel">
-          <div class="stat-panel-head"><div class="stat-panel-title">🏆 Rangiranje po ukupnim satima (2026)</div></div>
+          <div class="stat-panel-head"><div class="stat-panel-title">🏆 Rangiranje po isporučenim radovima (2026)</div></div>
           <div class="lb-list" id="empLeaderboard"></div>
         </div>
 
@@ -5295,27 +5315,102 @@ function animateCountUp(el, target, opts={}){
 const monthNamesFull = ["Januar","Februar","Mart","April","Maj","Jun","Jul","Avgust","Septembar","Oktobar","Novembar","Decembar"];
 const monthNamesShort = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg","Sep","Okt","Nov","Dec"];
 
-const monthlyProjects = [4,5,7,9,8,6,5,2,7,9,8,6];
-const clientRevenue = [
-  {client:"Arvi Studios", amount:3120000},
-  {client:"Gensler Dubai", amount:2450000},
-  {client:"Growcott Freer", amount:1860000},
-  {client:"One World Properties", amount:1340000},
-  {client:"Southern Land Company", amount:890000},
-  {client:"Rilea Group", amount:980000},
-];
-const phaseDurations = [
-  {label:"Clay", days:2, color:"var(--teal)"},
-  {label:"Draft", days:4, color:"var(--sky)"},
-  {label:"Rev01–05", days:6, color:"var(--coral)"},
-  {label:"Final", days:3, color:"var(--gold)"},
-];
+/* ==== STATISTIKA — real-data helpers (kadrovi/rounds su izvor istine) ==== */
+const kadarTypeColorVar = {
+  enterijer:"var(--gold)", eksterijer:"var(--teal)", aerial:"var(--sky)", animacija:"var(--coral)",
+  Navi:"var(--plum)", VR:"var(--sage)", model:"var(--gold-deep)", ostalo:"var(--ink-faint)"
+};
+function allKadrovi(){
+  return allProjects.flatMap(p=>p.kadrovi.map(k=>({...k, projectCode:p.code, projectName:p.name, client:p.client, projectStartDate:p.startDate})));
+}
+function allRounds(){
+  return allKadrovi().flatMap(k=>k.rounds.map(r=>({...r, kadarType:k.type, employee:k.employee, projectCode:k.projectCode, client:k.client})));
+}
+function kadarTypeCounts(list){
+  const counts = {};
+  (list||allKadrovi()).forEach(k=>{ counts[k.type] = (counts[k.type]||0)+1; });
+  return counts;
+}
+function kadarStatusCounts(){
+  const counts = { aktivan:0, odobren:0, otkazan:0, "na čekanju":0 };
+  allKadrovi().forEach(k=>{ counts[k.status] = (counts[k.status]||0)+1; });
+  return counts;
+}
+function monthlyOutput(list){
+  const arr = new Array(12).fill(0);
+  list.forEach(r=>{ const d = fromISO(r.date); if(d.y===TODAY.y) arr[d.m-1]++; });
+  return arr;
+}
+function avgRoundsPerKadar(list){
+  const withRounds = (list||allKadrovi()).filter(k=>k.rounds.length>0);
+  return withRounds.length ? withRounds.reduce((s,k)=>s+k.rounds.length,0)/withRounds.length : 0;
+}
+function avgRoundsByType(){
+  return Object.keys(kadarTypeColorVar).map(t=>{
+    const list = allKadrovi().filter(k=>k.type===t && k.rounds.length>0);
+    return { type:t, avg: list.length ? list.reduce((s,k)=>s+k.rounds.length,0)/list.length : 0, count:list.length };
+  }).filter(x=>x.count>0);
+}
+function revRemarkRate(){
+  const rounds = allRounds();
+  return rounds.length ? (rounds.filter(r=>!r.billable).length/rounds.length)*100 : 0;
+}
+function approvalRate(list){
+  const decided = (list||allKadrovi()).filter(k=>k.status==='odobren'||k.status==='otkazan');
+  return decided.length ? (decided.filter(k=>k.status==='odobren').length/decided.length)*100 : 0;
+}
+function avgReviewCycleDays(){
+  const approved = allKadrovi().filter(k=>k.status==='odobren' && k.rounds.length>0);
+  if(!approved.length) return 0;
+  const total = approved.reduce((sum,k)=>{
+    const dates = k.rounds.map(r=>r.date).sort();
+    return sum + Math.max(0, daysBetween(fromISO(dates[0]), fromISO(dates[dates.length-1])));
+  }, 0);
+  return Math.round(total/approved.length);
+}
+function avgProjectDuration(){
+  const withRounds = allProjects.filter(p=>p.kadrovi.some(k=>k.rounds.length>0));
+  if(!withRounds.length) return 0;
+  const total = withRounds.reduce((sum,p)=>{
+    const dates = p.kadrovi.flatMap(k=>k.rounds.map(r=>r.date)).sort();
+    if(!dates.length) return sum;
+    return sum + Math.max(0, daysBetween(fromISO(p.startDate), fromISO(dates[dates.length-1])));
+  }, 0);
+  return Math.round(total/withRounds.length);
+}
+function empKadarStats(name){
+  const mine = allKadrovi().filter(k=>k.employee===name);
+  const rounds = mine.flatMap(k=>k.rounds);
+  const approved = mine.filter(k=>k.status==='odobren').length;
+  const decided = mine.filter(k=>k.status==='odobren'||k.status==='otkazan').length;
+  const byType = {};
+  mine.forEach(k=>{ byType[k.type] = (byType[k.type]||0)+1; });
+  const activeProjects = new Set(mine.filter(k=>k.status==='aktivan'||k.status==='na čekanju').map(k=>k.projectCode)).size;
+  const clientCounts = {};
+  mine.forEach(k=>{ clientCounts[k.client] = (clientCounts[k.client]||0)+1; });
+  const topClient = Object.keys(clientCounts).sort((a,b)=>clientCounts[b]-clientCounts[a])[0] || "—";
+  const withRounds = mine.filter(k=>k.rounds.length>0);
+  return {
+    total: mine.length, approved, decided,
+    approvalRate: decided ? Math.round((approved/decided)*100) : null,
+    totalRounds: rounds.length,
+    avgRounds: withRounds.length ? +(rounds.length/withRounds.length).toFixed(1) : 0,
+    byType, activeProjects, topClient
+  };
+}
+function empMonthlyOutput(name){
+  return monthlyOutput(allRounds().filter(r=>r.employee===name && r.billable));
+}
+function empYearTotal(name){
+  return allRounds().filter(r=>r.employee===name && r.billable).length;
+}
 
 function renderKpiRow(){
   const totalProjects = allProjects.length;
-  const avgDuration = 34;
-  const totalRevenue = clientRevenue.reduce((s,c)=>s+c.amount,0) + 1560000;
-  const topMonthIdx = monthlyProjects.indexOf(Math.max(...monthlyProjects));
+  const avgDuration = avgProjectDuration();
+  const totalRevenue = allProjects.reduce((s,p)=>s+projectValueByCode(p.code),0);
+  const monthly = monthlyOutput(allRounds());
+  const topMonthIdx = monthly.indexOf(Math.max(...monthly));
   const kpis = [
     { icon:'<path d="M3 7 12 2l9 5-9 5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/>', val:totalProjects, suffix:"", label:"Ukupno projekata (2026)" },
     { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', val:avgDuration, suffix:" dana", label:"Prosečno trajanje projekta" },
@@ -5335,13 +5430,14 @@ function renderKpiRow(){
 }
 
 function renderMonthChart(){
-  const max = Math.max(...monthlyProjects);
-  const peakIdx = monthlyProjects.indexOf(max);
+  const monthly = monthlyOutput(allRounds());
+  const max = Math.max(...monthly, 1);
+  const peakIdx = monthly.indexOf(max);
   document.getElementById('topMonthLabel').textContent = `Najviše: ${monthNamesShort[peakIdx]}`;
   const wrap = document.getElementById('monthChart');
-  wrap.innerHTML = monthlyProjects.map((v,i)=>`
+  wrap.innerHTML = monthly.map((v,i)=>`
     <div class="mo-col">
-      <div class="mo-track"><div class="mo-bar ${i===peakIdx?'peak':''}" data-h="${(v/max)*100}" style="height:0%" title="${monthNamesFull[i]}: ${v} projekata"></div></div>
+      <div class="mo-track"><div class="mo-bar ${i===peakIdx?'peak':''}" data-h="${(v/max)*100}" style="height:0%" title="${monthNamesFull[i]}: ${v} isporučenih radova"></div></div>
       <div class="mo-label">${monthNamesShort[i]}</div>
     </div>`).join('');
   setTimeout(()=>{
@@ -5352,21 +5448,20 @@ function renderMonthChart(){
 }
 
 function renderDonut(){
-  const counts = {};
-  portfolioItems.forEach(p=>{ counts[p.type] = (counts[p.type]||0)+1; });
-  const total = portfolioItems.length;
-  const types = Object.keys(typeColorVar).filter(t=>counts[t]);
+  const counts = kadarTypeCounts();
+  const total = allKadrovi().length;
+  const types = Object.keys(kadarTypeColorVar).filter(t=>counts[t]);
   let acc = 0;
   const stops = types.map(t=>{
     const pct = (counts[t]/total)*100;
-    const seg = `${typeColorVar[t]} ${acc}% ${acc+pct}%`;
+    const seg = `${kadarTypeColorVar[t]} ${acc}% ${acc+pct}%`;
     acc += pct;
     return seg;
   }).join(', ');
   document.getElementById('donutCircle').style.background = `conic-gradient(${stops})`;
   document.getElementById('donutLegend').innerHTML = types.map(t=>`
     <div class="donut-legend-item">
-      <span class="donut-legend-left"><span class="donut-dot" style="background:${typeColorVar[t]}"></span>${t}</span>
+      <span class="donut-legend-left"><span class="donut-dot" style="background:${kadarTypeColorVar[t]}"></span>${t}</span>
       <b>${counts[t]}</b>
     </div>`).join('');
   const holeVal = document.getElementById('donutTotal');
@@ -5375,22 +5470,21 @@ function renderDonut(){
 }
 
 function renderClientLeaderboard(){
-  const max = Math.max(...clientRevenue.map(c=>c.amount));
-  const html = clientRevenue.map((c,i)=>{
-    const idx = allClients.findIndex(x=>x.name===c.client);
-    const grad = clientAvatarColors[(idx>=0?idx:i) % clientAvatarColors.length];
+  const data = clientRevenueReal();
+  const max = Math.max(...data.map(([,v])=>v), 1);
+  document.getElementById('clientLeaderboard').innerHTML = data.length ? data.map(([name,val],i)=>{
+    const grad = clientAvatarColors[i % clientAvatarColors.length];
     return `
     <div class="lb-row">
       <div class="lb-rank">#${i+1}</div>
-      <div class="lb-avatar" style="background:${grad}">${clientInitials(c.client)}</div>
+      <div class="lb-avatar" style="background:${grad}">${clientInitials(name)}</div>
       <div class="lb-info">
-        <div class="lb-name">${c.client}</div>
-        <div class="lb-track"><div class="lb-fill" data-w="${(c.amount/max)*100}" style="width:0%"></div></div>
+        <div class="lb-name">${escapeHtml(name)}</div>
+        <div class="lb-track"><div class="lb-fill" data-w="${(val/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${Math.round(c.amount/1000)}k RSD</div>
+      <div class="lb-value">${fmtK(val)} RSD</div>
     </div>`;
-  }).join('');
-  document.getElementById('clientLeaderboard').innerHTML = html;
+  }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka o cenovniku.</div>';
   setTimeout(()=>{
     document.querySelectorAll('#clientLeaderboard .lb-fill').forEach((el,i)=>{
       setTimeout(()=>{ el.style.width = el.dataset.w + '%'; }, i*70);
@@ -5398,13 +5492,17 @@ function renderClientLeaderboard(){
   }, 150);
 }
 
-function renderPhaseList(){
-  const max = Math.max(...phaseDurations.map(p=>p.days));
-  document.getElementById('phaseList').innerHTML = phaseDurations.map(p=>`
+function renderKadarStatusFunnel(){
+  const counts = kadarStatusCounts();
+  const order = ['aktivan','odobren','na čekanju','otkazan'];
+  const labels = { aktivan:'Aktivan', odobren:'Odobren', 'na čekanju':'Na čekanju', otkazan:'Otkazan' };
+  const colors = { aktivan:'var(--gold)', odobren:'#4C8A55', 'na čekanju':'var(--sky)', otkazan:'var(--coral)' };
+  const max = Math.max(...order.map(k=>counts[k]||0), 1);
+  document.getElementById('phaseList').innerHTML = order.map(k=>`
     <div class="phase-row">
-      <div class="phase-label">${p.label}</div>
-      <div class="phase-track"><div class="phase-fill" data-w="${(p.days/max)*100}" style="width:0%; background:${p.color}"></div></div>
-      <div class="phase-days">${p.days} dana</div>
+      <div class="phase-label">${labels[k]}</div>
+      <div class="phase-track"><div class="phase-fill" data-w="${((counts[k]||0)/max)*100}" style="width:0%; background:${colors[k]}"></div></div>
+      <div class="phase-days">${counts[k]||0}</div>
     </div>`).join('');
   setTimeout(()=>{
     document.querySelectorAll('#phaseList .phase-fill').forEach((el,i)=>{
@@ -5413,24 +5511,67 @@ function renderPhaseList(){
   }, 150);
 }
 
-function empSeedFor(name){
-  let sum = 0;
-  for(let i=0; i<name.length; i++) sum += name.charCodeAt(i);
-  return (sum % 60) / 10 + 1;
+function renderQualityKpis(){
+  const avgRounds = avgRoundsPerKadar();
+  const remarkRate = revRemarkRate();
+  const approval = approvalRate();
+  const cycleDays = avgReviewCycleDays();
+  const kpis = [
+    { icon:'<path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/>', val:avgRounds, decimals:1, suffix:"", label:"Prosečan broj rundi po kadru" },
+    { icon:'<path d="M12 9v4"/><path d="M12 17h.01"/><path d="m10.3 3.9-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.7-3.1l-8-14a2 2 0 0 0-3.4 0Z"/>', val:remarkRate, decimals:1, suffix:"%", label:"Interne ispravke (Rev Remark)" },
+    { icon:'<path d="M20 6 9 17l-5-5"/>', val:approval, decimals:0, suffix:"%", label:"Stopa odobravanja" },
+    { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', val:cycleDays, decimals:0, suffix:" dana", label:"Prosečan revizioni ciklus" },
+  ];
+  document.getElementById('qualityKpiRow').innerHTML = kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${k.icon}</svg></div>
+      <div class="kpi-val"><span class="cu">0</span>${k.suffix||''}</div>
+      <div class="kpi-label">${k.label}</div>
+    </div>`).join('');
+  const cuEls = document.querySelectorAll('#qualityKpiRow .cu');
+  cuEls[0] && animateCountUp(cuEls[0], avgRounds, {decimals:1});
+  cuEls[1] && animateCountUp(cuEls[1], remarkRate, {decimals:1});
+  cuEls[2] && animateCountUp(cuEls[2], approval, {decimals:0});
+  cuEls[3] && animateCountUp(cuEls[3], cycleDays, {decimals:0});
 }
-function empMonthlyHours(name){
-  const seed = empSeedFor(name);
-  const rnd=(a,b,s)=> a+((Math.sin(s*77.3)+1)/2)*(b-a);
-  const arr=[];
-  for(let m=0;m<12;m++){
-    let base = rnd(120,175, seed+m*1.3);
-    if(m===7) base *= 0.45;
-    if(m===11) base *= 0.72;
-    arr.push(Math.round(base));
-  }
-  return arr;
+
+function renderReviseByType(){
+  const data = avgRoundsByType().sort((a,b)=>b.avg-a.avg);
+  const max = Math.max(...data.map(d=>d.avg), 1);
+  document.getElementById('reviseByTypeList').innerHTML = data.map(d=>`
+    <div class="phase-row">
+      <div class="phase-label">${escapeHtml(d.type)}</div>
+      <div class="phase-track"><div class="phase-fill" data-w="${(d.avg/max)*100}" style="width:0%; background:${kadarTypeColorVar[d.type]}"></div></div>
+      <div class="phase-days">${d.avg.toFixed(1)} rundi</div>
+    </div>`).join('');
+  setTimeout(()=>{
+    document.querySelectorAll('#reviseByTypeList .phase-fill').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.width = el.dataset.w + '%'; }, i*90);
+    });
+  }, 150);
 }
-function empYearTotal(name){ return empMonthlyHours(name).reduce((a,b)=>a+b,0); }
+
+function renderReviseByPerson(){
+  const artists = Object.keys(artistGrad);
+  const ranked = artists.map(name=>{ const s = empKadarStats(name); return { name, avg:s.avgRounds, total:s.total }; })
+    .filter(r=>r.total>0).sort((a,b)=>a.avg-b.avg);
+  const max = Math.max(...ranked.map(r=>r.avg), 1);
+  document.getElementById('revByPersonList').innerHTML = ranked.map((r,i)=>{ const av = avatarBgInner(r.name); return `
+    <div class="lb-row">
+      <div class="lb-rank">#${i+1}</div>
+      <div class="lb-avatar" style="${av.bg}">${av.inner}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(r.name)}</div>
+        <div class="lb-track"><div class="lb-fill" data-w="${(r.avg/max)*100}" style="width:0%"></div></div>
+      </div>
+      <div class="lb-value">${r.avg.toFixed(1)} rundi</div>
+    </div>`; }).join('');
+  setTimeout(()=>{
+    document.querySelectorAll('#revByPersonList .lb-fill').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.width = el.dataset.w + '%'; }, i*70);
+    });
+  }, 150);
+}
 
 let peopleSelection = ["Dušan Stević","Stefana Ristić"];
 
@@ -5448,6 +5589,7 @@ function renderPeopleChips(){
       else { if(peopleSelection.length>=2) peopleSelection.shift(); peopleSelection.push(a); }
       renderPeopleChips();
       renderPeopleKpis();
+      renderPeopleProductionCards();
       renderLineChart();
     });
   });
@@ -5456,24 +5598,58 @@ function renderPeopleChips(){
 function renderPeopleKpis(){
   const cards = [];
   peopleSelection.forEach(name=>{
-    const monthly = empMonthlyHours(name);
+    const monthly = empMonthlyOutput(name);
     const total = monthly.reduce((a,b)=>a+b,0);
-    const avg = Math.round(total/12);
+    const avg = +(total/12).toFixed(1);
     const peakIdx = monthly.indexOf(Math.max(...monthly));
-    const utilization = Math.min(100, Math.round((total/(12*160))*100));
-    cards.push({name, total, avg, peak:monthNamesShort[peakIdx], utilization});
+    cards.push({name, total, avg, peak: total>0 ? monthNamesShort[peakIdx] : '—'});
   });
   document.getElementById('peopleKpiRow').innerHTML = cards.map(c=>{ const av = avatarBgInner(c.name); return `
     <div class="pkpi-card">
       <div class="pkpi-artist"><span class="pkpi-artist-avatar" style="${av.bg}">${av.inner}</span><span class="pkpi-artist-name">${c.name}</span></div>
-      <div class="pkpi-val">${c.total}h</div>
-      <div class="pkpi-label">Ukupno sati · 2026</div>
+      <div class="pkpi-val">${c.total}</div>
+      <div class="pkpi-label">Isporučenih radova · 2026</div>
     </div>
     <div class="pkpi-card">
       <div class="pkpi-artist"><span class="pkpi-artist-avatar" style="${av.bg}">${av.inner}</span><span class="pkpi-artist-name">${c.name}</span></div>
-      <div class="pkpi-val">${c.avg}h</div>
+      <div class="pkpi-val">${c.avg}</div>
       <div class="pkpi-label">Prosek / mesec · najviše ${c.peak}</div>
     </div>`; }).join('');
+}
+
+function personProductionCardHTML(name){
+  if(!name) return `<div class="empty-state" style="padding:30px 10px;">Izaberi zaposlenog</div>`;
+  const s = empKadarStats(name);
+  const types = Object.keys(kadarTypeColorVar).filter(t=>s.byType[t]);
+  const stackSegs = types.map(t=>
+    `<div class="cc-stack-seg" style="width:${(s.byType[t]/Math.max(s.total,1))*100}%; background:${kadarTypeColorVar[t]}"></div>`
+  ).join('');
+  const legend = types.map(t=>`
+    <div class="cc-legend-item">
+      <span class="cc-legend-left"><span class="cc-legend-dot" style="background:${kadarTypeColorVar[t]}"></span>${t}</span>
+      <span>${s.byType[t]}</span>
+    </div>`).join('');
+  const av = avatarBgInner(name);
+  return `
+    <div class="cc-artist-head">
+      <div class="cc-artist-avatar" style="${av.bg}">${av.inner}</div>
+      <div><div class="cc-artist-name">${escapeHtml(name)}</div><div class="cc-artist-role">${s.total} kadrova ukupno</div></div>
+    </div>
+    <div class="cc-stack">${stackSegs}</div>
+    <div class="cc-legend">${legend}</div>
+    <div class="cc-metrics">
+      <div class="cc-metric"><div class="cc-metric-val">${s.approvalRate!=null ? s.approvalRate+'%' : '—'}</div><div class="cc-metric-label">Stopa odobravanja</div></div>
+      <div class="cc-metric"><div class="cc-metric-val">${s.avgRounds}</div><div class="cc-metric-label">Prosek rundi po kadru</div></div>
+      <div class="cc-metric"><div class="cc-metric-val">${s.activeProjects}</div><div class="cc-metric-label">Aktivnih projekata</div></div>
+      <div class="cc-metric"><div class="cc-metric-val" style="font-size:13px;">${escapeHtml(s.topClient)}</div><div class="cc-metric-label">Najčešći klijent</div></div>
+    </div>`;
+}
+function renderPeopleProductionCards(){
+  const wrap = document.getElementById('peopleProductionGrid');
+  if(!wrap) return;
+  wrap.innerHTML = peopleSelection.length
+    ? peopleSelection.map(name=>`<div class="stat-panel">${personProductionCardHTML(name)}</div>`).join('')
+    : `<div class="stat-panel">${personProductionCardHTML(null)}</div>`;
 }
 
 function renderLineChart(){
@@ -5482,9 +5658,9 @@ function renderLineChart(){
     <div class="line-legend-item"><span class="line-legend-dot" style="background:${artistColors[name]}"></span>${name}</div>`).join('');
 
   let allVals = [];
-  const series = peopleSelection.map(name=>{ const v = empMonthlyHours(name); allVals = allVals.concat(v); return {name, v}; });
-  const maxV = allVals.length ? Math.max(...allVals) : 200;
-  const minV = allVals.length ? Math.min(...allVals) * 0.85 : 0;
+  const series = peopleSelection.map(name=>{ const v = empMonthlyOutput(name); allVals = allVals.concat(v); return {name, v}; });
+  const maxV = allVals.length ? Math.max(...allVals, 1) : 10;
+  const minV = 0;
 
   const xFor = i => padL + (i/(11)) * (W - padL - padR);
   const yFor = v => padT + (1 - (v-minV)/(maxV-minV)) * (H - padT - padB);
@@ -5494,7 +5670,7 @@ function renderLineChart(){
     const pts = s.v.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' ');
     svg += `<polyline points="${pts}" fill="none" stroke="${getComputedColor(s.name)}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="line-path" data-name="${s.name}"/>`;
     s.v.forEach((v,i)=>{
-      svg += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3.2" fill="${getComputedColor(s.name)}" stroke="var(--card)" stroke-width="1.5"><title>${s.name} · ${monthNamesFull[i]}: ${v}h</title></circle>`;
+      svg += `<circle cx="${xFor(i)}" cy="${yFor(v)}" r="3.2" fill="${getComputedColor(s.name)}" stroke="var(--card)" stroke-width="1.5"><title>${s.name} · ${monthNamesFull[i]}: ${v} rendera</title></circle>`;
     });
   });
   svg += `</svg>`;
@@ -5525,7 +5701,7 @@ function getComputedColor(name){
 function renderEmpLeaderboard(){
   const artists = Object.keys(artistGrad);
   const ranked = artists.map(a=>({name:a, total:empYearTotal(a)})).sort((a,b)=>b.total-a.total);
-  const max = ranked[0].total;
+  const max = Math.max(ranked[0].total, 1);
   document.getElementById('empLeaderboard').innerHTML = ranked.map((r,i)=>{ const av = avatarBgInner(r.name); return `
     <div class="lb-row">
       <div class="lb-rank">#${i+1}</div>
@@ -5534,7 +5710,7 @@ function renderEmpLeaderboard(){
         <div class="lb-name">${r.name}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(r.total/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${r.total}h</div>
+      <div class="lb-value">${r.total}</div>
     </div>`; }).join('');
   setTimeout(()=>{
     document.querySelectorAll('#empLeaderboard .lb-fill').forEach((el,i)=>{
@@ -5548,18 +5724,23 @@ function initStatistika(){
   renderMonthChart();
   renderDonut();
   renderClientLeaderboard();
-  renderPhaseList();
+  renderKadarStatusFunnel();
+  renderQualityKpis();
+  renderReviseByType();
+  renderReviseByPerson();
   renderPeopleChips();
   renderPeopleKpis();
+  renderPeopleProductionCards();
   renderLineChart();
   renderEmpLeaderboard();
 
+  const statTabPanelMap = { projekti:'statTabProjekti', kvalitet:'statTabKvalitet', tim:'statTabTim' };
   document.querySelectorAll('#view-statistika .stat-tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       document.querySelectorAll('#view-statistika .stat-tab-btn').forEach(b=>b.classList.remove('active'));
       document.querySelectorAll('#view-statistika .stat-tab-panel').forEach(p=>p.classList.remove('active'));
       btn.classList.add('active');
-      document.getElementById(btn.dataset.tab==='projekti' ? 'statTabProjekti' : 'statTabTim').classList.add('active');
+      document.getElementById(statTabPanelMap[btn.dataset.tab]).classList.add('active');
     });
   });
 }
@@ -5626,7 +5807,7 @@ function renderTeamPage(){
     const initials = artistInitials[t.key] || clientInitials(t.name);
     const avatarHtml = t.avatar ? `style="background-image:url('${t.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
     const activeProj = teamActiveProjects(t.key);
-    const hours = typeof empYearTotal === 'function' ? empYearTotal(t.key) : 0;
+    const output = typeof empYearTotal === 'function' ? empYearTotal(t.key) : 0;
     const inactive = t.status!=='Aktivan';
     return `
     <div class="client-card team-card${inactive ? ' team-card-inactive' : ''}" data-id="${t._id}" style="cursor:pointer;">
@@ -5643,7 +5824,7 @@ function renderTeamPage(){
       </div>
       <div class="team-skills">${t.skills.map(s=>`<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}</div>
       <div class="cc-foot">
-        <div class="cc-projects"><b>${activeProj}</b> aktivnih · <b>${hours}h</b> 2026.</div>
+        <div class="cc-projects"><b>${activeProj}</b> aktivnih · <b>${output}</b> radova 2026.</div>
         <span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span>
       </div>
     </div>`;
@@ -6127,7 +6308,7 @@ function renderClientRevenueBoard(){
         <div class="lb-name">${escapeHtml(name)}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(val/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${fmtK(val)}k RSD</div>
+      <div class="lb-value">${fmtK(val)} RSD</div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka o cenovniku.</div>';
   setTimeout(()=>{
@@ -6148,7 +6329,7 @@ function renderTopExpenses(){
         <div class="lb-name">${escapeHtml(t.desc)}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(t.amount/max)*100}" style="width:0%; background:linear-gradient(90deg, var(--coral), #a8543a);"></div></div>
       </div>
-      <div class="lb-value">${fmtK(t.amount)}k RSD</div>
+      <div class="lb-value">${fmtK(t.amount)} RSD</div>
     </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema odliva ovog meseca.</div>';
   setTimeout(()=>{
     document.querySelectorAll('#topExpensesList .lb-fill').forEach((el,i)=>{
@@ -7087,7 +7268,7 @@ function openPlaybookArticle(a){
 function openPersonStats(name){
   if(!statistikaInited){ statistikaInited = true; initStatistika(); }
   peopleSelection = [name];
-  renderPeopleChips(); renderPeopleKpis(); renderLineChart();
+  renderPeopleChips(); renderPeopleKpis(); renderPeopleProductionCards(); renderLineChart();
   document.querySelectorAll('#view-statistika .stat-tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='tim'));
   document.querySelectorAll('#view-statistika .stat-tab-panel').forEach(p=>p.classList.toggle('active', p.id==='statTabTim'));
   showView('statistika'); setActiveNav('statistika'); toggleChat(false);
@@ -7117,7 +7298,7 @@ function chatbotSearch(query){
     if(hay.includes(q)) results.push({ icon:'📖', type:'Playbook', title:a.navTitle, meta:'DR Playbook', action:()=>openPlaybookArticle(a) });
   });
   Object.keys(artistGrad).forEach(name=>{
-    if(name.toLowerCase().includes(q)) results.push({ icon:'👤', type:'Zaposleni', title:name, meta:`${empYearTotal(name)}h ukupno 2026.`, action:()=>openPersonStats(name) });
+    if(name.toLowerCase().includes(q)) results.push({ icon:'👤', type:'Zaposleni', title:name, meta:`${empYearTotal(name)} radova ukupno 2026.`, action:()=>openPersonStats(name) });
   });
 
   return results.slice(0,7);
