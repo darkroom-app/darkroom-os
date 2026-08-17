@@ -2914,7 +2914,12 @@ document.getElementById('finEye').addEventListener('click', ()=>{
 
 
 
-const TODAY = {y:2026, m:8, d:4};
+const _nowDate = new Date();
+const TODAY = {y:_nowDate.getFullYear(), m:_nowDate.getMonth()+1, d:_nowDate.getDate()};
+const _dowNamesSr = ["Nedelja","Ponedeljak","Utorak","Sreda","Četvrtak","Petak","Subota"];
+const _monthNamesSr = ["januar","februar","mart","april","maj","jun","jul","avgust","septembar","oktobar","novembar","decembar"];
+const _topDateEl = document.querySelector('.top-date');
+if(_topDateEl) _topDateEl.textContent = `${_dowNamesSr[_nowDate.getDay()]} · ${TODAY.d}. ${_monthNamesSr[TODAY.m-1]} ${TODAY.y}.`;
 
 function zadatak(person, initials, color, projectCode, taskName, start, end, urgency){
   return { kind:"zadatak", person, initials, color, projectCode, taskName, urgency, start, end };
