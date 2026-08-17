@@ -55,6 +55,11 @@ create table public.team_members (
   birth_date date,
   slobodni_dani int not null default 20,
   email_business text,
+  renderflow_user_id text unique,             -- RenderFlow's internal user _id (Users API),
+                                               -- used to resolve who submitted a render job —
+                                               -- the webhook payload only carries this id, not
+                                               -- a name/email. Null for people with no RenderFlow
+                                               -- account (e.g. non-artists).
   sort_order int not null                     -- deterministic fetch order, mirrors the
                                                -- original seed order in darkroom-app.html
 );
@@ -87,3 +92,31 @@ grant update (read) on public.notifications to authenticated;
 -- If a session's auth.uid() has no matching team_members row (shouldn't happen given
 -- bootstrap-only account creation), the subquery returns NULL and RLS denies — no
 -- accidental exposure.
+
+
+-- ==== Phase 2.1: map RenderFlow users to team_members (run as a third query) ====
+-- RenderFlow's job-completed webhook only carries a `user_id` (its own internal
+-- Mongo-style id), never a name or email — this column lets pulse-webhook resolve
+-- that id back to a real person via GET /api/v1/users' "alias" field (RenderFlow's
+-- account_id -> studio-member mapping, fetched once and matched by hand).
+
+alter table public.team_members add column if not exists renderflow_user_id text unique;
+
+update public.team_members set renderflow_user_id = '69d59c66f7fc916ba236c14a' where name = 'Dušan Stević';
+update public.team_members set renderflow_user_id = '69d5a79c1a2b970913c94ea9' where name = 'Stefana Ristić';
+update public.team_members set renderflow_user_id = '69d59c82f3f466f6d7a6a1cf' where name = 'Radoslav Milanović';
+update public.team_members set renderflow_user_id = '69d59d22b8455efdd857c2f3' where name = 'Dalibor Mitić';
+update public.team_members set renderflow_user_id = '69d59d9155107e435980af30' where name = 'Katarina Đorđević';
+update public.team_members set renderflow_user_id = '69d59e1624d12e5db0a430c9' where name = 'Aleksandra Vukašinović';
+update public.team_members set renderflow_user_id = '69d59ecf5ff5848607589db1' where name = 'Mihajlo Nagradić';
+update public.team_members set renderflow_user_id = '69d59f633169c2b4139f0e65' where name = 'Nikola Jovanović';
+update public.team_members set renderflow_user_id = '69d5a1ead022499251304909' where name = 'Anđela Pešić';
+update public.team_members set renderflow_user_id = '69d59fe87651c30ecf08d03c' where name = 'Ana Krstić'; -- RenderFlow alias "Aleksandra Krstic" — confirmed same person
+update public.team_members set renderflow_user_id = '69d5a0a003ab8ead0c6d9846' where name = 'Miljana Cvetković';
+update public.team_members set renderflow_user_id = '69d5a04a0e13c92195aae78e' where name = 'Miloš Tasić';
+update public.team_members set renderflow_user_id = '69d5a0e9cb8632558d82ef6e' where name = 'Ivana Sazdov';
+update public.team_members set renderflow_user_id = '69d5a121390986dc1fa93031' where name = 'Lazar Pešić';
+update public.team_members set renderflow_user_id = '69d5a2657909a6fd052c10bf' where name = 'Damjan Mitrović';
+update public.team_members set renderflow_user_id = '69d5a2000999fe2ca613bcfe' where name = 'Aleksandar Jovanović';
+update public.team_members set renderflow_user_id = '69d5a288384169ea01c40355' where name = 'Marija Milenković';
+-- Marija Todorović intentionally left null — social media manager, doesn't render.

@@ -1,23 +1,25 @@
 // DARKROOM — Titanium OS: Phase 1 backend (RenderFlow render-finished notifications)
 //
-// Deploy via Supabase Dashboard → Edge Functions → New function → name it
-// "pulse-webhook" → paste this file's contents → Deploy. Then set the
-// WEBHOOK_SECRET secret (Edge Functions → Manage secrets) to the value
-// given separately — never commit that value to this repo.
+// Deploy via Supabase Dashboard → Edge Functions → pulse-webhook → Code tab →
+// replace all content with this file → Deploy. WEBHOOK_SECRET must already be
+// set (Edge Functions → Manage secrets) — never commit that value to this repo.
 //
-// RenderFlow's "Add Integration" dialog only has Type/Name/Webhook URL —
-// no custom-header field — so the secret is passed as a query param on the
-// URL instead of a header (the header check is kept too, in case a future
-// caller can send one):
+// RenderFlow's "Add Integration" dialog only has Type/Name/Webhook URL — no
+// custom-header field — so the secret is passed as a query param on the URL
+// instead of a header (header check kept too, in case a future caller can
+// send one):
 //   POST /functions/v1/pulse-webhook?secret=<shared secret>
 //
-// DISCOVERY MODE: RenderFlow's exact webhook JSON shape isn't documented
-// (docs only say "sends a JSON payload with all job details"). Until we've
-// seen one real payload, this function is deliberately permissive: it tries
-// several plausible field names/paths for each value, and — critically —
-// still inserts the row (with a placeholder recipient if none is found)
-// rather than rejecting, so raw_payload always captures what really arrived
-// for inspection. Tighten the field-guessing once the real shape is known.
+// Confirmed from a real "job-completed" payload: RenderFlow does NOT include
+// the submitter's name/email — only an internal `user_id` (its own Mongo-style
+// id). That id is resolved to a real person via team_members.renderflow_user_id
+// (populated once by hand from RenderFlow's GET /api/v1/users "alias" field —
+// see supabase/schema.sql "Phase 2.1"). The job/task name is at root `name`;
+// status at root `status`. There's no discrete project-code field — project
+// numbers only appear embedded in file paths — so project_code stays unmapped
+// for now. Kept permissive/defensive: an unrecognized user_id or an entirely
+// different payload shape still inserts the row (raw_payload always captures
+// what arrived) rather than rejecting, so nothing is silently lost.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -67,9 +69,21 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: "invalid json" }, 400);
   }
 
-  // Best-effort guesses across a few plausible RenderFlow shapes — refine
-  // once a real payload has been inspected (see raw_payload on the row).
-  const employee = pick(payload, [
+  // RenderFlow's confirmed job-completed shape: `user_id` at root identifies the
+  // submitter (no name/email in the payload itself) — resolve it against
+  // team_members.renderflow_user_id. Falls back to a few plausible alternate
+  // field names in case a different job type sends a different shape.
+  const renderflowUserId = pick(payload, ["user_id", "userId", "job.user_id"]);
+  let employee: string | null = null;
+  if (renderflowUserId) {
+    const { data: match } = await supabase
+      .from("team_members")
+      .select("name")
+      .eq("renderflow_user_id", renderflowUserId)
+      .maybeSingle();
+    employee = match?.name ?? null;
+  }
+  employee ??= pick(payload, [
     "employee", "user", "user.name", "submittedBy", "submitted_by",
     "owner", "owner.name", "artist", "job.user", "job.user.name",
     "job.owner", "job.submittedBy",
