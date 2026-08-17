@@ -906,19 +906,24 @@ body{
 .tag-review{ background:var(--coral-soft); color:var(--coral); }
 
 /* ---- Moja statistika ---- */
-.mystat-panel .panel-head{ margin-bottom:5px; }
-.mystat-stats{ display:flex; gap:0; background:var(--card-soft); border-radius:11px; padding:4px 4px; margin-bottom:4px; }
+.mystat-panel{ display:flex; flex-direction:column; gap:7px; }
+.mystat-panel .panel-head{ margin-bottom:0; }
+.mystat-stats{ display:flex; gap:0; background:var(--card-soft); border-radius:11px; padding:5px 4px; }
 .mystat-stat{ flex:1; text-align:center; }
 .mystat-stat + .mystat-stat{ border-left:1px solid var(--border); }
-.mystat-stat .ms-val{ font-family:var(--font-display); font-weight:700; font-size:13px; line-height:1.1; }
-.mystat-stat .ms-label{ font-family:var(--font-mono); font-size:6px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.01em; margin-top:1px; line-height:1.1; padding:0 2px; }
-.mystat-donut-row{ display:flex; align-items:center; gap:10px; }
-.mystat-donut.donut-wrap{ width:52px; height:52px; flex-shrink:0; }
+.mystat-stat .ms-val{ font-family:var(--font-display); font-weight:700; font-size:14px; line-height:1.1; }
+.mystat-stat .ms-label{ font-family:var(--font-mono); font-size:6.3px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.01em; margin-top:1px; line-height:1.1; padding:0 2px; }
+.mystat-donut-row{ display:flex; align-items:center; gap:10px; flex:0 0 auto; }
+.mystat-donut.donut-wrap{ width:54px; height:54px; flex-shrink:0; }
 .mystat-donut .donut-hole{ inset:6px; }
 .mystat-donut .donut-hole-val{ font-size:10px; }
 .mystat-donut .donut-hole-label{ font-size:4.3px; }
 .mystat-donut-row .donut-legend{ gap:3px; }
 .mystat-donut-row .donut-legend-item{ font-size:8.5px; }
+.mystat-label{ font-family:var(--font-mono); font-size:6.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; flex:0 0 auto; margin-bottom:-2px; }
+.mystat-recent{ flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:5px; overflow:hidden; }
+.mystat-recent .task-name{ font-size:9.5px; }
+.mystat-recent .tag{ font-size:6.5px; padding:2px 5px; }
 .mystat-empty{ font-size:10px; color:var(--ink-faint); }
 
 /* ---- Obavestenja ---- */
@@ -1402,6 +1407,8 @@ body{
             </div>
             <div class="donut-legend" id="mystatDonutLegend"></div>
           </div>
+          <div class="mystat-label">Poslednji zadaci</div>
+          <div class="mystat-recent" id="mystatRecent"></div>
         </div>
 
         <div class="panel fin-panel">
@@ -7606,6 +7613,16 @@ function renderMyStats(){
   ];
   statsEl.innerHTML = stats.map(s=>`<div class="mystat-stat"><div class="ms-val">${s.val}</div><div class="ms-label">${s.label}</div></div>`).join('');
 
+  const recentEl = document.getElementById('mystatRecent');
+  const recent = myKadrovi.map(k=>({
+    ...k, lastDate: k.rounds.length ? k.rounds[k.rounds.length-1].date : k.projectStartDate
+  })).sort((a,b)=> (b.lastDate||'').localeCompare(a.lastDate||'')).slice(0,3);
+  recentEl.innerHTML = recent.length ? recent.map(k=>`
+    <div class="task-row">
+      <span class="task-name">${escapeHtml(k.projectName)} — ${escapeHtml(k.name)}</span>
+      <span class="tag ${kadarStatusTag[k.status]||'tag-hold'}">${k.status.toUpperCase()}</span>
+    </div>`).join('') : `<div class="mystat-empty">Nema nedavnih zadataka</div>`;
+
   const circle = document.getElementById('mystatDonutCircle');
   const legend = document.getElementById('mystatDonutLegend');
   const holeVal = document.getElementById('mystatDonutTotal');
@@ -7628,11 +7645,15 @@ function renderMyStats(){
     return seg;
   }).join(', ');
   circle.style.background = `conic-gradient(${stops})`;
-  legend.innerHTML = types.map(t=>`
+  const sortedTypes = types.slice().sort((a,b)=>counts[b]-counts[a]);
+  const shownTypes = sortedTypes.slice(0,2);
+  const extraTypesCount = sortedTypes.length - shownTypes.length;
+  legend.innerHTML = shownTypes.map(t=>`
     <div class="donut-legend-item">
       <span class="donut-legend-left"><span class="donut-dot" style="background:${kadarTypeColorVar[t]}"></span>${t}</span>
       <b>${counts[t]}</b>
-    </div>`).join('');
+    </div>`).join('') + (extraTypesCount>0 ? `
+    <div class="donut-legend-item" style="color:var(--ink-faint);">+${extraTypesCount} vrste</div>` : '');
   animateCountUp(holeVal, total, {duration:700});
   setTimeout(()=>wrap.classList.add('shown'), 80);
 }
