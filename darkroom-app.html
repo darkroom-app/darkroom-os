@@ -211,19 +211,23 @@ body{
 .modal-field input, .modal-field select{ width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; outline:none; color:var(--ink); }
 .modal-field input:focus, .modal-field select:focus{ border-color:var(--gold); }
 
-/* Round the native <select> popup itself, matching .cal-filter-menu everywhere else */
-@supports (appearance: base-select){
-  select{ appearance:base-select; }
-  select::picker(select){
-    border-radius:12px; border:1px solid var(--border); background:var(--card);
-    padding:6px; box-shadow:0 16px 34px -12px rgba(70,55,20,0.28); margin-top:6px;
-  }
-  select option{
-    border-radius:8px; padding:8px 10px; font-family:var(--font-body); font-size:12.5px; color:var(--ink);
-  }
-  select option:hover, select option:focus{ background:var(--gold-soft); }
-  select option:checked{ background:var(--gold); color:#3a2704; }
-}
+/* Custom-dropdown enhancement for native <select> — the real native popup can't be
+   reliably rounded cross-browser, so JS (enhanceSelect) hides the select and drives
+   this instead, keeping the select itself in sync for all existing code. */
+.native-select-hidden{ display:none; }
+.xsel-wrap{ position:relative; display:inline-block; }
+.modal-field .xsel-wrap{ display:block; width:100%; }
+.xsel-btn{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; text-align:left; }
+.xsel-btn:hover{ border-color:var(--gold); }
+.xsel-btn.xsel-disabled{ opacity:0.6; cursor:not-allowed; }
+.xsel-btn-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.xsel-btn svg{ width:13px; height:13px; color:var(--ink-faint); flex-shrink:0; transition:transform .15s ease; }
+.xsel-wrap.open .xsel-btn svg{ transform:rotate(180deg); }
+.xsel-menu{ position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:6px; max-height:240px; overflow-y:auto; box-shadow:0 16px 34px -12px rgba(70,55,20,0.28); display:none; z-index:60; }
+.xsel-wrap.open .xsel-menu{ display:block; }
+.xsel-item{ padding:8px 10px; border-radius:8px; font-size:12px; cursor:pointer; color:var(--ink); }
+.xsel-item:hover{ background:var(--gold-soft); }
+.xsel-item.sel{ background:var(--gold); color:#3a2704; font-weight:600; }
 .modal-actions{ display:flex; gap:10px; margin-top:18px; }
 .modal-actions button{ flex:1; padding:10px 0; border-radius:10px; border:none; font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; }
 .modal-cancel{ background:var(--card-soft); color:var(--ink-dim); }
@@ -1030,7 +1034,8 @@ body{
 .cal-month{ display:flex; align-items:center; gap:14px; }
 .cal-month-title{ font-family:var(--font-display); font-weight:700; font-size:23px; letter-spacing:-0.01em; }
 .cal-month-picker{ display:flex; gap:6px; }
-.cal-month-select{ font-family:var(--font-display); font-weight:700; font-size:19px; letter-spacing:-0.01em; border:none; background:transparent; color:var(--ink); cursor:pointer; padding:4px 6px; border-radius:9px; }
+.cal-month-select{ display:inline-flex; align-items:center; gap:5px; font-family:var(--font-display); font-weight:700; font-size:19px; letter-spacing:-0.01em; border:none; background:transparent; color:var(--ink); cursor:pointer; padding:4px 6px; border-radius:9px; }
+.cal-month-select svg{ width:14px; height:14px; opacity:0.6; }
 .cal-month-select:hover{ background:var(--gold-soft); color:var(--gold-deep); }
 .cal-month-select:focus{ outline:none; background:var(--gold-soft); color:var(--gold-deep); }
 .cal-nav{ display:flex; gap:6px; }
@@ -7734,6 +7739,79 @@ if(savedUserId && teamMembers.some(t=>t._id===savedUserId)){
   pickLoginBg();
   loginScreen.style.display = 'flex';
 }
+
+/* ==== Custom dropdown for every <select> — native popups can't be reliably
+   rounded cross-browser, so replace the visible control with a styled
+   button + floating menu while keeping the real <select> in sync (its
+   .value getter/setter is intercepted so all existing code — population,
+   .value = x, .disabled toggling — keeps working unchanged). */
+function enhanceSelect(selectEl){
+  if(selectEl.dataset.xsel) return;
+  selectEl.dataset.xsel = '1';
+  selectEl.classList.add('native-select-hidden');
+
+  const isTitleStyle = selectEl.classList.contains('cal-month-select');
+  const wrap = document.createElement('div');
+  wrap.className = 'xsel-wrap';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = isTitleStyle ? 'cal-month-select' : 'xsel-btn';
+  const label = document.createElement('span');
+  label.className = 'xsel-btn-label';
+  btn.appendChild(label);
+  btn.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>');
+  const menu = document.createElement('div');
+  menu.className = 'xsel-menu';
+  wrap.appendChild(btn);
+  wrap.appendChild(menu);
+  selectEl.insertAdjacentElement('afterend', wrap);
+
+  function syncLabel(){
+    const opt = selectEl.options[selectEl.selectedIndex];
+    label.textContent = opt ? opt.textContent : '';
+    btn.disabled = selectEl.disabled;
+    btn.classList.toggle('xsel-disabled', selectEl.disabled);
+  }
+  function buildMenu(){
+    menu.innerHTML = '';
+    [...selectEl.options].forEach(opt=>{
+      const item = document.createElement('div');
+      item.className = 'xsel-item' + (opt.value===selectEl.value ? ' sel' : '');
+      item.textContent = opt.textContent;
+      item.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        selectEl.value = opt.value;
+        selectEl.dispatchEvent(new Event('change', {bubbles:true}));
+        selectEl.dispatchEvent(new Event('input', {bubbles:true}));
+        closeMenu();
+      });
+      menu.appendChild(item);
+    });
+  }
+  function openMenu(){
+    if(selectEl.disabled) return;
+    syncLabel();
+    buildMenu();
+    document.querySelectorAll('.xsel-wrap.open').forEach(w=>{ if(w!==wrap) w.classList.remove('open'); });
+    wrap.classList.add('open');
+  }
+  function closeMenu(){ wrap.classList.remove('open'); }
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(wrap.classList.contains('open')) closeMenu(); else openMenu();
+  });
+  document.addEventListener('click', (e)=>{ if(!wrap.contains(e.target)) closeMenu(); });
+
+  const nativeDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  Object.defineProperty(selectEl, 'value', {
+    get(){ return nativeDesc.get.call(selectEl); },
+    set(v){ nativeDesc.set.call(selectEl, v); syncLabel(); },
+    configurable:true
+  });
+
+  syncLabel();
+}
+document.querySelectorAll('select').forEach(enhanceSelect);
 </script>
 
 </body>
