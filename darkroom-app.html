@@ -2694,7 +2694,20 @@ body{
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
 <script>
+
+/* ==== SUPABASE (Phase 1 backend — Pulse render-finished notifications) ====
+   Replace the two placeholders below once the Supabase project is created
+   (Project Settings → API → Project URL / anon public key). Everything that
+   uses `sb` is guarded to no-op when it's null, so the rest of the app works
+   normally before these are filled in. */
+const SUPABASE_URL = 'PLACEHOLDER_SUPABASE_URL';
+const SUPABASE_ANON_KEY = 'PLACEHOLDER_SUPABASE_ANON_KEY';
+const sb = (SUPABASE_URL.startsWith('PLACEHOLDER') || typeof supabase === 'undefined')
+  ? null
+  : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let _idCounter = 1;
 const STORAGE_KEY = 'darkroom_state_v2';
@@ -7338,7 +7351,7 @@ function notifItemHtml(n){
     <div class="notif-item ${n.read?'':'notif-unread'}" data-id="${n._id}" style="cursor:pointer;">
       <div class="notif-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${meta.svg}</svg></div>
       <div>
-        <div class="notif-text">${n.text}</div>
+        <div class="notif-text">${escapeHtml(n.text)}</div>
         <span class="notif-time">${notifTimeAgo(n.createdAt)}</span>
       </div>
     </div>`;
@@ -7363,10 +7376,60 @@ function renderDashboardNotifications(){
       n.read = true;
       persist();
       renderDashboardNotifications();
+      if(sb && n._remoteId) sb.from('notifications').update({read:true}).eq('id', n._remoteId).then(()=>{});
       const proj = n.projectId ? allProjects.find(p=>p._id===n.projectId) : null;
       if(proj) openProjectDetail(proj);
     });
   });
+}
+
+/* ==== Remote notifications (Supabase) — Pulse render-finished push.
+   No-ops entirely when `sb` is null (placeholder config / offline), so the
+   rest of the notification system (local pushNotification(), seed data)
+   keeps working exactly as before regardless of backend availability. ==== */
+let _remoteNotifChannel = null;
+function mapRemoteNotifRow(row){
+  const proj = row.project_code ? allProjects.find(p=>p.code===row.project_code) : null;
+  return {
+    _id: nextId(),
+    _remoteId: row.id,
+    recipientId: currentUserId,
+    kind: row.kind,
+    text: row.text,
+    projectId: proj ? proj._id : null,
+    read: row.read,
+    createdAt: new Date(row.created_at).getTime()
+  };
+}
+function mergeRemoteNotif(row){
+  if(notifications.some(n=>n._remoteId===row.id)) return;
+  notifications.unshift(mapRemoteNotifRow(row));
+}
+async function syncRemoteNotifications(){
+  if(!sb) return;
+  const u = currentUser();
+  if(!u) return;
+  try {
+    const { data, error } = await sb.from('notifications')
+      .select('*').eq('recipient_name', u.name)
+      .order('created_at', { ascending:false }).limit(50);
+    if(error || !data) return;
+    data.forEach(mergeRemoteNotif);
+    renderDashboardNotifications();
+  } catch(e){ /* network/placeholder config — local notifications still work */ }
+}
+function subscribeRemoteNotifications(){
+  if(!sb) return;
+  const u = currentUser();
+  if(!u) return;
+  _remoteNotifChannel = sb.channel('notifications-'+u._id)
+    .on('postgres_changes',
+      { event:'INSERT', schema:'public', table:'notifications', filter:`recipient_name=eq.${u.name}` },
+      (payload)=>{ mergeRemoteNotif(payload.new); renderDashboardNotifications(); }
+    ).subscribe();
+}
+function unsubscribeRemoteNotifications(){
+  if(sb && _remoteNotifChannel){ sb.removeChannel(_remoteNotifChannel); _remoteNotifChannel = null; }
 }
 
 /* ==== AI ASSISTANT ==== */
@@ -7561,6 +7624,8 @@ function applyCurrentUser(){
   renderDashboardFinance();
   renderWeeklyGoal();
   renderDashboardNotifications();
+  syncRemoteNotifications();
+  subscribeRemoteNotifications();
   renderTopPills();
   renderDashboardCollab();
   renderMyStats();
@@ -7735,6 +7800,7 @@ function login(id){
   applyCurrentUser();
 }
 function logout(){
+  unsubscribeRemoteNotifications();
   currentUserId = null;
   localStorage.removeItem(CURRENT_USER_KEY);
   toggleChat(false);
