@@ -2752,10 +2752,12 @@ function fromPersisted(key, arr){
 function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      allProjects, teamMembers, allTransactions, portfolioItems,
-      projectPricing, salaryEntries, events, todoItems, projCodeCounter, salConfirmedMonths, notifications
-      // allClients intentionally excluded — Supabase (Phase 3a) is now the sole
-      // source of truth for it, matching Phase 2's precedent for identity fields.
+      teamMembers, allTransactions, portfolioItems,
+      projectPricing, salaryEntries, events, todoItems, salConfirmedMonths, notifications
+      // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
+      // now the sole source of truth for them, matching Phase 2's precedent for
+      // identity fields. projCodeCounter removed — codes are now assigned
+      // server-side by a Postgres sequence/trigger (see schema.sql).
     }));
   } catch(e){}
 }
@@ -4107,8 +4109,6 @@ fromPersisted('allProjects', allProjects);
 
 const filters = { godina:"Sve godine", klijent:"Svi klijenti", umetnik:"Svi umetnici", search:"" };
 let viewMode = "grid";
-let projCodeCounter = 20;
-if(_persistedRaw && typeof _persistedRaw.projCodeCounter === 'number') projCodeCounter = _persistedRaw.projCodeCounter;
 
 function uniqueSorted(arr){ return [...new Set(arr)].sort(); }
 
@@ -4347,48 +4347,72 @@ document.getElementById('newProjectBtn').addEventListener('click', ()=>{
 });
 document.getElementById('npCancel').addEventListener('click', closeProjectModal);
 wireOverlayClose(modalOverlay, closeProjectModal);
-document.getElementById('npDelete').addEventListener('click', ()=>{
+document.getElementById('npDelete').addEventListener('click', async ()=>{
   if(!editingProjectId) return;
+  if(!(isSuperAdmin() || currentAccess()==='admin')){ alert('Samo admin i superadmin mogu da brišu projekte.'); return; }
   if(!confirm('Obrisati ovaj projekat?')) return;
+  const proj = allProjects.find(p=>p._id===editingProjectId);
+  if(!proj) return;
+  if(sb && proj.dbId){
+    const { error } = await sb.from('projects').delete().eq('id', proj.dbId);
+    if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
+  }
   const idx = allProjects.findIndex(p=>p._id===editingProjectId);
   if(idx>-1) allProjects.splice(idx,1);
   closeProjectModal();
   buildFilterMenus();
   renderProjectsPage();
-  persist();
 });
-document.getElementById('npSubmit').addEventListener('click', ()=>{
+document.getElementById('npSubmit').addEventListener('click', async ()=>{
   const name = document.getElementById('npName').value.trim();
   if(!name) return;
   const client = document.getElementById('npClient').value;
   const managerName = document.getElementById('npManager').value;
+  if(!client){ alert('Izaberi klijenta.'); return; }
+  if(!managerName){ alert('Izaberi projekt menadžera.'); return; }
   const startDate = document.getElementById('npStartDate').value || toISO(TODAY);
   const year = parseInt(startDate.split('-')[0], 10);
   const status = document.getElementById('npStatus').value;
+  const clientId = allClients.find(c=>c.name===client)?.dbId;
+  const managerId = teamMembers.find(t=>t.name===managerName)?.authId;
 
   if(editingProjectId){
     const proj = allProjects.find(p=>p._id===editingProjectId);
     if(proj){
       const thumbnail = pendingProjectThumbnail!==undefined ? pendingProjectThumbnail : proj.thumbnail;
-      Object.assign(proj, {name, client, managerName, year, startDate, status, thumbnail});
+      if(sb && proj.dbId){
+        const { data, error } = await sb.from('projects')
+          .update({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail })
+          .eq('id', proj.dbId).select().single();
+        if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
+        Object.assign(proj, { name:data.name, client, managerName, year:data.year, startDate:data.start_date, status:data.status, thumbnail:data.thumbnail });
+      } else {
+        Object.assign(proj, {name, client, managerName, year, startDate, status, thumbnail});
+      }
     }
     closeProjectModal();
     buildFilterMenus();
     renderProjectsPage();
-    persist();
   } else {
-    projCodeCounter++;
-    const proj = {
-      _id: nextId(), name, client, managerName, year, startDate, status,
-      thumbnail: pendingProjectThumbnail || null, code:`P${String(projCodeCounter).padStart(3,'0')}`,
-      seed: Math.random()*10, kadrovi: []
-    };
-    allProjects.unshift(proj);
-    closeProjectModal();
-    buildFilterMenus();
-    renderProjectsPage();
-    persist();
-    openProjectDetail(proj);
+    const thumbnail = pendingProjectThumbnail || null;
+    if(sb){
+      const { data, error } = await sb.from('projects')
+        .insert({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail })
+        .select().single();
+      if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+      const proj = {
+        _id: nextId(), dbId: data.id, code: data.code, name: data.name,
+        client, managerName, year: data.year, startDate: data.start_date, status: data.status,
+        thumbnail: data.thumbnail, seed: data.seed, kadrovi: []
+      };
+      allProjects.unshift(proj);
+      closeProjectModal();
+      buildFilterMenus();
+      renderProjectsPage();
+      openProjectDetail(proj);
+    } else {
+      closeProjectModal();
+    }
   }
 });
 
@@ -4557,19 +4581,23 @@ function closeRoundView(){
 }
 document.getElementById('roundViewClose').addEventListener('click', closeRoundView);
 wireOverlayClose(roundViewOverlay, closeRoundView);
-document.getElementById('roundViewDelete').addEventListener('click', ()=>{
+document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(!confirm('Obrisati ovu rundu?')) return;
   const proj = allProjects.find(p=>p._id===activeRoundViewProjectId);
   const kadar = proj && proj.kadrovi.find(k=>k._id===activeRoundViewTaskId);
-  if(kadar){
-    const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
-    if(idx>-1) kadar.rounds.splice(idx,1);
+  if(!kadar) return;
+  const round = kadar.rounds.find(r=>r._id===activeRoundViewRoundId);
+  if(!round) return;
+  if(sb && round.dbId){
+    const { error } = await sb.from('rounds').delete().eq('id', round.dbId);
+    if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
   }
+  const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
+  if(idx>-1) kadar.rounds.splice(idx,1);
   closeRoundView();
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
   renderProjectsPage();
-  persist();
 });
 
 /* ==== TASK (KADAR) MODAL ==== */
@@ -4649,21 +4677,25 @@ function openTaskModal(projectId, kadar){
 }
 document.getElementById('taskCancel').addEventListener('click', closeTaskModal);
 wireOverlayClose(taskModalOverlay, closeTaskModal);
-document.getElementById('taskDelete').addEventListener('click', ()=>{
+document.getElementById('taskDelete').addEventListener('click', async ()=>{
   if(!editingTaskId) return;
   if(!confirm('Obrisati ovaj kadar?')) return;
   const proj = allProjects.find(p=>p._id===activeTaskProjectId);
-  if(proj){
-    const idx = proj.kadrovi.findIndex(k=>k._id===editingTaskId);
-    if(idx>-1) proj.kadrovi.splice(idx,1);
+  if(!proj) return;
+  const kadar = proj.kadrovi.find(k=>k._id===editingTaskId);
+  if(!kadar) return;
+  if(sb && kadar.dbId){
+    const { error } = await sb.from('kadrovi').delete().eq('id', kadar.dbId);
+    if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
   }
+  const idx = proj.kadrovi.findIndex(k=>k._id===editingTaskId);
+  if(idx>-1) proj.kadrovi.splice(idx,1);
   closeTaskModal();
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
   renderProjectsPage();
-  persist();
 });
-document.getElementById('taskSubmit').addEventListener('click', ()=>{
+document.getElementById('taskSubmit').addEventListener('click', async ()=>{
   const name = document.getElementById('taskName').value.trim();
   if(!name) return;
   if(!pendingTaskEmployee){ alert('Izaberi izvršioca.'); return; }
@@ -4671,6 +4703,7 @@ document.getElementById('taskSubmit').addEventListener('click', ()=>{
   const status = document.getElementById('taskStatus').value;
   const proj = allProjects.find(p=>p._id===activeTaskProjectId);
   if(!proj) return;
+  const employeeId = teamMembers.find(t=>t.name===pendingTaskEmployee)?.authId;
 
   let notifText = null, notifKind = 'kadar';
   if(editingTaskId){
@@ -4678,10 +4711,26 @@ document.getElementById('taskSubmit').addEventListener('click', ()=>{
     if(kadar){
       if(status==='odobren' && kadar.status!=='odobren'){ notifText = `Kadar "${name}" je odobren u projektu ${proj.name}`; notifKind = 'approved'; }
       else if(status==='otkazan' && kadar.status!=='otkazan'){ notifText = `Kadar "${name}" je otkazan u projektu ${proj.name}`; notifKind = 'cancelled'; }
-      Object.assign(kadar, {name, type, employee:pendingTaskEmployee, status});
+      if(sb && kadar.dbId){
+        const { data, error } = await sb.from('kadrovi')
+          .update({ name, type, employee_id:employeeId, status })
+          .eq('id', kadar.dbId).select().single();
+        if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
+        Object.assign(kadar, { name:data.name, type:data.type, employee:pendingTaskEmployee, status:data.status });
+      } else {
+        Object.assign(kadar, {name, type, employee:pendingTaskEmployee, status});
+      }
     }
   } else {
-    proj.kadrovi.push(mkKadar(type, name, pendingTaskEmployee, status, []));
+    if(sb && proj.dbId){
+      const { data, error } = await sb.from('kadrovi')
+        .insert({ project_id:proj.dbId, type, name, employee_id:employeeId, status })
+        .select().single();
+      if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+      proj.kadrovi.push({ _id: nextId(), dbId: data.id, type: data.type, name: data.name, employee: pendingTaskEmployee, status: data.status, rounds: [] });
+    } else {
+      proj.kadrovi.push(mkKadar(type, name, pendingTaskEmployee, status, []));
+    }
     notifText = `Dodat je novi kadar "${name}" u projekat ${proj.name}`;
     notifKind = 'kadar';
   }
@@ -4691,7 +4740,6 @@ document.getElementById('taskSubmit').addEventListener('click', ()=>{
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
   renderProjectsPage();
-  persist();
 });
 
 /* ==== ROUND UPLOAD MODAL ==== */
@@ -4751,7 +4799,7 @@ document.getElementById('roundImgInput').addEventListener('change', (e)=>{
 });
 document.getElementById('roundCancel').addEventListener('click', closeRoundModal);
 wireOverlayClose(roundModalOverlay, closeRoundModal);
-document.getElementById('roundSubmit').addEventListener('click', ()=>{
+document.getElementById('roundSubmit').addEventListener('click', async ()=>{
   const proj = allProjects.find(p=>p._id===activeRoundProjectId);
   const kadar = proj && proj.kadrovi.find(k=>k._id===activeRoundTaskId);
   if(!kadar) return;
@@ -4765,13 +4813,21 @@ document.getElementById('roundSubmit').addEventListener('click', ()=>{
   } else {
     label = nextRoundLabel(kadar); billable = true;
   }
-  kadar.rounds.push(mkRound(label, billable, date));
-  if(pendingRoundImage) kadar.rounds[kadar.rounds.length-1].image = pendingRoundImage;
+  const image = pendingRoundImage || null;
+  if(sb && kadar.dbId){
+    const { data, error } = await sb.from('rounds')
+      .insert({ kadar_id:kadar.dbId, label, billable, date, image })
+      .select().single();
+    if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+    kadar.rounds.push({ _id: nextId(), dbId: data.id, label: data.label, billable: data.billable, date: data.date, image: data.image });
+  } else {
+    kadar.rounds.push(mkRound(label, billable, date));
+    if(image) kadar.rounds[kadar.rounds.length-1].image = image;
+  }
   pushNotification(notifRecipientId(proj.managerName), 'round', `Nova ${billable ? 'runda' : 'revizija'} (${label}) dodata za kadar "${kadar.name}" u projektu ${proj.name}`, proj._id);
   closeRoundModal();
   renderProjectsPage();
   if(activeProjectDetailId){ renderProjectDetailStats(); renderProjectDetailKadrovi(); }
-  persist();
 });
 
 buildFilterMenus();
@@ -7993,9 +8049,62 @@ async function loadClientsFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+/* Phase 3b: projects + kadrovi + rounds, fetched as one nested tree (no FK
+   ambiguity anywhere in this schema, so PostgREST embeds kadrovi(*rounds(*))
+   in a single request). client_id/manager_id/employee_id are resolved back
+   to name strings via the already-loaded allClients/teamMembers arrays —
+   every existing read site in the app expects those plain name fields, not
+   uuids, so nothing else needs to change. Like clients, an empty result set
+   is a valid successful load (real dataset starts populated via bulk import,
+   then grows through normal use — never falls back to the old local mock). */
+async function loadProjectsFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('projects')
+      .select('*, kadrovi(*, rounds(*))')
+      .order('created_at', { ascending:true });
+    if(error || !data) return false;
+    const clientById = {}; allClients.forEach(c=>{ if(c.dbId) clientById[c.dbId]=c.name; });
+    const teamNameById = {}; teamMembers.forEach(t=>{ if(t.authId) teamNameById[t.authId]=t.name; });
+    allProjects.length = 0;
+    data.forEach(row=>{
+      allProjects.push({
+        _id: nextId(),
+        dbId: row.id,
+        code: row.code,
+        name: row.name,
+        client: clientById[row.client_id] || '',
+        year: row.year,
+        startDate: row.start_date,
+        managerName: row.manager_id ? (teamNameById[row.manager_id] || '') : '',
+        status: row.status,
+        thumbnail: row.thumbnail,
+        seed: row.seed,
+        kadrovi: (row.kadrovi || []).map(k=>({
+          _id: nextId(),
+          dbId: k.id,
+          type: k.type,
+          name: k.name,
+          employee: k.employee_id ? (teamNameById[k.employee_id] || '') : '',
+          status: k.status,
+          rounds: (k.rounds || []).map(r=>({
+            _id: nextId(),
+            dbId: r.id,
+            label: r.label,
+            billable: r.billable,
+            date: r.date,
+            image: r.image
+          }))
+        }))
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
 async function resolveSessionLogin(session){
   await loadTeamMembersFromSupabase();
   await loadClientsFromSupabase();
+  await loadProjectsFromSupabase();
   const match = teamMembers.find(t=>t.authId===session.user.id);
   if(!match) return false;
   login(match._id);

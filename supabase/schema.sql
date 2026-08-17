@@ -157,3 +157,85 @@ create policy "superadmin can update clients"
 create policy "superadmin can delete clients"
   on public.clients for delete to authenticated
   using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+
+-- ==== Phase 3b: projects, kadrovi, rounds (run as a fifth query) ====
+-- manager_id is nullable (not the originally-planned not-null) — the studio's
+-- real historical project list (imported below) predates this schema and has
+-- no per-project manager recorded anywhere; new projects created going forward
+-- can still have one picked in the UI, the DB just doesn't force it.
+
+create table public.projects (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  name text not null,
+  client_id uuid not null references public.clients(id) on delete restrict,
+  manager_id uuid references public.team_members(id) on delete restrict,
+  year int not null,
+  start_date date not null,
+  status text not null default 'U toku',
+  thumbnail text,
+  seed numeric not null default (random()*10),
+  created_at timestamptz not null default now()
+);
+alter table public.projects enable row level security;
+
+-- Continues the studio's real existing P0301-P0334 numbering (imported below)
+-- rather than the old local mock's P001-P020 range, which has no meaning
+-- once real projects replace it.
+create sequence public.project_code_seq start with 335;
+
+create or replace function public.assign_project_code()
+returns trigger language plpgsql as $$
+begin
+  if new.code is null then
+    new.code := 'P' || lpad(nextval('public.project_code_seq')::text, 4, '0');
+  end if;
+  return new;
+end;
+$$;
+create trigger projects_assign_code before insert on public.projects
+  for each row execute function public.assign_project_code();
+
+create policy "authenticated can read projects" on public.projects for select to authenticated using (true);
+create policy "authenticated can insert projects" on public.projects for insert to authenticated with check (true);
+create policy "authenticated can update projects" on public.projects for update to authenticated using (true) with check (true);
+-- Delete is tightened beyond today's zero-gating (client's explicit choice) —
+-- deleting a whole project cascades away its kadrovi/rounds too.
+create policy "admin can delete projects" on public.projects for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) in ('admin','superadmin'));
+
+create table public.kadrovi (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  type text not null,
+  name text not null,
+  employee_id uuid references public.team_members(id) on delete restrict,
+  status text not null default 'aktivan',
+  created_at timestamptz not null default now()
+);
+alter table public.kadrovi enable row level security;
+
+create policy "authenticated can read kadrovi" on public.kadrovi for select to authenticated using (true);
+create policy "authenticated can insert kadrovi" on public.kadrovi for insert to authenticated with check (true);
+create policy "authenticated can update kadrovi" on public.kadrovi for update to authenticated using (true) with check (true);
+create policy "authenticated can delete kadrovi" on public.kadrovi for delete to authenticated using (true);
+-- Fully open to match today's zero access-gating on this entity — every
+-- artist adds/edits/deletes their own and each other's kadrovi as daily work.
+
+create table public.rounds (
+  id uuid primary key default gen_random_uuid(),
+  kadar_id uuid not null references public.kadrovi(id) on delete cascade,
+  label text not null,
+  billable boolean not null default true,
+  date date,
+  image text,
+  created_at timestamptz not null default now()
+);
+alter table public.rounds enable row level security;
+
+create policy "authenticated can read rounds" on public.rounds for select to authenticated using (true);
+create policy "authenticated can insert rounds" on public.rounds for insert to authenticated with check (true);
+create policy "authenticated can delete rounds" on public.rounds for delete to authenticated using (true);
+-- Deliberately no update policy — roundSubmit only ever inserts, there's no
+-- edit-round handler in the app today.
