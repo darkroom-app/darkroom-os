@@ -7897,24 +7897,22 @@ function pickLoginBg(){
   el.style.backgroundImage = `url('${pick}')`;
 }
 /* Phase 2: team_members (identity fields: name/role/access/hireDate/birthDate/
-   slobodniDani/emailBusiness) is fetched fresh from Supabase every boot and is
-   the sole source of truth for those fields — a locally-cached elevated
+   slobodniDani/emailBusiness) is only readable once authenticated (RLS blocks
+   anon), so it's fetched on-demand once a session exists — not at initial
+   boot, when there never is one yet. Fresh Supabase data is the sole source
+   of truth for those fields on every login — a locally-cached elevated
    `access` can't outlive a server-side demotion past the next reload. Fields
    Supabase doesn't carry (avatar, emailPrivate, phone, skills, status) are
    preserved from whatever was last persisted locally, matched by name. */
-async function loadTeamMembersAndBoot(){
-  let rows = [];
-  if(sb){
-    try {
-      const { data, error } = await sb.from('team_members').select('*').order('sort_order', { ascending:true });
-      if(!error && data) rows = data;
-    } catch(e){ /* network error — fall through to login screen below */ }
-  }
-  if(rows.length){
+async function loadTeamMembersFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('team_members').select('*').order('sort_order', { ascending:true });
+    if(error || !data || !data.length) return false;
     const prevByName = {};
     teamMembers.forEach(t=>{ prevByName[t.name] = t; });
     teamMembers.length = 0;
-    rows.forEach(row=>{
+    data.forEach(row=>{
       const prev = prevByName[row.name] || {};
       teamMembers.push({
         _id: nextId(),
@@ -7934,32 +7932,34 @@ async function loadTeamMembersAndBoot(){
         status: prev.status || 'Aktivan'
       });
     });
-  }
-
+    return true;
+  } catch(e){ return false; }
+}
+async function resolveSessionLogin(session){
+  await loadTeamMembersFromSupabase();
+  const match = teamMembers.find(t=>t.authId===session.user.id);
+  if(!match) return false;
+  login(match._id);
+  return true;
+}
+async function bootApp(){
   pickLoginBg();
-
   let session = null;
   if(sb){
     const { data } = await sb.auth.getSession();
     session = data.session;
   }
-  if(session && resolveSessionLogin(session)) return;
+  if(session && await resolveSessionLogin(session)) return;
   shellEl.style.display = 'none';
   document.getElementById('chatFab').style.display = 'none';
   loginScreen.style.display = 'flex';
-}
-function resolveSessionLogin(session){
-  const match = teamMembers.find(t=>t.authId===session.user.id);
-  if(!match) return false;
-  login(match._id);
-  return true;
 }
 if(sb){
   sb.auth.onAuthStateChange((event, session)=>{
     if(event==='SIGNED_IN' && session) resolveSessionLogin(session);
   });
 }
-loadTeamMembersAndBoot();
+bootApp();
 
 /* ==== Custom dropdown for every <select> — native popups can't be reliably
    rounded cross-browser, so replace the visible control with a styled
