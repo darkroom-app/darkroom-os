@@ -40,3 +40,50 @@ grant update (read) on public.notifications to anon;
 -- Dashboard → Database → Replication → toggle "notifications" on for the supabase_realtime
 -- publication (usually already the default for new tables; if the toggle is already on,
 -- skip this step).
+
+
+-- ==== Phase 2: real backend (magic-link auth + team_members) ====
+-- Run this in the SQL Editor as a second query, after Phase 1's statements above
+-- have already been run once.
+
+create table public.team_members (
+  id uuid primary key references auth.users(id),
+  name text not null,
+  role text not null,
+  access text not null default 'user',        -- 'user' | 'admin' | 'superadmin'
+  hire_date date,
+  birth_date date,
+  slobodni_dani int not null default 20,
+  email_business text,
+  sort_order int not null                     -- deterministic fetch order, mirrors the
+                                               -- original seed order in darkroom-app.html
+);
+alter table public.team_members enable row level security;
+
+-- One broad read policy: every view in the app lists the full roster (task pickers,
+-- calendar, etc.), not just "my own row" — and this also satisfies the notifications
+-- subquery below, so no separate self-only policy is needed in addition.
+create policy "authenticated can read team_members"
+  on public.team_members for select to authenticated using (true);
+-- No insert/update/delete policy for any client role at all — only the bootstrap-team
+-- Edge Function (service_role key) writes this table, same boundary as pulse-webhook.
+
+-- Tighten Phase 1's notifications policies now that real identity exists.
+-- `create policy` doesn't remove an old one, so the old anon policies must be dropped
+-- explicitly or anon access stays wide open alongside the new scoped ones.
+drop policy "anon can read notifications" on public.notifications;
+drop policy "anon can update notifications" on public.notifications;
+
+create policy "authenticated can read own notifications"
+  on public.notifications for select to authenticated
+  using (recipient_name = (select name from public.team_members where id = auth.uid()));
+
+create policy "authenticated can update own notifications"
+  on public.notifications for update to authenticated
+  using (recipient_name = (select name from public.team_members where id = auth.uid()))
+  with check (recipient_name = (select name from public.team_members where id = auth.uid()));
+revoke update on public.notifications from authenticated;
+grant update (read) on public.notifications to authenticated;
+-- If a session's auth.uid() has no matching team_members row (shouldn't happen given
+-- bootstrap-only account creation), the subquery returns NULL and RLS denies — no
+-- accidental exposure.

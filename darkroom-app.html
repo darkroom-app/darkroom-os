@@ -1221,18 +1221,19 @@ body{
       <div class="brand-sub">OS 2.0</div>
     </div>
     <div class="login-title">Prijava</div>
-    <div class="modal-field">
-      <label>Ja sam</label>
-      <select id="loginUserSelect"></select>
+    <div id="loginFormState">
+      <div class="modal-field">
+        <label>Email</label>
+        <input type="email" id="loginEmail" placeholder="ime.prezime@darkroomstudio.com">
+      </div>
+      <div class="modal-actions">
+        <button class="modal-submit" id="loginSubmit" style="width:100%;">Pošalji magic link</button>
+      </div>
+      <div class="login-hint" id="loginHint">Poslaćemo ti link za prijavu na email.</div>
     </div>
-    <div class="modal-field">
-      <label>Lozinka</label>
-      <input type="password" id="loginPassword" placeholder="••••••••">
+    <div id="loginSentState" style="display:none;">
+      <div class="login-hint">Proveri inbox — poslali smo ti link za prijavu na <b id="loginSentEmail"></b>.</div>
     </div>
-    <div class="modal-actions">
-      <button class="modal-submit" id="loginSubmit" style="width:100%;">Prijavi se</button>
-    </div>
-    <div class="login-hint">Demo prijava — lozinka se ne proverava.</div>
   </div>
 </div>
 
@@ -2708,6 +2709,11 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const sb = (SUPABASE_URL.startsWith('PLACEHOLDER') || typeof supabase === 'undefined')
   ? null
   : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+/* Magic-link emails must redirect straight to this exact page — index.html's
+   meta-refresh redirect strips the URL fragment/query the auth token rides in,
+   so redirecting to the site root would silently lose it. This exact URL must
+   also be added to Supabase Auth → URL Configuration → Redirect URLs. */
+const LOGIN_REDIRECT_URL = location.origin + location.pathname;
 
 let _idCounter = 1;
 const STORAGE_KEY = 'darkroom_state_v2';
@@ -7570,9 +7576,6 @@ pushChatMessage('bot', "Zdravo! 👋 Mogu da pretražim projekte, klijente, port
 const loginScreen = document.getElementById('loginScreen');
 const shellEl = document.querySelector('.shell');
 
-function populateLoginSelect(){
-  document.getElementById('loginUserSelect').innerHTML = teamMembers.map(t=>`<option value="${t._id}">${escapeHtml(t.name)}</option>`).join('');
-}
 function avatarFor(member){
   return {
     grad: artistGrad[member.key] || clientAvatarColors[0],
@@ -7800,21 +7803,38 @@ function login(id){
   applyCurrentUser();
 }
 function logout(){
+  if(sb) sb.auth.signOut();
   unsubscribeRemoteNotifications();
   currentUserId = null;
   localStorage.removeItem(CURRENT_USER_KEY);
   toggleChat(false);
   shellEl.style.display = 'none';
   document.getElementById('chatFab').style.display = 'none';
-  populateLoginSelect();
+  document.getElementById('loginFormState').style.display = '';
+  document.getElementById('loginSentState').style.display = 'none';
+  document.getElementById('loginEmail').value = '';
   pickLoginBg();
   loginScreen.style.display = 'flex';
 }
-document.getElementById('loginSubmit').addEventListener('click', (e)=>{
+document.getElementById('loginSubmit').addEventListener('click', async (e)=>{
   e.preventDefault();
-  const val = document.getElementById('loginUserSelect').value;
-  if(!val) return;
-  login(Number(val));
+  const emailEl = document.getElementById('loginEmail');
+  const email = emailEl.value.trim();
+  const hint = document.getElementById('loginHint');
+  if(!email) return;
+  if(!sb){ hint.textContent = 'Backend nije podešen — pokušaj ponovo kasnije.'; return; }
+  hint.textContent = 'Šaljem...';
+  const { error } = await sb.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: LOGIN_REDIRECT_URL, shouldCreateUser: false }
+  });
+  if(error){
+    hint.textContent = 'Nismo pronašli nalog za taj email. Proveri da li si uneo tačnu adresu.';
+    return;
+  }
+  document.getElementById('loginSentEmail').textContent = email;
+  document.getElementById('loginFormState').style.display = 'none';
+  document.getElementById('loginSentState').style.display = '';
 });
 document.querySelector('.profile-chip').addEventListener('click', ()=>{
   document.querySelectorAll('.nav a').forEach(a=>a.classList.remove('active'));
@@ -7876,20 +7896,70 @@ function pickLoginBg(){
   const pick = loginBgImages[Math.floor(Math.random()*loginBgImages.length)];
   el.style.backgroundImage = `url('${pick}')`;
 }
-pickLoginBg();
-populateLoginSelect();
-const savedUserId = Number(localStorage.getItem(CURRENT_USER_KEY));
-if(savedUserId && teamMembers.some(t=>t._id===savedUserId)){
-  currentUserId = savedUserId;
-  loginScreen.style.display = 'none';
-  shellEl.style.display = '';
-  applyCurrentUser();
-} else {
+/* Phase 2: team_members (identity fields: name/role/access/hireDate/birthDate/
+   slobodniDani/emailBusiness) is fetched fresh from Supabase every boot and is
+   the sole source of truth for those fields — a locally-cached elevated
+   `access` can't outlive a server-side demotion past the next reload. Fields
+   Supabase doesn't carry (avatar, emailPrivate, phone, skills, status) are
+   preserved from whatever was last persisted locally, matched by name. */
+async function loadTeamMembersAndBoot(){
+  let rows = [];
+  if(sb){
+    try {
+      const { data, error } = await sb.from('team_members').select('*').order('sort_order', { ascending:true });
+      if(!error && data) rows = data;
+    } catch(e){ /* network error — fall through to login screen below */ }
+  }
+  if(rows.length){
+    const prevByName = {};
+    teamMembers.forEach(t=>{ prevByName[t.name] = t; });
+    teamMembers.length = 0;
+    rows.forEach(row=>{
+      const prev = prevByName[row.name] || {};
+      teamMembers.push({
+        _id: nextId(),
+        authId: row.id,
+        name: row.name,
+        key: row.name,
+        role: row.role,
+        access: row.access,
+        hireDate: row.hire_date,
+        birthDate: row.birth_date,
+        slobodniDani: row.slobodni_dani,
+        emailBusiness: row.email_business,
+        emailPrivate: prev.emailPrivate || '',
+        phone: prev.phone || '',
+        skills: prev.skills || [],
+        avatar: prev.avatar || null,
+        status: prev.status || 'Aktivan'
+      });
+    });
+  }
+
+  pickLoginBg();
+
+  let session = null;
+  if(sb){
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+  }
+  if(session && resolveSessionLogin(session)) return;
   shellEl.style.display = 'none';
   document.getElementById('chatFab').style.display = 'none';
-  pickLoginBg();
   loginScreen.style.display = 'flex';
 }
+function resolveSessionLogin(session){
+  const match = teamMembers.find(t=>t.authId===session.user.id);
+  if(!match) return false;
+  login(match._id);
+  return true;
+}
+if(sb){
+  sb.auth.onAuthStateChange((event, session)=>{
+    if(event==='SIGNED_IN' && session) resolveSessionLogin(session);
+  });
+}
+loadTeamMembersAndBoot();
 
 /* ==== Custom dropdown for every <select> — native popups can't be reliably
    rounded cross-browser, so replace the visible control with a styled
