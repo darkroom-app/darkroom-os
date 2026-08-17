@@ -3037,7 +3037,7 @@ function renderTeamSwimlane(days, opts){
   }).join('');
   const head = weekRow + `<div class="twg-head" style="grid-template-columns:190px ${colTemplate};"><div class="twg-head-label">Zaposleni</div>${headDays}</div>`;
 
-  const people = calFilters.osoba === 'Ceo Tim' ? teamMembers : teamMembers.filter(t=>t.name===calFilters.osoba);
+  const people = calFilters.osoba === 'Ceo Tim' ? teamMembers.filter(t=>t.status==='Aktivan') : teamMembers.filter(t=>t.name===calFilters.osoba);
 
   const holidayEvents = events.filter(e=>e.kind==='praznik')
     .map(e=>({...e, _s: daysBetween(TODAY, e.start), _e: daysBetween(TODAY, e.end)}))
@@ -3485,7 +3485,12 @@ document.querySelectorAll('.ev-tab-btn').forEach(btn=>{
 
 function populateEmployeeSelect(selectId, selected){
   const el = document.getElementById(selectId);
-  el.innerHTML = teamMembers.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
+  let members = teamMembers.filter(t=>t.status==='Aktivan');
+  if(selected && !members.some(t=>t.name===selected)){
+    const inactive = teamMembers.find(t=>t.name===selected);
+    if(inactive) members = [...members, inactive];
+  }
+  el.innerHTML = members.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
   if(selected) el.value = selected;
 }
 function refreshZadatakProjects(selected){
@@ -4242,7 +4247,11 @@ function populateProjectClientOptions(selected){
   if(selected) document.getElementById('npClient').value = selected;
 }
 function populateProjectManagerOptions(selected){
-  const managers = teamMembers.filter(t=>t.access==='admin' || t.access==='superadmin');
+  let managers = teamMembers.filter(t=>(t.access==='admin' || t.access==='superadmin') && t.status==='Aktivan');
+  if(selected && !managers.some(t=>t.name===selected)){
+    const inactive = teamMembers.find(t=>t.name===selected);
+    if(inactive) managers = [...managers, inactive];
+  }
   document.getElementById('npManager').innerHTML = managers.map(t=>`<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`).join('');
   if(selected) document.getElementById('npManager').value = selected;
 }
@@ -4552,7 +4561,12 @@ function formatAvailability(freeDays){
   return { text:`Slobodno: ${freeDays.join(', ')}`, cls:'free' };
 }
 function renderTaskEmployeeChips(selected){
-  const sortedMembers = [...teamMembers].sort((a,b)=>a.name.localeCompare(b.name));
+  let activeMembers = teamMembers.filter(t=>t.status==='Aktivan');
+  if(selected && !activeMembers.some(t=>t.name===selected)){
+    const inactive = teamMembers.find(t=>t.name===selected);
+    if(inactive) activeMembers = [...activeMembers, inactive];
+  }
+  const sortedMembers = activeMembers.sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById('taskEmployeeChipRow').innerHTML = sortedMembers.map(t=>{
     const { grad, initials, avatar } = avatarFor(t);
     const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
@@ -5997,6 +6011,7 @@ document.getElementById('ntSubmit').addEventListener('click', ()=>{
   }
   closeTeamModal();
   renderTeamPage();
+  renderCalendar();
   if(editingTeamId === currentUserId) applyCurrentUser(); else renderProfilePage();
   persist();
 });
