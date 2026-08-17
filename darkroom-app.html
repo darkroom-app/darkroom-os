@@ -2703,8 +2703,8 @@ body{
    (Project Settings → API → Project URL / anon public key). Everything that
    uses `sb` is guarded to no-op when it's null, so the rest of the app works
    normally before these are filled in. */
-const SUPABASE_URL = 'PLACEHOLDER_SUPABASE_URL';
-const SUPABASE_ANON_KEY = 'PLACEHOLDER_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://gvwvvqiaggvopxsfyfsa.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd2d3Z2cWlhZ2d2b3B4c2Z5ZnNhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY5NjQxNDQsImV4cCI6MjEwMjU0MDE0NH0.Z-KBnDsiXsbWJtyC4fc_TFFO8QhJbts5BjJQVer2p4g';
 const sb = (SUPABASE_URL.startsWith('PLACEHOLDER') || typeof supabase === 'undefined')
   ? null
   : supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
