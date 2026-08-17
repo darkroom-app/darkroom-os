@@ -906,22 +906,20 @@ body{
 .tag-review{ background:var(--coral-soft); color:var(--coral); }
 
 /* ---- Moja statistika ---- */
-.stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:12px; }
-.stat-box{ background:var(--card-soft); border-radius:13px; padding:11px; }
-.stat-num{ font-family:var(--font-display); font-weight:700; font-size:20px; }
-.stat-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
-.hours-box{ background:linear-gradient(120deg, var(--gold-soft), #F9F1DA); border-radius:13px; padding:11px 13px; display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
-.hours-box .label{ font-family:var(--font-mono); font-size:8px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.05em; }
-.hours-box .sub{ font-size:11.5px; color:var(--ink-dim); margin-top:2px; }
-.hours-box .val{ font-family:var(--font-display); font-weight:700; font-size:19px; color:var(--gold-deep); }
-.mini-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:7px; }
-.chip-row{ display:flex; gap:6px; margin-bottom:13px; flex-wrap:wrap; }
-.chip{ background:var(--card-soft); border-radius:8px; padding:5px 10px; font-size:11px; display:flex; gap:6px; align-items:center; }
-.chip b{ font-family:var(--font-mono); font-size:10px; }
-.team-row{ display:flex; gap:11px; }
-.team-member{ text-align:center; }
-.team-avatar{ width:36px; height:36px; border-radius:50%; margin:0 auto 5px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:12px; color:#fff; }
-.team-name{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); letter-spacing:0.03em; text-transform:uppercase; }
+.mystat-panel .panel-head{ margin-bottom:5px; }
+.mystat-stats{ display:flex; gap:0; background:var(--card-soft); border-radius:11px; padding:4px 4px; margin-bottom:4px; }
+.mystat-stat{ flex:1; text-align:center; }
+.mystat-stat + .mystat-stat{ border-left:1px solid var(--border); }
+.mystat-stat .ms-val{ font-family:var(--font-display); font-weight:700; font-size:13px; line-height:1.1; }
+.mystat-stat .ms-label{ font-family:var(--font-mono); font-size:6px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.01em; margin-top:1px; line-height:1.1; padding:0 2px; }
+.mystat-donut-row{ display:flex; align-items:center; gap:10px; }
+.mystat-donut.donut-wrap{ width:52px; height:52px; flex-shrink:0; }
+.mystat-donut .donut-hole{ inset:6px; }
+.mystat-donut .donut-hole-val{ font-size:10px; }
+.mystat-donut .donut-hole-label{ font-size:4.3px; }
+.mystat-donut-row .donut-legend{ gap:3px; }
+.mystat-donut-row .donut-legend-item{ font-size:8.5px; }
+.mystat-empty{ font-size:10px; color:var(--ink-faint); }
 
 /* ---- Obavestenja ---- */
 .notif-scroll{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
@@ -1396,22 +1394,13 @@ body{
           <div class="panel-head">
             <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Moja Statistika</div>
           </div>
-          <div class="stat-grid">
-            <div class="stat-box"><div class="stat-num">1</div><div class="stat-label">Aktivni projekti</div></div>
-            <div class="stat-box"><div class="stat-num">1</div><div class="stat-label">Aktivni zadaci</div></div>
-            <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Završeni projekti</div></div>
-            <div class="stat-box"><div class="stat-num">0</div><div class="stat-label">Završeni zadaci</div></div>
-          </div>
-          <div class="hours-box">
-            <div><div class="label">Najviše sati</div><div class="sub">—</div></div>
-            <div class="val">0h</div>
-          </div>
-          <div class="mini-label">Odnos zadataka</div>
-          <div class="chip-row"><div class="chip">Ostalo <b>1</b></div></div>
-          <div class="mini-label">Vaša ekipa</div>
-          <div class="team-row">
-            <div class="team-member"><div class="team-avatar" style="background:linear-gradient(150deg,#8B8378,#5F594E);">M</div><div class="team-name">Miljana</div></div>
-            <div class="team-member"><div class="team-avatar" style="background:linear-gradient(150deg,var(--teal),#3f6a61);">A</div><div class="team-name">Aleksandra</div></div>
+          <div class="mystat-stats" id="mystatStats"></div>
+          <div class="mystat-donut-row">
+            <div class="donut-wrap mystat-donut" id="mystatDonutWrap">
+              <div class="donut-circle" id="mystatDonutCircle"></div>
+              <div class="donut-hole"><div class="donut-hole-val" id="mystatDonutTotal">0</div><div class="donut-hole-label">zadataka</div></div>
+            </div>
+            <div class="donut-legend" id="mystatDonutLegend"></div>
           </div>
         </div>
 
@@ -7567,6 +7556,7 @@ function applyCurrentUser(){
   renderDashboardNotifications();
   renderTopPills();
   renderDashboardCollab();
+  renderMyStats();
   applyAccessGating();
 }
 function collaboratorStats(myName){
@@ -7602,6 +7592,49 @@ function renderDashboardCollab(){
     const av = avatarBgInner(c.name);
     return `<div class="ta-avatar" style="${av.bg}" title="${escapeHtml(c.name)}">${av.inner}</div>`;
   }).join('') + (extra>0 ? `<div class="ta-avatar ta-more" title="Još ${extra}">+${extra}</div>` : '');
+}
+function renderMyStats(){
+  const u = currentUser();
+  const statsEl = document.getElementById('mystatStats');
+  if(!u || !statsEl) return;
+  const myKadrovi = allKadrovi().filter(k=>k.employee===u.name);
+  const stats = [
+    { val: teamActiveProjects(u.name), label:'Aktivni projekti' },
+    { val: myKadrovi.filter(k=>k.status==='aktivan'||k.status==='na čekanju').length, label:'Aktivni zadaci' },
+    { val: new Set(allProjects.filter(p=>p.status==='Završeno' && p.kadrovi.some(k=>k.employee===u.name)).map(p=>p.code)).size, label:'Završeni projekti' },
+    { val: myKadrovi.filter(k=>k.status==='odobren').length, label:'Završeni zadaci' }
+  ];
+  statsEl.innerHTML = stats.map(s=>`<div class="mystat-stat"><div class="ms-val">${s.val}</div><div class="ms-label">${s.label}</div></div>`).join('');
+
+  const circle = document.getElementById('mystatDonutCircle');
+  const legend = document.getElementById('mystatDonutLegend');
+  const holeVal = document.getElementById('mystatDonutTotal');
+  const wrap = document.getElementById('mystatDonutWrap');
+  const total = myKadrovi.length;
+  const counts = kadarTypeCounts(myKadrovi);
+  const types = Object.keys(kadarTypeColorVar).filter(t=>counts[t]);
+  if(!total){
+    circle.style.background = 'var(--border)';
+    legend.innerHTML = `<div class="mystat-empty">Još nemaš dodeljene zadatke</div>`;
+    holeVal.textContent = '0';
+    wrap.classList.add('shown');
+    return;
+  }
+  let acc = 0;
+  const stops = types.map(t=>{
+    const pct = (counts[t]/total)*100;
+    const seg = `${kadarTypeColorVar[t]} ${acc}% ${acc+pct}%`;
+    acc += pct;
+    return seg;
+  }).join(', ');
+  circle.style.background = `conic-gradient(${stops})`;
+  legend.innerHTML = types.map(t=>`
+    <div class="donut-legend-item">
+      <span class="donut-legend-left"><span class="donut-dot" style="background:${kadarTypeColorVar[t]}"></span>${t}</span>
+      <b>${counts[t]}</b>
+    </div>`).join('');
+  animateCountUp(holeVal, total, {duration:700});
+  setTimeout(()=>wrap.classList.add('shown'), 80);
 }
 function leaveDaysUsed(personName, leaveType, year){
   return events.filter(e=>e.kind==='odsustvo' && e.person===personName && e.leaveType===leaveType && e.start.y===year)
