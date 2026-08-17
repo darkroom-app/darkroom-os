@@ -120,3 +120,40 @@ update public.team_members set renderflow_user_id = '69d5a2657909a6fd052c10bf' w
 update public.team_members set renderflow_user_id = '69d5a2000999fe2ca613bcfe' where name = 'Aleksandar Jovanović';
 update public.team_members set renderflow_user_id = '69d5a288384169ea01c40355' where name = 'Marija Milenković';
 -- Marija Todorović intentionally left null — social media manager, doesn't render.
+
+
+-- ==== Phase 3a: clients (run as a fourth query) ====
+-- First real business-data entity. `avatar` stays a base64 text column for now —
+-- becomes a Storage public URL in a later Phase 3c pass, same column either way,
+-- so nothing downstream needs to change twice.
+
+create table public.clients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  contact text,
+  email text,
+  phone text,
+  website text,
+  avatar text,
+  since int,
+  created_at timestamptz not null default now()
+);
+alter table public.clients enable row level security;
+
+-- Matches today's UI gating exactly: every logged-in team member can see the
+-- client list, but only a superadmin can create/edit/delete a client.
+create policy "authenticated can read clients"
+  on public.clients for select to authenticated using (true);
+
+create policy "superadmin can insert clients"
+  on public.clients for insert to authenticated
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can update clients"
+  on public.clients for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can delete clients"
+  on public.clients for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');

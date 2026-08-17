@@ -2752,8 +2752,10 @@ function fromPersisted(key, arr){
 function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      allProjects, allClients, teamMembers, allTransactions, portfolioItems,
+      allProjects, teamMembers, allTransactions, portfolioItems,
       projectPricing, salaryEntries, events, todoItems, projCodeCounter, salConfirmedMonths, notifications
+      // allClients intentionally excluded — Supabase (Phase 3a) is now the sole
+      // source of truth for it, matching Phase 2's precedent for identity fields.
     }));
   } catch(e){}
 }
@@ -4966,16 +4968,26 @@ document.getElementById('newClientBtn').addEventListener('click', ()=>{
 });
 document.getElementById('ncCancel').addEventListener('click', closeClientModal);
 wireOverlayClose(clientModalOverlay, closeClientModal);
-document.getElementById('ncDelete').addEventListener('click', ()=>{
+document.getElementById('ncDelete').addEventListener('click', async ()=>{
   if(!editingClientId) return;
   if(!confirm('Obrisati ovog klijenta?')) return;
+  const client = allClients.find(c=>c._id===editingClientId);
+  if(!client) return;
+  if(sb && client.dbId){
+    const { error } = await sb.from('clients').delete().eq('id', client.dbId);
+    if(error){
+      alert(error.code==='23503'
+        ? 'Ovaj klijent još ima projekte — prvo ih premesti ili obriši.'
+        : 'Brisanje nije uspelo: ' + error.message);
+      return;
+    }
+  }
   const idx = allClients.findIndex(c=>c._id===editingClientId);
   if(idx>-1) allClients.splice(idx,1);
   closeClientModal();
   renderClientsPage();
-  persist();
 });
-document.getElementById('ncSubmit').addEventListener('click', ()=>{
+document.getElementById('ncSubmit').addEventListener('click', async ()=>{
   const name = document.getElementById('ncName').value.trim();
   if(!name) return;
   const contact = document.getElementById('ncContact').value.trim() || "—";
@@ -4987,14 +4999,31 @@ document.getElementById('ncSubmit').addEventListener('click', ()=>{
     const client = allClients.find(c=>c._id===editingClientId);
     if(client){
       const avatar = pendingClientAvatar!==undefined ? pendingClientAvatar : client.avatar;
-      Object.assign(client, {name, contact, email, phone, website, avatar});
+      if(sb && client.dbId){
+        const { data, error } = await sb.from('clients')
+          .update({ name, contact, email, phone, website, avatar })
+          .eq('id', client.dbId).select().single();
+        if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
+        Object.assign(client, { name:data.name, contact:data.contact, email:data.email, phone:data.phone, website:data.website, avatar:data.avatar });
+      } else {
+        Object.assign(client, {name, contact, email, phone, website, avatar});
+      }
     }
   } else {
-    allClients.unshift({_id:nextId(), name, contact, email, phone, website, avatar:pendingClientAvatar||null, since:new Date().getFullYear()});
+    const since = new Date().getFullYear();
+    const avatar = pendingClientAvatar || null;
+    if(sb){
+      const { data, error } = await sb.from('clients')
+        .insert({ name, contact, email, phone, website, avatar, since })
+        .select().single();
+      if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+      allClients.unshift({_id:nextId(), dbId:data.id, name:data.name, contact:data.contact, email:data.email, phone:data.phone, website:data.website, avatar:data.avatar, since:data.since});
+    } else {
+      allClients.unshift({_id:nextId(), name, contact, email, phone, website, avatar, since});
+    }
   }
   closeClientModal();
   renderClientsPage();
-  persist();
 });
 
 const pbIcons = {
@@ -7937,8 +7966,36 @@ async function loadTeamMembersFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+/* Phase 3a: clients start with an empty real dataset (no legacy data to
+   import), so — unlike loadTeamMembersFromSupabase() — an empty result set
+   is a valid, successful load, not a signal to fall back to the local mock
+   seed. `dbId` (the Supabase uuid) is kept alongside the local numeric `_id`
+   so ncSubmit/ncDelete know which row to update/delete. */
+async function loadClientsFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('clients').select('*').order('created_at', { ascending:true });
+    if(error || !data) return false;
+    allClients.length = 0;
+    data.forEach(row=>{
+      allClients.push({
+        _id: nextId(),
+        dbId: row.id,
+        name: row.name,
+        contact: row.contact || '',
+        email: row.email || '',
+        phone: row.phone || '',
+        website: row.website || '',
+        avatar: row.avatar || null,
+        since: row.since
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
 async function resolveSessionLogin(session){
   await loadTeamMembersFromSupabase();
+  await loadClientsFromSupabase();
   const match = teamMembers.find(t=>t.authId===session.user.id);
   if(!match) return false;
   login(match._id);
