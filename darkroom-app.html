@@ -7829,7 +7829,9 @@ document.getElementById('loginSubmit').addEventListener('click', async (e)=>{
     options: { emailRedirectTo: LOGIN_REDIRECT_URL, shouldCreateUser: false }
   });
   if(error){
-    hint.textContent = 'Nismo pronašli nalog za taj email. Proveri da li si uneo tačnu adresu.';
+    hint.textContent = error.code === 'over_email_send_rate_limit'
+      ? 'Previše pokušaja u kratkom vremenu — sačekaj par minuta pa probaj ponovo.'
+      : 'Nismo pronašli nalog za taj email. Proveri da li si uneo tačnu adresu.';
     return;
   }
   document.getElementById('loginSentEmail').textContent = email;
