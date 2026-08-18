@@ -3923,7 +3923,7 @@ const goalRing = document.getElementById('goalRing');
 renderWeeklyGoal();
 
 /* ==== Fun-goal weather + clock widget — Open-Meteo (no API key needed), Belgrade coords ==== */
-const WEATHER_LAT = 44.7866, WEATHER_LON = 20.4489, WEATHER_TZ = 'Europe/Belgrade';
+const WEATHER_LAT = 43.3209, WEATHER_LON = 21.8958, WEATHER_TZ = 'Europe/Belgrade';
 function weatherIconHtml(code, isNight){
   if(code === 0){
     return isNight
@@ -3988,7 +3988,7 @@ async function fetchWeather(){
     if(!cw) throw new Error('no current_weather');
     const isNight = !cw.is_day;
     if(iconEl) iconEl.innerHTML = weatherIconHtml(cw.weathercode, isNight);
-    if(metaEl) metaEl.textContent = `${Math.round(cw.temperature)}°C · ${weatherLabels[cw.weathercode] || 'Beograd'}`;
+    if(metaEl) metaEl.textContent = `${Math.round(cw.temperature)}°C · ${weatherLabels[cw.weathercode] || 'Niš'}`;
   } catch(e){
     if(metaEl) metaEl.textContent = 'Vreme trenutno nedostupno';
   }
