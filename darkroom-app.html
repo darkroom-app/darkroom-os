@@ -862,6 +862,7 @@ select.native-select-hidden{ display:none; }
 .agenda-proj{ font-size:10.5px; color:var(--ink-dim); margin-top:1px; }
 .agenda-urgency-row{ display:flex; align-items:center; gap:5px; margin-top:4px; }
 .agenda-urgency-row .cb-urgency{ margin-left:0; }
+.agenda-urgency-row .cb-urgency-fire{ margin-left:0; }
 .agenda-urgency-label{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; }
 .agenda-empty{ font-size:12px; color:var(--ink-faint); padding:2px 0 0; }
 
@@ -1168,6 +1169,7 @@ select.native-select-hidden{ display:none; }
 .cal-legend{ display:flex; gap:16px; flex-wrap:wrap; padding:16px 2px 4px; }
 .cal-legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-dim); }
 .cal-legend-dot{ width:9px; height:9px; border-radius:50%; }
+.cal-legend-item .cb-urgency-fire{ margin-left:0; }
 
 /* event modal tabs */
 .ev-tab-row{ display:flex; gap:6px; margin-bottom:16px; background:var(--card-soft); border-radius:10px; padding:4px; }
@@ -1204,6 +1206,12 @@ select.native-select-hidden{ display:none; }
 
 /* urgency + holiday */
 .cb-urgency{ width:9px; height:9px; border-radius:50%; margin-left:auto; flex-shrink:0; }
+.cb-urgency-fire{ display:inline-flex; align-items:center; justify-content:center; line-height:1; margin-left:auto; flex-shrink:0; transform-origin:center 85%; animation:flameFlicker 0.7s ease-in-out infinite; }
+@keyframes flameFlicker{
+  0%, 100%{ transform:scale(1) rotate(-4deg); }
+  35%{ transform:scale(1.15) rotate(3deg); }
+  70%{ transform:scale(0.9) rotate(-2deg); }
+}
 .cal-holiday{ background:repeating-linear-gradient(45deg, var(--coral-soft), var(--coral-soft) 6px, #f0c9ba 6px, #f0c9ba 12px); border-color:var(--coral); color:#8a4128; }
 .twg-holiday-row{ border-top:1px solid var(--border); }
 .twg-holiday-row .twg-person{ background:var(--card); }
@@ -1521,7 +1529,7 @@ select.native-select-hidden{ display:none; }
       <div class="cal-legend">
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--sage)"></span>Niska urgentnost</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--gold-deep)"></span>Srednja urgentnost</div>
-        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>Visoka urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-fire" style="font-size:12px;">🔥</span>Visoka urgentnost</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--ink-faint)"></span>Odsustvo</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>🎉 Praznik</div>
       </div>
@@ -3023,6 +3031,14 @@ const leaveIcon = {
 };
 const urgencyColor = { niska:"var(--sage)", srednja:"var(--gold-deep)", visoka:"var(--coral)" };
 const urgencyLabels = { niska:"Niska", srednja:"Srednja", visoka:"Visoka" };
+function urgencyIndicatorHtml(urgency, size){
+  size = size || 9;
+  const label = urgencyLabels[urgency] || '';
+  if(urgency === 'visoka'){
+    return `<span class="cb-urgency-fire" style="font-size:${size+3}px;" title="Urgentnost: ${label}">🔥</span>`;
+  }
+  return `<span class="cb-urgency" style="background:${urgencyColor[urgency]||'var(--ink-faint)'};width:${size}px;height:${size}px;" title="Urgentnost: ${label}"></span>`;
+}
 const leaveLabels = { odmor:"Godišnji odmor", bolovanje:"Bolovanje", placeno:"Plaćeno odsustvo", neplaceno:"Neplaćeno odsustvo" };
 
 const calWeeks = document.getElementById('calWeeks');
@@ -3129,7 +3145,7 @@ function renderTeamSwimlane(days, opts){
       const code = eventDisplayCode(e);
       const label = eventDisplayLabel(e);
       const rightIndicator = e.kind==='zadatak'
-        ? `<span class="cb-urgency" style="background:${urgencyColor[e.urgency]||'var(--ink-faint)'}" title="Urgentnost: ${urgencyLabels[e.urgency]||''}"></span>`
+        ? urgencyIndicatorHtml(e.urgency, 9)
         : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);">${leaveIcon[e.leaveType]||''}</span>` : '');
       return `
       <div class="twg-bar cal-${e.color}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${code ? escapeHtml(code)+' · ' : ''}${escapeHtml(label)}">
@@ -3233,7 +3249,7 @@ function renderCalendarDay(){
       ? `<span class="cb-avatar" style="width:26px;height:26px;font-size:13px;background:var(--coral);">🎉</span>`
       : (()=>{ const av = avatarBgInner(e.person); return `<span class="cb-avatar" style="width:26px;height:26px;font-size:10px;${av.bg}">${av.inner}</span>`; })();
     const rightIndicator = e.kind==='zadatak'
-      ? `<span class="cb-urgency" style="background:${urgencyColor[e.urgency]||'var(--ink-faint)'};width:18px;height:18px;" title="Urgentnost: ${urgencyLabels[e.urgency]||''}"></span>`
+      ? urgencyIndicatorHtml(e.urgency, 18)
       : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);width:18px;height:18px;">${leaveIcon[e.leaveType]||''}</span>` : '');
     return `
     <div class="day-view-card cal-${e.color}" data-id="${e._id}">
@@ -6298,7 +6314,6 @@ function renderWeekWidget(){
       return `<div class="agenda-item"><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`;
     }
     const proj = allProjects.find(p=>p.code===e.projectCode);
-    const urgColor = urgencyColor[e.urgency] || 'var(--ink-faint)';
     const urgLabel = urgencyLabels[e.urgency] || '';
     return `
     <div class="agenda-item">
@@ -6306,7 +6321,7 @@ function renderWeekWidget(){
       <div style="flex:1; min-width:0;">
         <div class="agenda-text">${escapeHtml(e.taskName || '')}</div>
         ${proj ? `<div class="agenda-proj">${escapeHtml(proj.name)}</div>` : ''}
-        <div class="agenda-urgency-row"><span class="cb-urgency" style="background:${urgColor};"></span><span class="agenda-urgency-label">${urgLabel}</span></div>
+        <div class="agenda-urgency-row">${urgencyIndicatorHtml(e.urgency, 9)}<span class="agenda-urgency-label">${urgLabel}</span></div>
       </div>
     </div>`;
   }
