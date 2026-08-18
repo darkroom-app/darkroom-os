@@ -1214,6 +1214,11 @@ select.native-select-hidden{ display:none; }
 .twg-hover-plus{ position:absolute; width:20px; height:20px; border-radius:50%; background:var(--gold); color:#3a2704; display:flex; align-items:center; justify-content:center; pointer-events:none; opacity:0; transition:opacity .1s ease; z-index:2; top:50%; margin-top:-10px; }
 .twg-hover-plus svg{ width:11px; height:11px; }
 
+/* always-empty add strip below the stacked bars, so there's a click target even when every lane is booked */
+.twg-addrow{ min-height:15px; padding:0 0 4px; }
+.twg-addrow .twg-hover-plus{ width:16px; height:16px; margin-top:-8px; }
+.twg-addrow .twg-hover-plus svg{ width:9px; height:9px; }
+
 
 </style>
 </head>
@@ -3166,6 +3171,9 @@ function renderTeamSwimlane(days, opts){
       </div>
       <div class="twg-track" data-person="${escapeHtml(t.name)}" style="grid-template-columns:${colTemplate}; grid-template-rows:repeat(${maxLanes},27px);">
         ${gridlines}${bars}
+        <div class="twg-hover-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg></div>
+      </div>
+      <div class="twg-track twg-addrow" data-person="${escapeHtml(t.name)}" style="grid-template-columns:${colTemplate}; grid-template-rows:15px;" title="Dodaj novi zadatak">
         <div class="twg-hover-plus"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M12 5v14M5 12h14"/></svg></div>
       </div>
     </div>`;
