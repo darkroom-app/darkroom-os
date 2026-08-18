@@ -4339,15 +4339,51 @@ function setProjectThumbPreview(thumbnail){
   const el = document.getElementById('npThumbPreview');
   el.style.backgroundImage = thumbnail ? `url('${thumbnail}')` : '';
 }
-document.getElementById('npThumbInput').addEventListener('change', (e)=>{
+/* ==== Phase 3c: image upload — client-side resize/compress + Supabase Storage ====
+   Studio photos/renders dropped in here are routinely 20-30MB straight off a
+   camera or render output — way more than any of these previews need. Every
+   upload point resizes to a sane max dimension and re-encodes as JPEG before
+   it ever leaves the browser, then goes to a public Storage bucket instead of
+   being inlined as base64 in the database. All 4 upload points end up storing
+   the same kind of value they always did (a plain string in the pending
+   variable — a Storage public URL now instead of a data: URL), so nothing
+   downstream (submit handlers, DB writes, render call sites) needs to change. */
+async function compressImageFile(file, maxDim, quality){
+  maxDim = maxDim || 1600; quality = quality || 0.85;
+  const bitmap = await createImageBitmap(file);
+  let { width, height } = bitmap;
+  if(width > maxDim || height > maxDim){
+    const scale = maxDim / Math.max(width, height);
+    width = Math.round(width * scale);
+    height = Math.round(height * scale);
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = width; canvas.height = height;
+  canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
+  return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+}
+async function processImageUpload(file, bucket){
+  let blob;
+  try { blob = await compressImageFile(file); }
+  catch(e){ alert('Nije moguće obraditi tu sliku.'); return null; }
+  if(sb){
+    const path = `${crypto.randomUUID()}.jpg`;
+    const { error } = await sb.storage.from(bucket).upload(path, blob, { contentType:'image/jpeg' });
+    if(error){ alert('Otpremanje slike nije uspelo: ' + error.message); return null; }
+    return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
+  }
+  return await new Promise(resolve=>{
+    const reader = new FileReader();
+    reader.onload = ()=>resolve(reader.result);
+    reader.readAsDataURL(blob);
+  });
+}
+
+document.getElementById('npThumbInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    pendingProjectThumbnail = reader.result;
-    setProjectThumbPreview(pendingProjectThumbnail);
-  };
-  reader.readAsDataURL(file);
+  const url = await processImageUpload(file, 'project-thumbnails');
+  if(url){ pendingProjectThumbnail = url; setProjectThumbPreview(url); }
 });
 
 function closeProjectModal(){
@@ -4623,6 +4659,12 @@ function closeRoundView(){
 }
 document.getElementById('roundViewClose').addEventListener('click', closeRoundView);
 wireOverlayClose(roundViewOverlay, closeRoundView);
+function storagePathFromUrl(url, bucket){
+  if(!url) return null;
+  const marker = `/storage/v1/object/public/${bucket}/`;
+  const idx = url.indexOf(marker);
+  return idx===-1 ? null : url.slice(idx + marker.length);
+}
 document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(!confirm('Obrisati ovu rundu?')) return;
   const proj = allProjects.find(p=>p._id===activeRoundViewProjectId);
@@ -4633,6 +4675,8 @@ document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(sb && round.dbId){
     const { error } = await sb.from('rounds').delete().eq('id', round.dbId);
     if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
+    const imgPath = storagePathFromUrl(round.image, 'round-images');
+    if(imgPath) sb.storage.from('round-images').remove([imgPath]);
   }
   const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
   if(idx>-1) kadar.rounds.splice(idx,1);
@@ -4829,15 +4873,14 @@ document.getElementById('roundChoiceRev').addEventListener('click', ()=>{
   document.getElementById('roundChoiceRev').classList.add('active');
   document.getElementById('roundChoiceRound').classList.remove('active');
 });
-document.getElementById('roundImgInput').addEventListener('change', (e)=>{
+document.getElementById('roundImgInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    pendingRoundImage = reader.result;
-    document.getElementById('roundImgPreview').style.backgroundImage = `url('${pendingRoundImage}')`;
-  };
-  reader.readAsDataURL(file);
+  const url = await processImageUpload(file, 'round-images');
+  if(url){
+    pendingRoundImage = url;
+    document.getElementById('roundImgPreview').style.backgroundImage = `url('${url}')`;
+  }
 });
 document.getElementById('roundCancel').addEventListener('click', closeRoundModal);
 wireOverlayClose(roundModalOverlay, closeRoundModal);
@@ -5024,15 +5067,14 @@ function setAvatarPreview(name, avatar){
     el.textContent = name ? clientInitials(name) : '';
   }
 }
-document.getElementById('ncAvatarInput').addEventListener('change', (e)=>{
+document.getElementById('ncAvatarInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    pendingClientAvatar = reader.result;
-    setAvatarPreview(document.getElementById('ncName').value, pendingClientAvatar);
-  };
-  reader.readAsDataURL(file);
+  const url = await processImageUpload(file, 'client-avatars');
+  if(url){
+    pendingClientAvatar = url;
+    setAvatarPreview(document.getElementById('ncName').value, url);
+  }
 });
 
 function closeClientModal(){
@@ -6101,15 +6143,14 @@ function setTeamAvatarPreview(name, avatar){
     el.textContent = name ? clientInitials(name) : '';
   }
 }
-document.getElementById('ntAvatarInput').addEventListener('change', (e)=>{
+document.getElementById('ntAvatarInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    pendingTeamAvatar = reader.result;
-    setTeamAvatarPreview(document.getElementById('ntName').value, pendingTeamAvatar);
-  };
-  reader.readAsDataURL(file);
+  const url = await processImageUpload(file, 'team-avatars');
+  if(url){
+    pendingTeamAvatar = url;
+    setTeamAvatarPreview(document.getElementById('ntName').value, url);
+  }
 });
 
 function closeTeamModal(){

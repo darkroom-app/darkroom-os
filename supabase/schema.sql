@@ -345,3 +345,41 @@ begin
   return NEW;
 end;
 $$;
+
+
+-- ==== Phase 3c: image storage (run as a tenth query) ====
+-- clients.avatar / projects.thumbnail / rounds.image / team_members.avatar
+-- stay the same text columns — they just hold a Storage public URL now
+-- instead of a base64 data: URL, so no column changes needed here, only
+-- the buckets + their access rules. Each bucket's upload policy mirrors
+-- its parent table's write policy (client-avatars stays superadmin-only,
+-- matching clients; the rest are open to any authenticated user, matching
+-- projects/kadrovi/rounds today). No update policy on any bucket — every
+-- upload gets a fresh random filename (never overwritten); round-images
+-- gets a delete policy too since roundViewDelete cleans up its own image.
+
+insert into storage.buckets (id, name, public) values
+  ('client-avatars', 'client-avatars', true),
+  ('project-thumbnails', 'project-thumbnails', true),
+  ('round-images', 'round-images', true),
+  ('team-avatars', 'team-avatars', true);
+
+create policy "Public read client-avatars" on storage.objects for select using (bucket_id = 'client-avatars');
+create policy "Public read project-thumbnails" on storage.objects for select using (bucket_id = 'project-thumbnails');
+create policy "Public read round-images" on storage.objects for select using (bucket_id = 'round-images');
+create policy "Public read team-avatars" on storage.objects for select using (bucket_id = 'team-avatars');
+
+create policy "Superadmin upload client-avatars" on storage.objects for insert to authenticated
+  with check (bucket_id = 'client-avatars' and (select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "Authenticated upload project-thumbnails" on storage.objects for insert to authenticated
+  with check (bucket_id = 'project-thumbnails');
+
+create policy "Authenticated upload round-images" on storage.objects for insert to authenticated
+  with check (bucket_id = 'round-images');
+
+create policy "Authenticated delete round-images" on storage.objects for delete to authenticated
+  using (bucket_id = 'round-images');
+
+create policy "Authenticated upload team-avatars" on storage.objects for insert to authenticated
+  with check (bucket_id = 'team-avatars');
