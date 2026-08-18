@@ -2454,7 +2454,7 @@ select.native-select-hidden{ display:none; }
     <div class="modal-title" id="taskTitle">Novi kadar</div>
     <div class="modal-field">
       <label>Naziv kadra</label>
-      <input type="text" id="taskName" placeholder="npr. Eksterijer_Glavna_Fasada">
+      <input type="text" id="taskName" placeholder="npr. Yas Island_Traditional - Arrival 01">
     </div>
     <div class="modal-field">
       <label>Tip</label>
@@ -3948,15 +3948,14 @@ function nextKadarNumber(proj, type){
   if(type === 'model') return '00';
   let max = 0;
   proj.kadrovi.forEach(k=>{
-    if(k.type !== type) return;
-    const m = k.name.match(/_(\d+)$/);
+    if(k.type === 'model') return;
+    const m = k.name.match(/^(\d+)\./);
     if(m) max = Math.max(max, parseInt(m[1], 10));
   });
   return String(max + 1).padStart(2, '0');
 }
 function suggestedKadarName(proj, type){
-  const label = type.charAt(0).toUpperCase() + type.slice(1);
-  return `${label}_${nextKadarNumber(proj, type)}`;
+  return `${nextKadarNumber(proj, type)}. `;
 }
 
 let allProjects = [
@@ -4831,7 +4830,9 @@ document.getElementById('taskType').addEventListener('change', ()=>{
   if(editingTaskId) return;
   const proj = allProjects.find(p=>p._id===activeTaskProjectId);
   if(!proj) return;
-  document.getElementById('taskName').value = suggestedKadarName(proj, document.getElementById('taskType').value);
+  const nameEl = document.getElementById('taskName');
+  const rest = nameEl.value.replace(/^\d+\.\s*/, '');
+  nameEl.value = suggestedKadarName(proj, document.getElementById('taskType').value) + rest;
 });
 document.getElementById('taskCancel').addEventListener('click', closeTaskModal);
 wireOverlayClose(taskModalOverlay, closeTaskModal);
