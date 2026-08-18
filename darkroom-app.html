@@ -223,7 +223,7 @@ select.native-select-hidden{ display:none; }
 .xsel-btn-label{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .xsel-btn svg{ width:13px; height:13px; color:var(--ink-faint); flex-shrink:0; transition:transform .15s ease; }
 .xsel-wrap.open .xsel-btn svg{ transform:rotate(180deg); }
-.xsel-menu{ position:absolute; top:calc(100% + 6px); left:0; right:0; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:6px; max-height:240px; overflow-y:auto; box-shadow:0 16px 34px -12px rgba(70,55,20,0.28); display:none; z-index:60; }
+.xsel-menu{ position:fixed; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:6px; max-height:240px; overflow-y:auto; box-shadow:0 16px 34px -12px rgba(70,55,20,0.28); display:none; z-index:200; }
 .xsel-wrap.open .xsel-menu{ display:block; }
 .xsel-item{ padding:8px 10px; border-radius:8px; font-size:12px; cursor:pointer; color:var(--ink); }
 .xsel-item:hover{ background:var(--gold-soft); }
@@ -8212,6 +8212,21 @@ function enhanceSelect(selectEl){
     buildMenu();
     document.querySelectorAll('.xsel-wrap.open').forEach(w=>{ if(w!==wrap) w.classList.remove('open'); });
     wrap.classList.add('open');
+    const btnRect = btn.getBoundingClientRect();
+    menu.style.left = btnRect.left + 'px';
+    menu.style.width = btnRect.width + 'px';
+    const spaceBelow = window.innerHeight - btnRect.bottom;
+    const spaceAbove = btnRect.top;
+    const menuHeight = Math.min(menu.scrollHeight, 240);
+    if(spaceBelow < menuHeight + 8 && spaceAbove > spaceBelow){
+      menu.style.bottom = (window.innerHeight - btnRect.top + 6) + 'px';
+      menu.style.top = 'auto';
+      menu.style.maxHeight = Math.min(240, spaceAbove - 14) + 'px';
+    } else {
+      menu.style.top = (btnRect.bottom + 6) + 'px';
+      menu.style.bottom = 'auto';
+      menu.style.maxHeight = Math.min(240, spaceBelow - 14) + 'px';
+    }
   }
   function closeMenu(){ wrap.classList.remove('open'); }
   btn.addEventListener('click', (e)=>{
