@@ -4709,8 +4709,8 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
   if(editingTaskId){
     const kadar = proj.kadrovi.find(k=>k._id===editingTaskId);
     if(kadar){
-      if(status==='odobren' && kadar.status!=='odobren'){ notifText = `Kadar "${name}" je odobren u projektu ${proj.name}`; notifKind = 'approved'; }
-      else if(status==='otkazan' && kadar.status!=='otkazan'){ notifText = `Kadar "${name}" je otkazan u projektu ${proj.name}`; notifKind = 'cancelled'; }
+      if(status==='odobren' && kadar.status!=='odobren'){ notifText = `Kadar "${name}" (${pendingTaskEmployee}) je odobren u projektu ${proj.name}`; notifKind = 'approved'; }
+      else if(status==='otkazan' && kadar.status!=='otkazan'){ notifText = `Kadar "${name}" (${pendingTaskEmployee}) je otkazan u projektu ${proj.name}`; notifKind = 'cancelled'; }
       if(sb && kadar.dbId){
         const { data, error } = await sb.from('kadrovi')
           .update({ name, type, employee_id:employeeId, status })
@@ -4731,7 +4731,7 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
     } else {
       proj.kadrovi.push(mkKadar(type, name, pendingTaskEmployee, status, []));
     }
-    notifText = `Dodat je novi kadar "${name}" u projekat ${proj.name}`;
+    notifText = `Dodat je novi kadar "${name}" (${pendingTaskEmployee}) u projekat ${proj.name}`;
     notifKind = 'kadar';
   }
   if(notifText) pushNotification(notifRecipientId(proj.managerName), notifKind, notifText, proj._id);
@@ -4824,7 +4824,7 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
     kadar.rounds.push(mkRound(label, billable, date));
     if(image) kadar.rounds[kadar.rounds.length-1].image = image;
   }
-  pushNotification(notifRecipientId(proj.managerName), 'round', `Nova ${billable ? 'runda' : 'revizija'} (${label}) dodata za kadar "${kadar.name}" u projektu ${proj.name}`, proj._id);
+  pushNotification(notifRecipientId(proj.managerName), 'round', `Nova ${billable ? 'runda' : 'revizija'} (${label}) dodata za kadar "${kadar.name}" (${kadar.employee}) u projektu ${proj.name}`, proj._id);
   closeRoundModal();
   renderProjectsPage();
   if(activeProjectDetailId){ renderProjectDetailStats(); renderProjectDetailKadrovi(); }
