@@ -8308,6 +8308,7 @@ async function resolveSessionLogin(session){
     await loadTeamMembersFromSupabase();
     await loadClientsFromSupabase();
     await loadProjectsFromSupabase();
+    buildFilterMenus();
     const match = teamMembers.find(t=>t.authId===session.user.id);
     _resolvingSessionPromise = null;
     if(!match) return false;
