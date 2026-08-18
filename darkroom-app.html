@@ -3325,7 +3325,7 @@ calWeeks.addEventListener('mousedown', (e)=>{
     canReassign: evObj.kind==='zadatak' && (isSuperAdmin() || currentAccess()==='admin'),
     grabOffset: daysBetween(evObj.start, grabDate),
     startX: e.clientX, startY: e.clientY,
-    lastHoverKey: toISO(grabDate) + '|' + evObj.person, moved: false
+    lastHoverKey: toISO(grabDate) + '|' + evObj.person
   };
   document.addEventListener('mousemove', onBarDrag);
   document.addEventListener('mouseup', endBarDrag);
@@ -3333,7 +3333,6 @@ calWeeks.addEventListener('mousedown', (e)=>{
 
 function onBarDrag(e){
   if(!barDragState) return;
-  if(Math.abs(e.clientX - barDragState.startX) > 3 || Math.abs(e.clientY - barDragState.startY) > 3) barDragState.moved = true;
 
   let activeTrack = barDragState.track, activeRect = barDragState.trackRect, hoverPerson = barDragState.origPerson;
   if(barDragState.canReassign && barDragState.mode === 'move'){
@@ -3390,11 +3389,12 @@ function endBarDrag(){
   document.removeEventListener('mousemove', onBarDrag);
   document.removeEventListener('mouseup', endBarDrag);
   if(!barDragState) return;
-  const { id, mode, moved, origS, origE, origPerson, canReassign } = barDragState;
+  const { id, mode, origS, origE, origPerson, canReassign } = barDragState;
   barDragState = null;
-  if(moved){
+  const evObj = events.find(x=>x._id===id);
+  const changed = evObj && (daysBetween(TODAY, evObj.start) !== origS || daysBetween(TODAY, evObj.end) !== origE || evObj.person !== origPerson);
+  if(changed){
     suppressBarClick = true;
-    const evObj = events.find(x=>x._id===id);
     if(evObj){
       const reassigned = canReassign && evObj.person !== origPerson;
       const rangeLabel = daysBetween(evObj.start, evObj.end) > 0
@@ -3415,6 +3415,12 @@ function endBarDrag(){
         evObj.person = origPerson;
       }
     }
+  } else if(mode === 'move' && evObj){
+    // No actual date/person change -- treat as a plain click. The mousedown handler's
+    // preventDefault() suppresses the browser's native click event on the bar, so we
+    // open the edit modal directly here instead of relying on the calWeeks click listener.
+    suppressBarClick = true;
+    openEventModal(evObj, null);
   }
   renderCalendar();
 }
