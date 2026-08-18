@@ -1,18 +1,20 @@
-// DARKROOM — Titanium OS: Phase 3e backend (relay notifications to Discord)
+// DARKROOM — Titanium OS: Phase 3e/3f backend (relay notifications to Discord)
 //
-// Deploy via Supabase Dashboard → Edge Functions → New function → name it
-// "discord-relay" → paste this file's contents → Deploy → disable "Enforce
-// JWT Verification" (same as pulse-webhook/bootstrap-team) → set the
+// Deployed under the dashboard-assigned name "smart-service" — see
+// schema.sql's notify_discord() for why. Disable "Enforce JWT
+// Verification" (same as pulse-webhook/bootstrap-team) and set the
 // DISCORD_WEBHOOK_URL and DB_WEBHOOK_SECRET secrets (Edge Functions →
 // Manage secrets) — never commit either value to this repo.
 //
-// Triggered by a Supabase Database Webhook on `public.notifications`
-// (INSERT only). Supabase's Database Webhook payload shape is:
-//   { type: "INSERT", table: "notifications", schema: "public", record: {...}, old_record: null }
-// so every existing and future producer that inserts into `notifications`
-// (pulse-webhook today, pushNotification() once it writes through to
-// Supabase) reaches Discord automatically — this function never needs to
-// change when a new notification source is added.
+// Called by the notify_discord() Postgres trigger (via pg_net) on every
+// insert into `public.notifications`, so every existing and future
+// notification producer reaches Discord with no changes needed here.
+// Phase 3f: the studio runs one Discord channel per project, so the
+// trigger looks up that project's own webhook URL (projects.discord_webhook_url,
+// set through the project's edit form in the app) and passes it as
+// `webhook_url` in the body — this function posts there instead of the
+// single DISCORD_WEBHOOK_URL secret whenever one is provided, falling
+// back to that secret as a general channel otherwise.
 
 const DISCORD_WEBHOOK_URL = Deno.env.get("DISCORD_WEBHOOK_URL") ?? "";
 const DB_WEBHOOK_SECRET = Deno.env.get("DB_WEBHOOK_SECRET") ?? "";
@@ -33,9 +35,6 @@ Deno.serve(async (req) => {
   if (!DB_WEBHOOK_SECRET || providedSecret !== DB_WEBHOOK_SECRET) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
-  if (!DISCORD_WEBHOOK_URL) {
-    return jsonResponse({ ok: false, error: "DISCORD_WEBHOOK_URL not configured" }, 500);
-  }
 
   let payload: Record<string, unknown>;
   try {
@@ -46,8 +45,16 @@ Deno.serve(async (req) => {
 
   if (payload.type !== "INSERT" || !payload.record) {
     // Ignore anything that isn't a fresh notification row (defensive — the
-    // Database Webhook is configured for INSERT-only, but don't assume).
+    // trigger only ever fires on INSERT, but don't assume).
     return jsonResponse({ ok: true, skipped: true }, 200);
+  }
+
+  const targetUrl = (typeof payload.webhook_url === "string" && payload.webhook_url) || DISCORD_WEBHOOK_URL;
+  if (!targetUrl) {
+    // No per-project channel set and no general fallback configured —
+    // nothing to do, but not an error (most projects won't have a
+    // channel wired up yet).
+    return jsonResponse({ ok: true, skipped: true, reason: "no webhook url" }, 200);
   }
 
   const row = payload.record as Record<string, unknown>;
@@ -57,7 +64,7 @@ Deno.serve(async (req) => {
 
   const content = `🔔 **${recipient}** ${projectCode ? `(${projectCode}) ` : ""}— ${text}`;
 
-  const discordResp = await fetch(DISCORD_WEBHOOK_URL, {
+  const discordResp = await fetch(targetUrl, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ content }),

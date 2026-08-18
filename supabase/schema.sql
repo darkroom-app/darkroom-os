@@ -301,3 +301,47 @@ create trigger notify_discord_on_notification
 
 create policy "authenticated can insert notifications"
   on public.notifications for insert to authenticated with check (true);
+
+
+-- ==== Phase 3f: per-project Discord channel (run as a ninth query) ====
+-- Studio runs one Discord channel per project (not one shared channel),
+-- so the single DISCORD_WEBHOOK_URL secret from Phase 3e isn't enough on
+-- its own. Each project can now carry its own webhook URL, set once
+-- through the project's own edit form in the app (no SQL, no redeploy) —
+-- notify_discord() looks it up by project_code and passes it along to
+-- discord-relay, which posts to that URL instead of the fixed secret.
+-- Projects with no webhook set (or notifications with no project_code)
+-- fall back to DISCORD_WEBHOOK_URL as a general channel.
+
+alter table public.projects add column if not exists discord_webhook_url text;
+
+create or replace function public.notify_discord()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  webhook_url text;
+begin
+  if NEW.project_code is not null then
+    select discord_webhook_url into webhook_url
+    from public.projects where code = NEW.project_code;
+  end if;
+  perform net.http_post(
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/smart-service',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-db-webhook-secret', 'darkroom-discord-relay-2026'
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'notifications',
+      'schema', 'public',
+      'record', to_jsonb(NEW),
+      'webhook_url', webhook_url
+    )
+  );
+  return NEW;
+end;
+$$;

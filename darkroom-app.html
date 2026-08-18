@@ -2409,6 +2409,10 @@ select.native-select-hidden{ display:none; }
         <input type="file" id="npThumbInput" accept="image/*">
       </div>
     </div>
+    <div class="modal-field">
+      <label>Discord Webhook URL <span style="font-weight:400;color:var(--ink-faint);">(opciono)</span></label>
+      <input type="text" id="npDiscordWebhook" placeholder="https://discord.com/api/webhooks/...">
+    </div>
     <div class="modal-actions">
       <button class="modal-delete" id="npDelete" style="display:none;">Obriši</button>
       <button class="modal-cancel" id="npCancel">Otkaži</button>
@@ -4328,6 +4332,7 @@ function openProjectModal(proj){
   document.getElementById('npThumbInput').value = '';
   pendingProjectThumbnail = undefined;
   setProjectThumbPreview(proj.thumbnail);
+  document.getElementById('npDiscordWebhook').value = proj.discordWebhookUrl || '';
   modalOverlay.classList.add('open');
 }
 document.getElementById('newProjectBtn').addEventListener('click', ()=>{
@@ -4343,6 +4348,7 @@ document.getElementById('newProjectBtn').addEventListener('click', ()=>{
   document.getElementById('npThumbInput').value = '';
   pendingProjectThumbnail = undefined;
   setProjectThumbPreview(null);
+  document.getElementById('npDiscordWebhook').value = '';
   modalOverlay.classList.add('open');
 });
 document.getElementById('npCancel').addEventListener('click', closeProjectModal);
@@ -4375,6 +4381,7 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
   const status = document.getElementById('npStatus').value;
   const clientId = allClients.find(c=>c.name===client)?.dbId;
   const managerId = teamMembers.find(t=>t.name===managerName)?.authId;
+  const discordWebhookUrl = document.getElementById('npDiscordWebhook').value.trim() || null;
 
   if(editingProjectId){
     const proj = allProjects.find(p=>p._id===editingProjectId);
@@ -4382,12 +4389,12 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
       const thumbnail = pendingProjectThumbnail!==undefined ? pendingProjectThumbnail : proj.thumbnail;
       if(sb && proj.dbId){
         const { data, error } = await sb.from('projects')
-          .update({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail })
+          .update({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail, discord_webhook_url:discordWebhookUrl })
           .eq('id', proj.dbId).select().single();
         if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
-        Object.assign(proj, { name:data.name, client, managerName, year:data.year, startDate:data.start_date, status:data.status, thumbnail:data.thumbnail });
+        Object.assign(proj, { name:data.name, client, managerName, year:data.year, startDate:data.start_date, status:data.status, thumbnail:data.thumbnail, discordWebhookUrl:data.discord_webhook_url });
       } else {
-        Object.assign(proj, {name, client, managerName, year, startDate, status, thumbnail});
+        Object.assign(proj, {name, client, managerName, year, startDate, status, thumbnail, discordWebhookUrl});
       }
     }
     closeProjectModal();
@@ -4397,13 +4404,13 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
     const thumbnail = pendingProjectThumbnail || null;
     if(sb){
       const { data, error } = await sb.from('projects')
-        .insert({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail })
+        .insert({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail, discord_webhook_url:discordWebhookUrl })
         .select().single();
       if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
       const proj = {
         _id: nextId(), dbId: data.id, code: data.code, name: data.name,
         client, managerName, year: data.year, startDate: data.start_date, status: data.status,
-        thumbnail: data.thumbnail, seed: data.seed, kadrovi: []
+        thumbnail: data.thumbnail, seed: data.seed, discordWebhookUrl: data.discord_webhook_url, kadrovi: []
       };
       allProjects.unshift(proj);
       closeProjectModal();
@@ -8092,6 +8099,7 @@ async function loadProjectsFromSupabase(){
         status: row.status,
         thumbnail: row.thumbnail,
         seed: row.seed,
+        discordWebhookUrl: row.discord_webhook_url,
         kadrovi: (row.kadrovi || []).map(k=>({
           _id: nextId(),
           dbId: k.id,
