@@ -7426,11 +7426,20 @@ function notifTimeAgo(ts){
   if(h < 24) return `pre ${h}h`;
   return `pre ${Math.floor(h/24)}d`;
 }
-function pushNotification(recipientId, kind, text, projectId){
-  if(recipientId==null || recipientId===currentUserId) return;
-  notifications.unshift({ _id:nextId(), recipientId, kind, text, projectId, read:false, createdAt:Date.now() });
+async function pushNotification(recipientId, kind, text, projectId){
+  if(recipientId==null) return;
+  const local = { _id:nextId(), recipientId, kind, text, projectId, read:false, createdAt:Date.now() };
+  notifications.unshift(local);
   persist();
   renderDashboardNotifications();
+  if(!sb) return;
+  const recipient = teamMembers.find(t=>t._id===recipientId);
+  if(!recipient) return;
+  const proj = projectId ? allProjects.find(p=>p._id===projectId) : null;
+  const { data, error } = await sb.from('notifications')
+    .insert({ recipient_name: recipient.name, kind, text, project_code: proj ? proj.code : null })
+    .select('id').single();
+  if(!error && data) local._remoteId = data.id;
 }
 const notifIconMap = {
   kadar:     { cls:'ic-comment', svg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },

@@ -288,3 +288,16 @@ $$;
 create trigger notify_discord_on_notification
   after insert on public.notifications
   for each row execute function public.notify_discord();
+
+
+-- ==== Phase 3d: real cross-device notifications (run as an eighth query) ====
+-- pushNotification() now writes through to Supabase (in addition to the
+-- local array, for an instant UI update) so kadar-approved/cancelled and
+-- new-round notifications actually reach the recipient's own device —
+-- until now only pulse-webhook (service_role, bypasses RLS) could insert.
+-- Any authenticated user needs to be able to notify any other team member
+-- (an artist notifying their manager isn't "inserting for themselves"),
+-- matching today's zero access-gating on kadrovi/rounds.
+
+create policy "authenticated can insert notifications"
+  on public.notifications for insert to authenticated with check (true);
