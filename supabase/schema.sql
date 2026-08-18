@@ -383,3 +383,13 @@ create policy "Authenticated delete round-images" on storage.objects for delete 
 
 create policy "Authenticated upload team-avatars" on storage.objects for insert to authenticated
   with check (bucket_id = 'team-avatars');
+
+
+-- ==== Phase 3g: deletable dashboard notifications (run as an eleventh query) ====
+-- No delete policy existed on notifications at all before -- the dashboard
+-- panel could only mark read. Scoped the same way as the existing select/
+-- update policies: only your own (recipient_name match).
+
+create policy "authenticated can delete own notifications"
+  on public.notifications for delete to authenticated
+  using (recipient_name = (select name from public.team_members where id = auth.uid()));

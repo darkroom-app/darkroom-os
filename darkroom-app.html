@@ -930,6 +930,8 @@ select.native-select-hidden{ display:none; }
 .notif-scroll{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
 .notif-item{ display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
 .notif-item:last-child{ border-bottom:none; padding-bottom:0; }
+.notif-delete{ flex-shrink:0; align-self:flex-start; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); background:transparent; cursor:pointer; font-size:13px; line-height:1; transition:background .12s ease, color .12s ease; }
+.notif-delete:hover{ background:var(--coral-soft); color:var(--coral); }
 .notif-icon{ width:26px; height:26px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
 .notif-icon svg{ width:13px; height:13px; }
 .ic-check{ background:#DCEEDC; color:#4C8A55; }
@@ -1156,9 +1158,9 @@ select.native-select-hidden{ display:none; }
 .cal-leave .cb-avatar{ background:var(--ink-faint); }
 .cal-leave .cb-person{ font-style:italic; }
 
-.cb-delete{ position:absolute; top:-6px; right:-6px; width:16px; height:16px; border-radius:50%; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; line-height:1; cursor:pointer; opacity:0; transition:opacity .12s ease; z-index:3; }
+.cb-delete{ position:absolute; top:-7px; right:-7px; width:19px; height:19px; border-radius:50%; background:var(--ink); color:#fff; border:2px solid var(--card); display:flex; align-items:center; justify-content:center; font-size:12px; line-height:1; cursor:pointer; opacity:0.75; box-shadow:0 1px 4px rgba(0,0,0,0.25); transition:opacity .12s ease, background .12s ease; z-index:3; }
 .cal-bar:hover .cb-delete, .twg-bar:hover .cb-delete{ opacity:1; }
-.cb-delete:hover{ background:var(--coral); }
+.cb-delete:hover{ background:var(--coral); opacity:1; }
 
 .cal-legend{ display:flex; gap:16px; flex-wrap:wrap; padding:16px 2px 4px; }
 .cal-legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-dim); }
@@ -7544,10 +7546,11 @@ function notifItemHtml(n){
   return `
     <div class="notif-item ${n.read?'':'notif-unread'}" data-id="${n._id}" style="cursor:pointer;">
       <div class="notif-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${meta.svg}</svg></div>
-      <div>
+      <div style="flex:1;min-width:0;">
         <div class="notif-text">${escapeHtml(n.text)}</div>
         <span class="notif-time">${notifTimeAgo(n.createdAt)}</span>
       </div>
+      <span class="notif-delete" data-delete-id="${n._id}" title="Obriši">×</span>
     </div>`;
 }
 function renderDashboardNotifications(){
@@ -7573,6 +7576,18 @@ function renderDashboardNotifications(){
       if(sb && n._remoteId) sb.from('notifications').update({read:true}).eq('id', n._remoteId).then(()=>{});
       const proj = n.projectId ? allProjects.find(p=>p._id===n.projectId) : null;
       if(proj) openProjectDetail(proj);
+    });
+  });
+  wrap.querySelectorAll('.notif-delete').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const n = notifications.find(x=>x._id===Number(btn.dataset.deleteId));
+      if(!n) return;
+      const idx = notifications.findIndex(x=>x._id===n._id);
+      if(idx>-1) notifications.splice(idx,1);
+      persist();
+      renderDashboardNotifications();
+      if(sb && n._remoteId) sb.from('notifications').delete().eq('id', n._remoteId).then(()=>{});
     });
   });
 }
