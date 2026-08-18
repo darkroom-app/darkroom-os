@@ -862,7 +862,7 @@ select.native-select-hidden{ display:none; }
 .agenda-proj{ font-size:10.5px; color:var(--ink-dim); margin-top:1px; }
 .agenda-urgency-row{ display:flex; align-items:center; gap:5px; margin-top:4px; }
 .agenda-urgency-row .cb-urgency{ margin-left:0; }
-.agenda-urgency-row .cb-urgency-fire{ margin-left:0; }
+.agenda-urgency-row .cb-urgency-icon{ margin-left:0; }
 .agenda-urgency-label{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; }
 .agenda-empty{ font-size:12px; color:var(--ink-faint); padding:2px 0 0; }
 
@@ -1169,7 +1169,7 @@ select.native-select-hidden{ display:none; }
 .cal-legend{ display:flex; gap:16px; flex-wrap:wrap; padding:16px 2px 4px; }
 .cal-legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-dim); }
 .cal-legend-dot{ width:9px; height:9px; border-radius:50%; }
-.cal-legend-item .cb-urgency-fire{ margin-left:0; }
+.cal-legend-item .cb-urgency-icon{ margin-left:0; }
 
 /* event modal tabs */
 .ev-tab-row{ display:flex; gap:6px; margin-bottom:16px; background:var(--card-soft); border-radius:10px; padding:4px; }
@@ -1206,11 +1206,24 @@ select.native-select-hidden{ display:none; }
 
 /* urgency + holiday */
 .cb-urgency{ width:9px; height:9px; border-radius:50%; margin-left:auto; flex-shrink:0; }
-.cb-urgency-fire{ display:inline-flex; align-items:center; justify-content:center; line-height:1; margin-left:auto; flex-shrink:0; transform-origin:center 85%; animation:flameFlicker 0.7s ease-in-out infinite; }
+.cb-urgency-icon{ display:inline-flex; align-items:center; justify-content:center; line-height:1; margin-left:auto; flex-shrink:0; }
+.cb-urgency-icon.fire{ transform-origin:center 85%; animation:flameFlicker 0.7s ease-in-out infinite; }
+.cb-urgency-icon.spark{ transform-origin:center; animation:sparkFlicker 0.55s ease-in-out infinite; }
+.cb-urgency-icon.sprout{ transform-origin:center 90%; animation:plantSway 1.8s ease-in-out infinite; }
 @keyframes flameFlicker{
   0%, 100%{ transform:scale(1) rotate(-4deg); }
   35%{ transform:scale(1.15) rotate(3deg); }
   70%{ transform:scale(0.9) rotate(-2deg); }
+}
+@keyframes sparkFlicker{
+  0%, 100%{ transform:scale(1) rotate(0deg); opacity:1; }
+  25%{ transform:scale(1.15) rotate(-10deg); opacity:0.8; }
+  50%{ transform:scale(0.92) rotate(8deg); opacity:1; }
+  75%{ transform:scale(1.08) rotate(-5deg); opacity:0.85; }
+}
+@keyframes plantSway{
+  0%, 100%{ transform:rotate(-7deg); }
+  50%{ transform:rotate(7deg); }
 }
 .cal-holiday{ background:repeating-linear-gradient(45deg, var(--coral-soft), var(--coral-soft) 6px, #f0c9ba 6px, #f0c9ba 12px); border-color:var(--coral); color:#8a4128; }
 .twg-holiday-row{ border-top:1px solid var(--border); }
@@ -1527,9 +1540,9 @@ select.native-select-hidden{ display:none; }
       <div class="cal-weeks" id="calWeeks"></div>
 
       <div class="cal-legend">
-        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--sage)"></span>Niska urgentnost</div>
-        <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--gold-deep)"></span>Srednja urgentnost</div>
-        <div class="cal-legend-item"><span class="cb-urgency-fire" style="font-size:12px;">🔥</span>Visoka urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon sprout" style="font-size:12px;">🌱</span>Niska urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon spark" style="font-size:12px;">⚡</span>Srednja urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon fire" style="font-size:12px;">🔥</span>Visoka urgentnost</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--ink-faint)"></span>Odsustvo</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>🎉 Praznik</div>
       </div>
@@ -3031,11 +3044,14 @@ const leaveIcon = {
 };
 const urgencyColor = { niska:"var(--sage)", srednja:"var(--gold-deep)", visoka:"var(--coral)" };
 const urgencyLabels = { niska:"Niska", srednja:"Srednja", visoka:"Visoka" };
+const urgencyIcon = { niska:"🌱", srednja:"⚡", visoka:"🔥" };
+const urgencyAnimClass = { niska:"sprout", srednja:"spark", visoka:"fire" };
 function urgencyIndicatorHtml(urgency, size){
   size = size || 9;
   const label = urgencyLabels[urgency] || '';
-  if(urgency === 'visoka'){
-    return `<span class="cb-urgency-fire" style="font-size:${size+3}px;" title="Urgentnost: ${label}">🔥</span>`;
+  const icon = urgencyIcon[urgency];
+  if(icon){
+    return `<span class="cb-urgency-icon ${urgencyAnimClass[urgency]}" style="font-size:${size+3}px;" title="Urgentnost: ${label}">${icon}</span>`;
   }
   return `<span class="cb-urgency" style="background:${urgencyColor[urgency]||'var(--ink-faint)'};width:${size}px;height:${size}px;" title="Urgentnost: ${label}"></span>`;
 }
