@@ -3944,6 +3944,21 @@ syncMonthYearControls();
 function mkRound(label, billable, date){ return { _id:nextId(), label, billable, date, image:null }; }
 function mkKadar(type, name, employee, status, rounds){ return { _id:nextId(), type, name, employee, status, rounds: rounds || [] }; }
 
+function nextKadarNumber(proj, type){
+  if(type === 'model') return '00';
+  let max = 0;
+  proj.kadrovi.forEach(k=>{
+    if(k.type !== type) return;
+    const m = k.name.match(/_(\d+)$/);
+    if(m) max = Math.max(max, parseInt(m[1], 10));
+  });
+  return String(max + 1).padStart(2, '0');
+}
+function suggestedKadarName(proj, type){
+  const label = type.charAt(0).toUpperCase() + type.slice(1);
+  return `${label}_${nextKadarNumber(proj, type)}`;
+}
+
 let allProjects = [
   {name:"Dubai Island", code:"P001", client:"Gensler Dubai", year:2026, startDate:"2026-05-04", managerName:"Dušan Stević", status:"U toku", thumbnail:null, seed:1, kadrovi:[
     mkKadar("enterijer", "Enterijer_01", "Dušan Stević", "odobren", [mkRound("Round 01", true, "2026-05-08"), mkRound("Round 02", true, "2026-05-13")]),
@@ -4804,13 +4819,20 @@ function openTaskModal(projectId, kadar){
   document.getElementById('taskTitle').textContent = kadar ? "Izmeni kadar" : "Novi kadar";
   document.getElementById('taskSubmit').textContent = kadar ? "Sačuvaj" : "Dodaj kadar";
   document.getElementById('taskDelete').style.display = kadar ? 'block' : 'none';
-  document.getElementById('taskName').value = kadar ? kadar.name : '';
-  document.getElementById('taskType').value = kadar ? kadar.type : 'enterijer';
+  const defaultType = kadar ? kadar.type : 'enterijer';
+  document.getElementById('taskType').value = defaultType;
+  document.getElementById('taskName').value = kadar ? kadar.name : suggestedKadarName(allProjects.find(p=>p._id===projectId), defaultType);
   document.getElementById('taskStatus').value = kadar ? kadar.status : 'aktivan';
   pendingTaskEmployee = kadar ? kadar.employee : null;
   renderTaskEmployeeChips(pendingTaskEmployee);
   taskModalOverlay.classList.add('open');
 }
+document.getElementById('taskType').addEventListener('change', ()=>{
+  if(editingTaskId) return;
+  const proj = allProjects.find(p=>p._id===activeTaskProjectId);
+  if(!proj) return;
+  document.getElementById('taskName').value = suggestedKadarName(proj, document.getElementById('taskType').value);
+});
 document.getElementById('taskCancel').addEventListener('click', closeTaskModal);
 wireOverlayClose(taskModalOverlay, closeTaskModal);
 document.getElementById('taskDelete').addEventListener('click', async ()=>{
