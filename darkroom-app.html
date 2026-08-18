@@ -6208,7 +6208,7 @@ document.getElementById('newTeamBtn').addEventListener('click', ()=>{
 });
 document.getElementById('ntCancel').addEventListener('click', closeTeamModal);
 wireOverlayClose(teamModalOverlay, closeTeamModal);
-document.getElementById('ntSubmit').addEventListener('click', ()=>{
+document.getElementById('ntSubmit').addEventListener('click', async ()=>{
   const role = document.getElementById('ntRole').value.trim() || "Član tima";
   const emailBusiness = document.getElementById('ntEmailBusiness').value.trim() || "—";
   const emailPrivate = document.getElementById('ntEmailPrivate').value.trim();
@@ -6223,14 +6223,32 @@ document.getElementById('ntSubmit').addEventListener('click', ()=>{
     const member = teamMembers.find(t=>t._id===editingTeamId);
     if(member){
       const avatar = pendingTeamAvatar!==undefined ? pendingTeamAvatar : member.avatar;
-      Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, slobodniDani, status, avatar});
-      if(isSuperAdmin()) member.access = access;
+      if(sb && member.authId){
+        const payload = {
+          role, email_business:emailBusiness, email_private:emailPrivate, phone,
+          hire_date:hireDate||null, birth_date:birthDate||null, slobodni_dani:slobodniDani,
+          status, avatar
+        };
+        if(isSuperAdmin()) payload.access = access;
+        const { data, error } = await sb.from('team_members').update(payload).eq('id', member.authId).select().single();
+        if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
+        Object.assign(member, {
+          role:data.role, emailBusiness:data.email_business, emailPrivate:data.email_private,
+          phone:data.phone, hireDate:data.hire_date, birthDate:data.birth_date,
+          slobodniDani:data.slobodni_dani, status:data.status, avatar:data.avatar, access:data.access
+        });
+      } else {
+        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, slobodniDani, status, avatar});
+        if(isSuperAdmin()) member.access = access;
+      }
     }
   } else {
-    if(!isSuperAdmin()) return;
-    const name = document.getElementById('ntName').value.trim();
-    if(!name) return;
-    teamMembers.unshift({ _id:nextId(), name, key:name, role, emailBusiness, emailPrivate, phone, hireDate, birthDate, slobodniDani, status, access, avatar:pendingTeamAvatar||null, skills:[] });
+    // team_members.id is a foreign key into auth.users, so a real account needs
+    // the bootstrap-team Edge Function (creates the auth user + row together) —
+    // a plain client insert here can't create one. Left as a clear no-op rather
+    // than silently creating a fake local-only member that vanishes on reload.
+    alert('Novi nalog se ne pravi ovde — javi da se napravi pravi nalog (kreira se i prijava, ne samo ovaj red).');
+    return;
   }
   const wasEditingSelf = editingTeamId === currentUserId;
   closeTeamModal();

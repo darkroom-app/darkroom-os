@@ -393,3 +393,52 @@ create policy "Authenticated upload team-avatars" on storage.objects for insert 
 create policy "authenticated can delete own notifications"
   on public.notifications for delete to authenticated
   using (recipient_name = (select name from public.team_members where id = auth.uid()));
+
+
+-- ==== Phase 3h: Tim edit modal writes through to Supabase (run as a twelfth query) ====
+-- avatar/phone/email_private never had columns at all -- they only ever
+-- lived in the browser, merged back onto whatever loadTeamMembersFromSupabase()
+-- fetched, so any edit through the Tim modal (role, status, hire date, own
+-- phone/avatar, ...) was lost the moment someone else logged in and
+-- re-fetched team_members. Add the missing columns, and an update policy
+-- scoped exactly like the client-side gating already is: superadmin can
+-- edit anyone, everyone else only themselves.
+--
+-- A plain row-level policy isn't enough on its own though: "id = auth.uid()"
+-- would let any authenticated user grant themselves admin/superadmin by
+-- crafting their own update request directly, bypassing the UI (which only
+-- ever *sends* the access field when the editor is already superadmin, but
+-- that's a client-side nicety, not a security boundary). The trigger below
+-- is the real boundary: it rejects any change to `access` unless the
+-- currently authenticated user's own row already says 'superadmin',
+-- regardless of whose row is being updated or what the RLS policy allowed
+-- through.
+
+alter table public.team_members add column if not exists avatar text;
+alter table public.team_members add column if not exists phone text;
+alter table public.team_members add column if not exists email_private text;
+
+create policy "self or superadmin can update team_members"
+  on public.team_members for update to authenticated
+  using (id = auth.uid() or (select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check (id = auth.uid() or (select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create or replace function public.prevent_self_access_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if NEW.access is distinct from OLD.access then
+    if (select access from public.team_members where id = auth.uid()) <> 'superadmin' then
+      raise exception 'Only a superadmin can change access level.';
+    end if;
+  end if;
+  return NEW;
+end;
+$$;
+
+create trigger guard_team_members_access
+  before update on public.team_members
+  for each row execute function public.prevent_self_access_escalation();
