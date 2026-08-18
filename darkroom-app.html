@@ -1208,18 +1208,17 @@ select.native-select-hidden{ display:none; }
 .cb-urgency{ width:9px; height:9px; border-radius:50%; margin-left:auto; flex-shrink:0; }
 .cb-urgency-icon{ display:inline-flex; align-items:center; justify-content:center; line-height:1; margin-left:auto; flex-shrink:0; }
 .cb-urgency-icon.fire{ transform-origin:center 85%; animation:flameFlicker 0.7s ease-in-out infinite; }
-.cb-urgency-icon.spark{ transform-origin:center; animation:sparkFlicker 0.55s ease-in-out infinite; }
+.cb-urgency-icon.hourglass{ transform-origin:center; animation:hourglassTick 1.3s ease-in-out infinite; }
 .cb-urgency-icon.sprout{ transform-origin:center 90%; animation:plantSway 1.8s ease-in-out infinite; }
 @keyframes flameFlicker{
   0%, 100%{ transform:scale(1) rotate(-4deg); }
   35%{ transform:scale(1.15) rotate(3deg); }
   70%{ transform:scale(0.9) rotate(-2deg); }
 }
-@keyframes sparkFlicker{
-  0%, 100%{ transform:scale(1) rotate(0deg); opacity:1; }
-  25%{ transform:scale(1.15) rotate(-10deg); opacity:0.8; }
-  50%{ transform:scale(0.92) rotate(8deg); opacity:1; }
-  75%{ transform:scale(1.08) rotate(-5deg); opacity:0.85; }
+@keyframes hourglassTick{
+  0%, 15%{ transform:rotate(0deg); }
+  45%, 55%{ transform:rotate(180deg); }
+  85%, 100%{ transform:rotate(180deg); }
 }
 @keyframes plantSway{
   0%, 100%{ transform:rotate(-7deg); }
@@ -1541,7 +1540,7 @@ select.native-select-hidden{ display:none; }
 
       <div class="cal-legend">
         <div class="cal-legend-item"><span class="cb-urgency-icon sprout" style="font-size:12px;">🌱</span>Niska urgentnost</div>
-        <div class="cal-legend-item"><span class="cb-urgency-icon spark" style="font-size:12px;">⚡</span>Srednja urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon hourglass" style="font-size:12px;">⏳</span>Srednja urgentnost</div>
         <div class="cal-legend-item"><span class="cb-urgency-icon fire" style="font-size:12px;">🔥</span>Visoka urgentnost</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--ink-faint)"></span>Odsustvo</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>🎉 Praznik</div>
@@ -3044,8 +3043,8 @@ const leaveIcon = {
 };
 const urgencyColor = { niska:"var(--sage)", srednja:"var(--gold-deep)", visoka:"var(--coral)" };
 const urgencyLabels = { niska:"Niska", srednja:"Srednja", visoka:"Visoka" };
-const urgencyIcon = { niska:"🌱", srednja:"⚡", visoka:"🔥" };
-const urgencyAnimClass = { niska:"sprout", srednja:"spark", visoka:"fire" };
+const urgencyIcon = { niska:"🌱", srednja:"⏳", visoka:"🔥" };
+const urgencyAnimClass = { niska:"sprout", srednja:"hourglass", visoka:"fire" };
 function urgencyIndicatorHtml(urgency, size){
   size = size || 9;
   const label = urgencyLabels[urgency] || '';
