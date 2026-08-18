@@ -159,7 +159,7 @@ body{
 .projects-grid-page{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .pg-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; }
 .pg-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(70,55,20,0.28); }
-.pg-thumb{ height:96px; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
+.pg-thumb{ height:0; padding-bottom:62%; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
 .pg-thumb .m{ position:absolute; bottom:0; left:0; right:0; height:70%; }
 .pg-thumb .m .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a68f5c,#8a7443); border-top:1px solid #c2ab78; }
 .pg-thumb .vfc{ position:absolute; width:9px; height:9px; border-color:rgba(58,39,4,0.5); z-index:2; }
@@ -190,7 +190,7 @@ body{
 .plist-row:hover{ background:var(--card-soft); }
 .plist-row:last-child{ border-bottom:none; }
 .plist-name-wrap{ display:flex; align-items:center; gap:11px; min-width:0; }
-.plist-thumb{ width:34px; height:34px; border-radius:9px; flex-shrink:0; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
+.plist-thumb{ width:58px; height:58px; border-radius:11px; flex-shrink:0; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
 .plist-thumb .m{ position:absolute; bottom:0; left:0; right:0; height:70%; }
 .plist-thumb .m .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a68f5c,#8a7443); }
 .plist-name-text{ min-width:0; }
@@ -235,10 +235,13 @@ select.native-select-hidden{ display:none; }
 .modal-delete{ background:var(--coral-soft); color:var(--coral); flex:0 0 auto !important; padding:10px 14px !important; }
 
 /* project detail page */
-.pd-back-row{ margin-bottom:14px; }
+.pd-back-row{ margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
 .pd-back-btn{ display:flex; align-items:center; gap:7px; background:none; border:none; color:var(--ink-dim); font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; padding:4px 0; }
 .pd-back-btn:hover{ color:var(--ink); }
 .pd-back-btn svg{ width:16px; height:16px; }
+.pd-edit-btn{ display:flex; align-items:center; gap:7px; background:var(--card-soft); border:1px solid var(--border); border-radius:10px; color:var(--ink); font-family:var(--font-body); font-weight:600; font-size:12px; cursor:pointer; padding:7px 12px; }
+.pd-edit-btn:hover{ border-color:var(--gold); color:var(--gold-deep); }
+.pd-edit-btn svg{ width:14px; height:14px; }
 .pd-hero{ height:220px; border-radius:var(--r-lg); background:linear-gradient(155deg, #EFE7D2, #E2D6B8); background-size:cover; background-position:center; position:relative; overflow:hidden; margin-bottom:16px; }
 .pd-hero::after{ content:""; position:absolute; inset:0; background:linear-gradient(0deg, rgba(20,16,8,0.82) 0%, rgba(20,16,8,0.1) 55%, transparent 75%); }
 .pd-hero-overlay{ position:absolute; left:24px; right:24px; bottom:18px; z-index:2; }
@@ -1578,6 +1581,10 @@ select.native-select-hidden{ display:none; }
         <button class="pd-back-btn" id="pdBackBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
           Nazad na projekte
+        </button>
+        <button class="pd-edit-btn" id="pdEditBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          Izmeni projekat
         </button>
       </div>
       <div class="pd-hero" id="pdHero">
@@ -4477,6 +4484,7 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
     closeProjectModal();
     buildFilterMenus();
     renderProjectsPage();
+    if(proj && activeProjectDetailId === proj._id) openProjectDetail(proj);
   } else {
     const thumbnail = pendingProjectThumbnail || null;
     if(sb){
@@ -4645,6 +4653,10 @@ document.getElementById('pdAddTaskBtn').addEventListener('click', ()=>{
 document.getElementById('pdBackBtn').addEventListener('click', ()=>{
   showView('projekti');
   setActiveNav('projekti');
+});
+document.getElementById('pdEditBtn').addEventListener('click', ()=>{
+  const proj = allProjects.find(p=>p._id===activeProjectDetailId);
+  if(proj) openProjectModal(proj);
 });
 
 /* ==== ROUND VIEW MODAL ==== */
@@ -6030,6 +6042,8 @@ function filteredTeam(){
   );
 }
 
+const accessLabel = { user:'Korisnik', admin:'Administrator', superadmin:'Super Admin' };
+const accessTagClass = { user:'tag-hold', admin:'tag-clay', superadmin:'tag-wip' };
 function renderTeamPage(){
   const list = filteredTeam();
   const activeList = list.filter(t=>t.status==='Aktivan');
@@ -6064,7 +6078,10 @@ function renderTeamPage(){
       <div class="team-skills">${t.skills.map(s=>`<span class="skill-tag">${escapeHtml(s)}</span>`).join('')}</div>
       <div class="cc-foot">
         <div class="cc-projects"><b>${activeProj}</b> aktivnih · <b>${output}</b> radova 2026.</div>
-        <span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span>
+        <div style="display:flex; gap:5px; flex-shrink:0;">
+          <span class="tag ${accessTagClass[t.access] || 'tag-hold'}">${accessLabel[t.access] || t.access}</span>
+          <span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span>
+        </div>
       </div>
     </div>`;
   };
@@ -6085,7 +6102,10 @@ function renderTeamPage(){
       <div class="clist-cell">${escapeHtml(t.emailBusiness)}</div>
       <div class="clist-cell">${escapeHtml(t.phone)}</div>
       <div class="clist-cell">${activeProj}</div>
-      <div><span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span></div>
+      <div style="display:flex; gap:5px;">
+        <span class="tag ${accessTagClass[t.access] || 'tag-hold'}">${accessLabel[t.access] || t.access}</span>
+        <span class="tag ${t.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${t.status}</span>
+      </div>
     </div>`;
   };
   document.getElementById('teamList').innerHTML = activeList.map(teamRow).join('') + inactiveList.map(teamRow).join('');
