@@ -3084,7 +3084,11 @@ function renderTeamSwimlane(days, opts){
   }).join('');
   const head = weekRow + `<div class="twg-head" style="grid-template-columns:190px ${colTemplate};"><div class="twg-head-label">Zaposleni</div>${headDays}</div>`;
 
-  const people = calFilters.osoba === 'Ceo Tim' ? teamMembers.filter(t=>t.status==='Aktivan') : teamMembers.filter(t=>t.name===calFilters.osoba);
+  let people = calFilters.osoba === 'Ceo Tim' ? teamMembers.filter(t=>t.status==='Aktivan') : teamMembers.filter(t=>t.name===calFilters.osoba);
+  if(calFilters.osoba === 'Ceo Tim'){
+    const myName = currentUser() && currentUser().name;
+    people = [...people].sort((a,b)=> (a.name===myName ? -1 : 0) - (b.name===myName ? -1 : 0));
+  }
 
   const holidayEvents = events.filter(e=>e.kind==='praznik')
     .map(e=>({...e, _s: daysBetween(TODAY, e.start), _e: daysBetween(TODAY, e.end)}))
@@ -4555,7 +4559,12 @@ function renderProjectDetailKadrovi(){
     if(!groups.has(k.employee)) groups.set(k.employee, []);
     groups.get(k.employee).push(k);
   });
-  const employees = [...groups.keys()].sort((a,b)=> groups.get(b).length - groups.get(a).length);
+  const myName = currentUser() && currentUser().name;
+  const employees = [...groups.keys()].sort((a,b)=>{
+    if(a===myName) return -1;
+    if(b===myName) return 1;
+    return groups.get(b).length - groups.get(a).length;
+  });
 
   const roundPillHtml = (k)=> k.rounds.map(r=>{
     const imgStyle = r.image ? `background-image:url('${r.image}');` : '';
