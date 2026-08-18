@@ -229,6 +229,11 @@ select.native-select-hidden{ display:none; }
 .xsel-item{ padding:8px 10px; border-radius:8px; font-size:12px; cursor:pointer; color:var(--ink); }
 .xsel-item:hover{ background:var(--gold-soft); }
 .xsel-item.sel{ background:var(--gold); color:#3a2704; font-weight:600; }
+.xsel-item.xsel-hidden{ display:none; }
+.xsel-search-wrap{ position:sticky; top:-6px; margin:-6px -6px 6px; padding:6px 6px 8px; background:var(--card); z-index:1; }
+.xsel-search{ width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:8px; padding:7px 10px; font-family:var(--font-body); font-size:12px; outline:none; color:var(--ink); box-sizing:border-box; }
+.xsel-search:focus{ border-color:var(--gold); }
+.xsel-empty{ padding:10px; font-size:11.5px; color:var(--ink-faint); text-align:center; }
 .modal-actions{ display:flex; gap:10px; margin-top:18px; }
 .modal-actions button{ flex:1; padding:10px 0; border-radius:10px; border:none; font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; }
 .modal-cancel{ background:var(--card-soft); color:var(--ink-dim); }
@@ -8304,12 +8309,31 @@ function enhanceSelect(selectEl){
     btn.disabled = selectEl.disabled;
     btn.classList.toggle('xsel-disabled', selectEl.disabled);
   }
+  const SEARCH_THRESHOLD = 7;
   function buildMenu(){
     menu.innerHTML = '';
+    const searchable = selectEl.options.length > SEARCH_THRESHOLD;
+    let searchInput = null;
+    const itemsWrap = document.createElement('div');
+    if(searchable){
+      const searchWrap = document.createElement('div');
+      searchWrap.className = 'xsel-search-wrap';
+      searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'xsel-search';
+      searchInput.placeholder = 'Pretraži…';
+      searchWrap.appendChild(searchInput);
+      menu.appendChild(searchWrap);
+    }
+    const empty = document.createElement('div');
+    empty.className = 'xsel-empty';
+    empty.textContent = 'Nema rezultata.';
+    empty.style.display = 'none';
     [...selectEl.options].forEach(opt=>{
       const item = document.createElement('div');
       item.className = 'xsel-item' + (opt.value===selectEl.value ? ' sel' : '');
       item.textContent = opt.textContent;
+      item.dataset.search = opt.textContent.toLowerCase();
       item.addEventListener('click', (e)=>{
         e.stopPropagation();
         selectEl.value = opt.value;
@@ -8317,8 +8341,30 @@ function enhanceSelect(selectEl){
         selectEl.dispatchEvent(new Event('input', {bubbles:true}));
         closeMenu();
       });
-      menu.appendChild(item);
+      itemsWrap.appendChild(item);
     });
+    menu.appendChild(itemsWrap);
+    menu.appendChild(empty);
+    if(searchInput){
+      searchInput.addEventListener('click', e=>e.stopPropagation());
+      searchInput.addEventListener('input', ()=>{
+        const q = searchInput.value.trim().toLowerCase();
+        let anyVisible = false;
+        itemsWrap.querySelectorAll('.xsel-item').forEach(item=>{
+          const match = !q || item.dataset.search.includes(q);
+          item.classList.toggle('xsel-hidden', !match);
+          if(match) anyVisible = true;
+        });
+        empty.style.display = anyVisible ? 'none' : '';
+      });
+      searchInput.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){
+          e.preventDefault();
+          const firstVisible = itemsWrap.querySelector('.xsel-item:not(.xsel-hidden)');
+          if(firstVisible) firstVisible.click();
+        }
+      });
+    }
   }
   function openMenu(){
     if(selectEl.disabled) return;
@@ -8326,6 +8372,8 @@ function enhanceSelect(selectEl){
     buildMenu();
     document.querySelectorAll('.xsel-wrap.open').forEach(w=>{ if(w!==wrap) w.classList.remove('open'); });
     wrap.classList.add('open');
+    const searchInput = menu.querySelector('.xsel-search');
+    if(searchInput) requestAnimationFrame(()=>searchInput.focus());
     const btnRect = btn.getBoundingClientRect();
     menu.style.left = btnRect.left + 'px';
     menu.style.width = btnRect.width + 'px';
