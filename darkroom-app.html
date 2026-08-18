@@ -4208,7 +4208,7 @@ function filteredProjects(){
     (filters.klijent==="Svi klijenti" || p.client===filters.klijent) &&
     (filters.umetnik==="Svi umetnici" || p.kadrovi.some(k=>k.employee===filters.umetnik)) &&
     (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q) || p.managerName.toLowerCase().includes(q) || kadarHay.includes(q));
-  });
+  }).sort((a,b)=> (parseInt((b.code||'').replace(/\D/g,''),10)||0) - (parseInt((a.code||'').replace(/\D/g,''),10)||0));
 }
 
 function projectStats(p){
