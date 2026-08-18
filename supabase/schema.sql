@@ -256,6 +256,10 @@ create policy "authenticated can delete rounds" on public.rounds for delete to a
 -- pg_net instead of going through that UI. Requires the pg_net extension
 -- enabled (Database → Extensions). The secret here must match the
 -- DB_WEBHOOK_SECRET value set on the discord-relay Edge Function.
+-- Note: the function is deployed under the dashboard-assigned name
+-- "smart-service" (same oversight as bootstrap-team -> smooth-processor
+-- in Phase 2) — the URL below points at that real deployed name, not the
+-- source file's directory name.
 
 create or replace function public.notify_discord()
 returns trigger
@@ -265,7 +269,7 @@ set search_path = public
 as $$
 begin
   perform net.http_post(
-    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/discord-relay',
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/smart-service',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-db-webhook-secret', 'darkroom-discord-relay-2026'
