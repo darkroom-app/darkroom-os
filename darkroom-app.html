@@ -7892,6 +7892,7 @@ function login(id){
 function logout(){
   if(sb) sb.auth.signOut();
   unsubscribeRemoteNotifications();
+  _resolvedSessionUserId = null;
   currentUserId = null;
   localStorage.removeItem(CURRENT_USER_KEY);
   toggleChat(false);
@@ -8103,14 +8104,23 @@ async function loadProjectsFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+let _resolvedSessionUserId = null;
+let _resolvingSessionPromise = null;
 async function resolveSessionLogin(session){
-  await loadTeamMembersFromSupabase();
-  await loadClientsFromSupabase();
-  await loadProjectsFromSupabase();
-  const match = teamMembers.find(t=>t.authId===session.user.id);
-  if(!match) return false;
-  login(match._id);
-  return true;
+  if(_resolvedSessionUserId === session.user.id) return true;
+  if(_resolvingSessionPromise) return _resolvingSessionPromise;
+  _resolvingSessionPromise = (async()=>{
+    await loadTeamMembersFromSupabase();
+    await loadClientsFromSupabase();
+    await loadProjectsFromSupabase();
+    const match = teamMembers.find(t=>t.authId===session.user.id);
+    _resolvingSessionPromise = null;
+    if(!match) return false;
+    _resolvedSessionUserId = session.user.id;
+    login(match._id);
+    return true;
+  })();
+  return _resolvingSessionPromise;
 }
 async function bootApp(){
   pickLoginBg();
