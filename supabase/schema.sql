@@ -247,3 +247,40 @@ create policy "authenticated can insert rounds" on public.rounds for insert to a
 create policy "authenticated can delete rounds" on public.rounds for delete to authenticated using (true);
 -- Deliberately no update policy — roundSubmit only ever inserts, there's no
 -- edit-round handler in the app today.
+
+
+-- ==== Phase 3e: relay new notifications to Discord (run as a seventh query) ====
+-- The dashboard's convenience "Database Webhooks" UI wasn't available on
+-- this project (Database → Triggers only offers plain SQL trigger
+-- functions), so this calls the discord-relay Edge Function directly via
+-- pg_net instead of going through that UI. Requires the pg_net extension
+-- enabled (Database → Extensions). The secret here must match the
+-- DB_WEBHOOK_SECRET value set on the discord-relay Edge Function.
+
+create or replace function public.notify_discord()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform net.http_post(
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/discord-relay',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-db-webhook-secret', 'darkroom-discord-relay-2026'
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'notifications',
+      'schema', 'public',
+      'record', to_jsonb(NEW)
+    )
+  );
+  return NEW;
+end;
+$$;
+
+create trigger notify_discord_on_notification
+  after insert on public.notifications
+  for each row execute function public.notify_discord();
