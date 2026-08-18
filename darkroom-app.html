@@ -3286,9 +3286,11 @@ calWeeks.addEventListener('mousedown', (e)=>{
   barDragState = {
     id: evObj._id, mode, track, trackRect: rect,
     origS: daysBetween(TODAY, evObj.start), origE: daysBetween(TODAY, evObj.end),
+    origPerson: evObj.person,
+    canReassign: evObj.kind==='zadatak' && (isSuperAdmin() || currentAccess()==='admin'),
     grabOffset: daysBetween(evObj.start, grabDate),
     startX: e.clientX, startY: e.clientY,
-    lastHoverKey: toISO(grabDate), moved: false
+    lastHoverKey: toISO(grabDate) + '|' + evObj.person, moved: false
   };
   document.addEventListener('mousemove', onBarDrag);
   document.addEventListener('mouseup', endBarDrag);
@@ -3298,8 +3300,19 @@ function onBarDrag(e){
   if(!barDragState) return;
   if(Math.abs(e.clientX - barDragState.startX) > 3 || Math.abs(e.clientY - barDragState.startY) > 3) barDragState.moved = true;
 
-  const hoverDate = trackHoverDate(barDragState.track, barDragState.trackRect, e.clientX);
-  const hoverKey = toISO(hoverDate);
+  let activeTrack = barDragState.track, activeRect = barDragState.trackRect, hoverPerson = barDragState.origPerson;
+  if(barDragState.canReassign && barDragState.mode === 'move'){
+    const overEl = document.elementFromPoint(e.clientX, e.clientY);
+    const overTrack = overEl && overEl.closest('.twg-track');
+    if(overTrack && overTrack.dataset.person){
+      activeTrack = overTrack;
+      activeRect = overTrack.getBoundingClientRect();
+      hoverPerson = overTrack.dataset.person;
+    }
+  }
+
+  const hoverDate = trackHoverDate(activeTrack, activeRect, e.clientX);
+  const hoverKey = toISO(hoverDate) + '|' + hoverPerson;
   if(hoverKey === barDragState.lastHoverKey) return;
   barDragState.lastHoverKey = hoverKey;
 
@@ -3318,31 +3331,53 @@ function onBarDrag(e){
   }
   evObj.start = addDays(TODAY, newS);
   evObj.end = addDays(TODAY, newE);
+  if(hoverPerson !== evObj.person) evObj.person = hoverPerson;
   renderCalendar();
+}
+
+async function reassignZadatakPerson(evObj){
+  evObj.initials = artistInitials[evObj.person] || evObj.person.slice(0,2).toUpperCase();
+  evObj.color = personColorMap[evObj.person] || 'gold';
+  const proj = allProjects.find(p=>p.code===evObj.projectCode);
+  const kadar = proj && proj.kadrovi.find(k=>k.name===evObj.taskName);
+  if(!kadar) return;
+  kadar.employee = evObj.person;
+  if(sb && kadar.dbId){
+    const employeeId = teamMembers.find(t=>t.name===evObj.person)?.authId;
+    const { error } = await sb.from('kadrovi').update({ employee_id: employeeId }).eq('id', kadar.dbId);
+    if(error){ alert('Ažuriranje kadra u bazi nije uspelo: ' + error.message); return; }
+  }
+  renderProjectsPage();
+  if(activeProjectDetailId === proj._id){ renderProjectDetailKadrovi(); renderProjectDetailStats(); }
 }
 
 function endBarDrag(){
   document.removeEventListener('mousemove', onBarDrag);
   document.removeEventListener('mouseup', endBarDrag);
   if(!barDragState) return;
-  const { id, mode, moved, origS, origE } = barDragState;
+  const { id, mode, moved, origS, origE, origPerson, canReassign } = barDragState;
   barDragState = null;
   if(moved){
     suppressBarClick = true;
     const evObj = events.find(x=>x._id===id);
     if(evObj){
+      const reassigned = canReassign && evObj.person !== origPerson;
       const rangeLabel = daysBetween(evObj.start, evObj.end) > 0
         ? `${formatDateHuman(evObj.start)} – ${formatDateHuman(evObj.end)}`
         : formatDateHuman(evObj.start);
-      const verb = mode === 'move' ? 'Pomeriti' : 'Promeniti trajanje za';
       const code = eventDisplayCode(evObj);
       const label = code ? `${code} — ${eventDisplayLabel(evObj)}` : eventDisplayLabel(evObj);
-      if(confirm(`${verb} "${evObj.person} · ${label}" na ${rangeLabel}?`)){
+      const confirmMsg = reassigned
+        ? `Prebaciti "${label}" sa ${origPerson} na ${evObj.person} (${rangeLabel})?`
+        : `${mode === 'move' ? 'Pomeriti' : 'Promeniti trajanje za'} "${evObj.person} · ${label}" na ${rangeLabel}?`;
+      if(confirm(confirmMsg)){
+        if(reassigned) reassignZadatakPerson(evObj);
         buildCalFilterMenus();
         persist();
       } else {
         evObj.start = addDays(TODAY, origS);
         evObj.end = addDays(TODAY, origE);
+        evObj.person = origPerson;
       }
     }
   }
