@@ -442,3 +442,50 @@ $$;
 create trigger guard_team_members_access
   before update on public.team_members
   for each row execute function public.prevent_self_access_escalation();
+
+
+-- ==== Phase 4: daily worked-hours logging + overtime (run as a thirteenth query) ====
+-- Kalendar "zadatak" events are date-range assignments only — no per-day hour
+-- figure exists anywhere. This adds a real timesheet: one row per (employee,
+-- kadar, date), since a single day is commonly split across multiple kadrovi.
+-- Overtime is a per-row boolean rather than a separate day-level field, so
+-- "8h regular on Kadar A + 2h overtime on Kadar B" is just two ordinary rows.
+--
+-- Read is open to any authenticated user (matches kadrovi/rounds — managers
+-- checking a day's logged hours is normal daily use, not a privacy concern).
+-- Write (insert/update/delete) is scoped to your own rows, or any row if
+-- you're admin/superadmin — same self-or-superadmin shape as the
+-- team_members update policy above.
+
+create table public.time_entries (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.team_members(id) on delete cascade,
+  kadar_id uuid not null references public.kadrovi(id) on delete cascade,
+  date date not null,
+  hours numeric not null check (hours > 0 and hours <= 24),
+  overtime boolean not null default false,
+  created_at timestamptz not null default now()
+);
+alter table public.time_entries enable row level security;
+
+create policy "authenticated can read time_entries" on public.time_entries
+  for select to authenticated using (true);
+
+create policy "own or superadmin can insert time_entries" on public.time_entries
+  for insert to authenticated with check (
+    employee_id = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin')
+  );
+
+create policy "own or superadmin can update time_entries" on public.time_entries
+  for update to authenticated using (
+    employee_id = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin')
+  ) with check (
+    employee_id = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin')
+  );
+
+create policy "own or superadmin can delete time_entries" on public.time_entries
+  for delete to authenticated using (
+    employee_id = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin')
+  );
+
+create index time_entries_employee_date_idx on public.time_entries (employee_id, date);

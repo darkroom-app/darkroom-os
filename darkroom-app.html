@@ -904,6 +904,8 @@ select.native-select-hidden{ display:none; }
 .week-agenda-panel{ flex:1; min-height:0; display:flex; flex-direction:column; border-left:1px solid var(--border); padding-left:16px; }
 .week-agenda-title{ font-family:var(--font-mono); font-size:9.5px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; flex:0 0 auto; }
 #agendaList{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
+.week-agenda-hours-btn{ flex:0 0 auto; margin-top:8px; padding:8px 0; text-align:center; border-radius:10px; border:1.5px dashed var(--border); color:var(--ink-faint); cursor:pointer; font-size:11px; font-weight:600; }
+.week-agenda-hours-btn:hover{ border-color:var(--gold); color:var(--gold-deep); }
 .agenda-item{ display:flex; gap:12px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); }
 .agenda-item:last-child{ border-bottom:none; padding-bottom:0; }
 .agenda-time{ font-family:var(--font-mono); font-size:11px; color:var(--gold-deep); font-weight:500; min-width:42px; flex-shrink:0; }
@@ -1220,6 +1222,25 @@ select.native-select-hidden{ display:none; }
 .ev-tab-btn.active{ background:var(--card); color:var(--ink); box-shadow:0 2px 6px rgba(40,30,10,0.08); }
 .ev-praznik-note{ font-size:11px; color:var(--ink-faint); line-height:1.5; margin-top:2px; }
 
+/* hours-entry modal */
+.hours-row-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
+.hours-row{ position:relative; display:flex; flex-direction:column; gap:7px; background:var(--card-soft); border:1px solid var(--border); border-radius:10px; padding:9px 34px 9px 9px; }
+.hours-row-top{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:7px; }
+.hours-row-bottom{ display:flex; align-items:center; gap:8px; min-width:0; }
+.hours-row-bottom input.hours-row-hours[type="number"]{ width:58px; flex-shrink:0; min-width:0; }
+.hours-row-bottom .hours-row-ot{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.hours-row-remove{ position:absolute; top:7px; right:7px; }
+.hours-row select, .hours-row input[type="number"]{ width:100%; border:1px solid var(--border); background:var(--card); border-radius:8px; padding:7px 8px; font-family:var(--font-body); font-size:11.5px; outline:none; color:var(--ink); }
+.hours-row select:focus, .hours-row input[type="number"]:focus{ border-color:var(--gold); }
+.hours-row-ot{ display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:9px; color:var(--ink-dim); white-space:nowrap; cursor:pointer; }
+.hours-row-ot input{ accent-color:var(--gold); cursor:pointer; }
+.hours-row-remove{ width:26px; height:26px; border-radius:8px; border:none; background:transparent; color:var(--ink-faint); cursor:pointer; font-size:16px; line-height:1; flex-shrink:0; }
+.hours-row-remove:hover{ background:var(--coral-soft); color:var(--coral); }
+.hours-add-row-btn{ width:100%; padding:9px 0; border-radius:10px; border:1px dashed var(--border); background:none; font-family:var(--font-body); font-weight:600; font-size:11.5px; color:var(--ink-dim); cursor:pointer; }
+.hours-add-row-btn:hover{ border-color:var(--gold); color:var(--gold-deep); }
+.hours-total-line{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); margin-top:8px; text-align:right; }
+@media (max-width:560px){ .hours-row{ grid-template-columns:1fr 1fr; } .hours-row select{ grid-column:1 / -1; } }
+
 /* date range trigger + picker popover */
 .date-range-trigger{ display:flex; align-items:center; gap:8px; width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; box-sizing:border-box; }
 .date-range-trigger:hover{ border-color:var(--gold); }
@@ -1423,6 +1444,7 @@ select.native-select-hidden{ display:none; }
           <div class="week-agenda-panel">
             <div class="week-agenda-title" id="agendaTitle">Raspored · Utorak, 4. avgust</div>
             <div id="agendaList"></div>
+            <div class="week-agenda-hours-btn" id="weekAgendaHoursBtn">+ Unesi radne sate</div>
           </div>
         </div>
       </div>
@@ -2720,6 +2742,30 @@ select.native-select-hidden{ display:none; }
   </div>
 </div>
 
+<div class="modal-overlay" id="hoursModalOverlay">
+  <div class="modal-card">
+    <div class="modal-title">Radni sati</div>
+    <div class="modal-field">
+      <label>Zaposleni</label>
+      <select id="hoursEmployee"></select>
+    </div>
+    <div class="modal-field">
+      <label>Datum</label>
+      <input type="date" id="hoursDate">
+    </div>
+    <div class="modal-field">
+      <label>Odrađeni sati (po kadru)</label>
+      <div class="hours-row-list" id="hoursRowList"></div>
+      <button type="button" class="hours-add-row-btn" id="hoursAddRow">+ Dodaj red</button>
+      <div class="hours-total-line" id="hoursTotalLine"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="hoursCancel">Otkaži</button>
+      <button class="modal-submit" id="hoursSubmit">Sačuvaj sate</button>
+    </div>
+  </div>
+</div>
+
 <div class="drp-popover" id="drpPopover">
   <div class="drp-header">
     <button type="button" class="drp-nav-btn" id="drpPrev">‹</button>
@@ -3283,7 +3329,8 @@ function renderCalendarDay(){
   }).join('');
   wrap.innerHTML =
     (list.length ? cards : `<div class="day-view-empty">Nema stavki za ovaj dan.</div>`) +
-    `<div class="day-view-add" data-date="${toISO(calCursor)}">+ Dodaj stavku</div>`;
+    `<div class="day-view-add" data-date="${toISO(calCursor)}">+ Dodaj stavku</div>` +
+    `<div class="day-view-add day-view-hours-add" data-date="${toISO(calCursor)}">+ Unesi radne sate</div>`;
   calWeeks.appendChild(wrap);
 }
 
@@ -3443,6 +3490,8 @@ calWeeks.addEventListener('click', (e)=>{
     persist();
     return;
   }
+  const hoursBtn = e.target.closest('.day-view-hours-add');
+  if(hoursBtn){ openHoursModal(hoursBtn.dataset.date, currentAccess()==='user' ? currentUser().name : null); return; }
   const addBtn = e.target.closest('.day-view-add');
   if(addBtn){ openEventModal(null, addBtn.dataset.date); return; }
   const bar = e.target.closest('.twg-bar, .day-view-card, .twg-holiday-bar');
@@ -3774,6 +3823,156 @@ document.getElementById('evSubmit').addEventListener('click', ()=>{
   persist();
 });
 
+/* ==== RADNI SATI (time_entries) modal — dnevni unos odrađenih sati po kadru,
+   sa opcijom prekovremenog. Za razliku od "zadatak" događaja (koji je opseg
+   datuma bez broja sati), ovo je uvek tačno jedan (zaposleni, datum) par sa
+   0..N redova (po kadru), upisan direktno u Supabase. ==== */
+const hoursModalOverlay = document.getElementById('hoursModalOverlay');
+function closeHoursModal(){ hoursModalOverlay.classList.remove('open'); }
+document.getElementById('hoursCancel').addEventListener('click', closeHoursModal);
+wireOverlayClose(hoursModalOverlay, closeHoursModal);
+
+function hoursRefreshRowProjects(row, keepProjectCode){
+  const employeeName = document.getElementById('hoursEmployee').value;
+  const projectSel = row.querySelector('.hours-row-project');
+  const projects = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===employeeName));
+  projectSel.innerHTML = projects.length
+    ? projects.map(p=>`<option value="${p.code}">${p.code} — ${escapeHtml(p.name)}</option>`).join('')
+    : `<option value="">Nema projekata</option>`;
+  projectSel.value = (keepProjectCode && projects.some(p=>p.code===keepProjectCode)) ? keepProjectCode : (projects[0] ? projects[0].code : '');
+}
+function hoursRefreshRowKadrovi(row, keepKadarDbId){
+  const employeeName = document.getElementById('hoursEmployee').value;
+  const projectSel = row.querySelector('.hours-row-project');
+  const kadarSel = row.querySelector('.hours-row-kadar');
+  const proj = allProjects.find(p=>p.code===projectSel.value);
+  const kadrovi = proj ? proj.kadrovi.filter(k=>k.employee===employeeName) : [];
+  kadarSel.innerHTML = kadrovi.length
+    ? kadrovi.map(k=>`<option value="${k.dbId}">${escapeHtml(k.name)} (${escapeHtml(k.type)})</option>`).join('')
+    : `<option value="">Nema kadrova</option>`;
+  kadarSel.value = (keepKadarDbId && kadrovi.some(k=>k.dbId===keepKadarDbId)) ? keepKadarDbId : (kadrovi[0] ? kadrovi[0].dbId : '');
+}
+function updateHoursTotalLine(){
+  let reg = 0, ot = 0;
+  document.querySelectorAll('#hoursRowList .hours-row').forEach(row=>{
+    const h = parseFloat(row.querySelector('.hours-row-hours').value) || 0;
+    if(row.querySelector('.hours-row-overtime').checked) ot += h; else reg += h;
+  });
+  document.getElementById('hoursTotalLine').textContent = (reg || ot) ? `Ukupno: ${reg}h redovno${ot ? ` + ${ot}h prekovremeno` : ''}` : '';
+}
+function addHoursRow(existing){
+  const row = document.createElement('div');
+  row.className = 'hours-row';
+  row.dataset.dbId = existing ? existing.dbId : '';
+  row.innerHTML = `
+    <button type="button" class="hours-row-remove" title="Ukloni">×</button>
+    <div class="hours-row-top">
+      <select class="hours-row-project"></select>
+      <select class="hours-row-kadar"></select>
+    </div>
+    <div class="hours-row-bottom">
+      <input type="number" class="hours-row-hours" min="0.5" max="24" step="0.5" placeholder="Sati" value="${existing ? existing.hours : ''}">
+      <label class="hours-row-ot"><input type="checkbox" class="hours-row-overtime" ${existing && existing.overtime ? 'checked' : ''}> Prekovremeno</label>
+    </div>`;
+  document.getElementById('hoursRowList').appendChild(row);
+
+  let initialProjectCode = '';
+  if(existing){
+    const found = findKadarByDbId(existing.kadarDbId);
+    if(found) initialProjectCode = found.project.code;
+  }
+  hoursRefreshRowProjects(row, initialProjectCode);
+  enhanceSelect(row.querySelector('.hours-row-project'));
+  hoursRefreshRowKadrovi(row, existing ? existing.kadarDbId : null);
+  enhanceSelect(row.querySelector('.hours-row-kadar'));
+
+  row.querySelector('.hours-row-project').addEventListener('change', ()=>{ hoursRefreshRowKadrovi(row, null); updateHoursTotalLine(); });
+  row.querySelector('.hours-row-kadar').addEventListener('change', updateHoursTotalLine);
+  row.querySelector('.hours-row-hours').addEventListener('input', updateHoursTotalLine);
+  row.querySelector('.hours-row-overtime').addEventListener('change', updateHoursTotalLine);
+  row.querySelector('.hours-row-remove').addEventListener('click', ()=>{ row.remove(); updateHoursTotalLine(); });
+  return row;
+}
+function loadHoursForCurrentSelection(){
+  document.getElementById('hoursRowList').innerHTML = '';
+  const employeeName = document.getElementById('hoursEmployee').value;
+  const dateVal = document.getElementById('hoursDate').value;
+  const emp = teamMembers.find(t=>t.name===employeeName);
+  const existingRows = emp ? timeEntries.filter(e=>e.employeeId===emp.authId && e.date===dateVal) : [];
+  if(existingRows.length) existingRows.forEach(e=> addHoursRow(e));
+  else addHoursRow(null);
+  updateHoursTotalLine();
+}
+document.getElementById('hoursAddRow').addEventListener('click', ()=>{ addHoursRow(null); updateHoursTotalLine(); });
+document.getElementById('hoursEmployee').addEventListener('change', ()=>{
+  document.querySelectorAll('#hoursRowList .hours-row').forEach(row=>{
+    hoursRefreshRowProjects(row, row.querySelector('.hours-row-project').value);
+    hoursRefreshRowKadrovi(row, null);
+  });
+  updateHoursTotalLine();
+});
+document.getElementById('hoursDate').addEventListener('change', loadHoursForCurrentSelection);
+
+function openHoursModal(dateISO, personName){
+  const lockPerson = currentAccess()==='user';
+  const employeeName = lockPerson ? currentUser().name : (personName || (currentUser() ? currentUser().name : teamMembers[0].name));
+  populateEmployeeSelect('hoursEmployee', employeeName);
+  document.getElementById('hoursEmployee').disabled = lockPerson;
+  document.getElementById('hoursDate').value = dateISO || toISO(TODAY);
+  loadHoursForCurrentSelection();
+  hoursModalOverlay.classList.add('open');
+}
+
+document.getElementById('hoursSubmit').addEventListener('click', async ()=>{
+  if(!sb) return;
+  const employeeName = document.getElementById('hoursEmployee').value;
+  const emp = teamMembers.find(t=>t.name===employeeName);
+  const dateVal = document.getElementById('hoursDate').value;
+  if(!emp || !dateVal) return;
+
+  const validRows = Array.from(document.querySelectorAll('#hoursRowList .hours-row')).map(row=>({
+    dbId: row.dataset.dbId || null,
+    kadarDbId: row.querySelector('.hours-row-kadar').value,
+    hours: parseFloat(row.querySelector('.hours-row-hours').value),
+    overtime: row.querySelector('.hours-row-overtime').checked
+  })).filter(r=> r.kadarDbId && r.hours > 0);
+  if(!validRows.length){ alert('Unesi bar jedan red sa satima veći od 0.'); return; }
+
+  const existingForDay = timeEntries.filter(e=>e.employeeId===emp.authId && e.date===dateVal);
+  const keptDbIds = new Set(validRows.filter(r=>r.dbId).map(r=>r.dbId));
+  const toDelete = existingForDay.filter(e=> !keptDbIds.has(e.dbId));
+  const errors = [];
+
+  for(const del of toDelete){
+    const { error } = await sb.from('time_entries').delete().eq('id', del.dbId);
+    if(error){ errors.push(error.message); continue; }
+    const idx = timeEntries.findIndex(t=>t.dbId===del.dbId);
+    if(idx>-1) timeEntries.splice(idx,1);
+  }
+  for(const r of validRows){
+    if(r.dbId){
+      const { data, error } = await sb.from('time_entries')
+        .update({ kadar_id:r.kadarDbId, hours:r.hours, overtime:r.overtime })
+        .eq('id', r.dbId).select().single();
+      if(error){ errors.push(error.message); continue; }
+      const local = timeEntries.find(t=>t.dbId===r.dbId);
+      if(local) Object.assign(local, { kadarDbId:data.kadar_id, hours:data.hours, overtime:data.overtime });
+    } else {
+      const { data, error } = await sb.from('time_entries')
+        .insert({ employee_id:emp.authId, kadar_id:r.kadarDbId, date:dateVal, hours:r.hours, overtime:r.overtime })
+        .select().single();
+      if(error){ errors.push(error.message); continue; }
+      timeEntries.push({ _id:nextId(), dbId:data.id, employee:employeeName, employeeId:emp.authId, kadarDbId:data.kadar_id, date:data.date, hours:data.hours, overtime:data.overtime });
+    }
+  }
+  if(errors.length){ alert('Čuvanje nije uspelo za neke redove: ' + errors[0]); }
+  closeHoursModal();
+  renderCalendar();
+  renderWeekWidget();
+  renderWeeklyGoal();
+  persist();
+});
+
 /* ==== NEDELJNI CILJ (fun-goal) — procenat po danu + rotirajuće poruke ==== */
 const weeklyGoalMessages = {
   low: [
@@ -3835,13 +4034,21 @@ const weeklyGoalMessages = {
     "Ovako izgleda odlično odrađen posao 🙌"
   ]
 };
+/* Real hours logged this week for the current user (regular only — overtime
+   is tracked but deliberately excluded from the 40h goal denominator, since
+   that's what makes it "over"). Replaces the old base[dow]+jitter fake
+   formula now that time_entries is a real, Supabase-backed source. */
+function weeklyGoalHours(){
+  const u = currentUser();
+  if(!u) return 0;
+  const monday = mondayOf(TODAY);
+  const monISO = toISO(monday), todayISO = toISO(TODAY);
+  return timeEntries
+    .filter(e=> e.employeeId===u.authId && !e.overtime && e.date>=monISO && e.date<=todayISO)
+    .reduce((sum,e)=> sum + e.hours, 0);
+}
 function weeklyGoalPercent(){
-  const now = new Date();
-  const dow = (now.getDay()+6)%7; // 0=pon..6=ned
-  const base = [22, 38, 54, 70, 86, 96, 98][dow];
-  const dayOfYear = Math.floor((now - new Date(now.getFullYear(),0,0)) / 86400000);
-  const jitter = (dayOfYear % 11) - 5; // stabilno tokom istog dana, -5..+5
-  return Math.max(5, Math.min(100, base + jitter));
+  return Math.max(0, Math.min(100, Math.round(weeklyGoalHours()/40*100)));
 }
 function weeklyGoalTier(pct){
   if(pct < 40) return 'low';
@@ -3854,7 +4061,7 @@ function renderWeeklyGoal(){
   const tier = weeklyGoalTier(pct);
   const pool = weeklyGoalMessages[tier];
   const message = pool[Math.floor(Math.random()*pool.length)];
-  const hours = (pct/100*40).toFixed(1);
+  const hours = weeklyGoalHours().toFixed(1);
   const pctEl = document.querySelector('.fun-goal .ring-pct');
   const titleEl = document.querySelector('.fg-title');
   const noteEl = document.querySelector('.fg-note');
@@ -3869,7 +4076,11 @@ function renderWeeklyGoal(){
 }
 const ringC = 2 * Math.PI * 42;
 const goalRing = document.getElementById('goalRing');
-renderWeeklyGoal();
+// No eager call here (unlike before this became real-data-backed): weeklyGoalHours()
+// reads teamMembers/timeEntries, both declared later in the script and only populated
+// after login — calling this before then throws a TDZ ReferenceError that aborts the
+// rest of the script. applyCurrentUser() (called from login(), well after both are
+// ready) already renders it once real data exists.
 
 /* ==== Fun-goal weather + clock widget — Open-Meteo (no API key needed), Belgrade coords ==== */
 const WEATHER_LAT = 43.3209, WEATHER_LON = 21.8958, WEATHER_TZ = 'Europe/Belgrade';
@@ -6457,6 +6668,7 @@ function renderWeekWidget(){
     document.getElementById('agendaList').innerHTML = dayEvents.length
       ? dayEvents.map(agendaItemHtml).join('')
       : '<div class="agenda-empty">Nema zakazanih stavki.</div>';
+    document.getElementById('weekAgendaHoursBtn').dataset.date = toISO(d);
   }
   document.querySelectorAll('#weekDaysVert .wd-row').forEach(row=>{
     row.addEventListener('click', ()=>{
@@ -6469,6 +6681,9 @@ function renderWeekWidget(){
   renderAgendaForIdx(todayIdx>=0 ? todayIdx : 0);
 }
 renderWeekWidget();
+document.getElementById('weekAgendaHoursBtn').addEventListener('click', (e)=>{
+  openHoursModal(e.currentTarget.dataset.date, currentAccess()==='user' ? currentUser().name : null);
+});
 
 function fmtRSD(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' RSD'; }
 function fmtK(n){ return Math.round(n/1000) + 'k'; }
@@ -8388,6 +8603,43 @@ async function loadProjectsFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+/* Phase 4: daily worked-hours logging. Each row only carries employee_id/
+   kadar_id (uuids) — employee resolves to a name the same way projects/
+   kadrovi do, but kadar/project info is looked up on demand via
+   findKadarByDbId() (below) rather than denormalized onto the row, since
+   allProjects is already the single source of truth for kadar names and
+   re-resolving avoids a second place that can go stale. */
+let timeEntries = [];
+async function loadTimeEntriesFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('time_entries').select('*').order('date', { ascending:false });
+    if(error || !data) return false;
+    const teamNameById = {}; teamMembers.forEach(t=>{ if(t.authId) teamNameById[t.authId]=t.name; });
+    timeEntries.length = 0;
+    data.forEach(row=>{
+      timeEntries.push({
+        _id: nextId(),
+        dbId: row.id,
+        employee: teamNameById[row.employee_id] || '',
+        employeeId: row.employee_id,
+        kadarDbId: row.kadar_id,
+        date: row.date,
+        hours: row.hours,
+        overtime: row.overtime
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
+function findKadarByDbId(kadarDbId){
+  for(const p of allProjects){
+    const k = p.kadrovi.find(x=>x.dbId===kadarDbId);
+    if(k) return { kadar:k, project:p };
+  }
+  return null;
+}
+
 let _resolvedSessionUserId = null;
 let _resolvingSessionPromise = null;
 async function resolveSessionLogin(session){
@@ -8397,6 +8649,7 @@ async function resolveSessionLogin(session){
     await loadTeamMembersFromSupabase();
     await loadClientsFromSupabase();
     await loadProjectsFromSupabase();
+    await loadTimeEntriesFromSupabase();
     buildFilterMenus();
     const match = teamMembers.find(t=>t.authId===session.user.id);
     _resolvingSessionPromise = null;
