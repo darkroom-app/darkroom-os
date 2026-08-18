@@ -8019,7 +8019,7 @@ async function loadTeamMembersFromSupabase(){
         phone: prev.phone || '',
         skills: prev.skills || [],
         avatar: prev.avatar || null,
-        status: prev.status || 'Aktivan'
+        status: row.status || 'Aktivan'
       });
     });
     return true;

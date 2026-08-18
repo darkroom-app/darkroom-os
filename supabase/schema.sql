@@ -122,7 +122,15 @@ update public.team_members set renderflow_user_id = '69d5a288384169ea01c40355' w
 -- Marija Todorović intentionally left null — social media manager, doesn't render.
 
 
--- ==== Phase 3a: clients (run as a fourth query) ====
+-- ==== Phase 3a.1: team_members.status (run as a fourth query) ====
+-- "Aktivan"/"Neaktivan" existed only client-side until now (merged from the
+-- previous in-memory array on every reload) — meaningless once a genuinely
+-- inactive/former-employee account exists, since nothing set it server-side.
+
+alter table public.team_members add column if not exists status text not null default 'Aktivan';
+
+
+-- ==== Phase 3a: clients (run as a fifth query) ====
 -- First real business-data entity. `avatar` stays a base64 text column for now —
 -- becomes a Storage public URL in a later Phase 3c pass, same column either way,
 -- so nothing downstream needs to change twice.
@@ -159,7 +167,7 @@ create policy "superadmin can delete clients"
   using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
 
 
--- ==== Phase 3b: projects, kadrovi, rounds (run as a fifth query) ====
+-- ==== Phase 3b: projects, kadrovi, rounds (run as a sixth query) ====
 -- manager_id is nullable (not the originally-planned not-null) — the studio's
 -- real historical project list (imported below) predates this schema and has
 -- no per-project manager recorded anywhere; new projects created going forward
