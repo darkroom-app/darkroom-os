@@ -904,9 +904,8 @@ select.native-select-hidden{ display:none; }
 .week-agenda-panel{ flex:1; min-height:0; display:flex; flex-direction:column; border-left:1px solid var(--border); padding-left:16px; }
 .week-agenda-title{ font-family:var(--font-mono); font-size:9.5px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; flex:0 0 auto; }
 #agendaList{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
-.week-agenda-hours-btn{ flex:0 0 auto; margin-top:8px; padding:8px 0; text-align:center; border-radius:10px; border:1.5px dashed var(--border); color:var(--ink-faint); cursor:pointer; font-size:11px; font-weight:600; }
-.week-agenda-hours-btn:hover{ border-color:var(--gold); color:var(--gold-deep); }
-.agenda-item{ display:flex; gap:12px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); }
+.agenda-item{ display:flex; gap:12px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+.agenda-item:hover{ background:var(--card-soft); }
 .agenda-item:last-child{ border-bottom:none; padding-bottom:0; }
 .agenda-time{ font-family:var(--font-mono); font-size:11px; color:var(--gold-deep); font-weight:500; min-width:42px; flex-shrink:0; }
 .agenda-text{ font-size:12.5px; line-height:1.4; }
@@ -1222,24 +1221,16 @@ select.native-select-hidden{ display:none; }
 .ev-tab-btn.active{ background:var(--card); color:var(--ink); box-shadow:0 2px 6px rgba(40,30,10,0.08); }
 .ev-praznik-note{ font-size:11px; color:var(--ink-faint); line-height:1.5; margin-top:2px; }
 
-/* hours-entry modal */
-.hours-row-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:8px; }
-.hours-row{ position:relative; display:flex; flex-direction:column; gap:7px; background:var(--card-soft); border:1px solid var(--border); border-radius:10px; padding:9px 34px 9px 9px; }
-.hours-row-top{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:7px; }
-.hours-row-bottom{ display:flex; align-items:center; gap:8px; min-width:0; }
-.hours-row-bottom input.hours-row-hours[type="number"]{ width:58px; flex-shrink:0; min-width:0; }
-.hours-row-bottom .hours-row-ot{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.hours-row-remove{ position:absolute; top:7px; right:7px; }
-.hours-row select, .hours-row input[type="number"]{ width:100%; border:1px solid var(--border); background:var(--card); border-radius:8px; padding:7px 8px; font-family:var(--font-body); font-size:11.5px; outline:none; color:var(--ink); }
-.hours-row select:focus, .hours-row input[type="number"]:focus{ border-color:var(--gold); }
-.hours-row-ot{ display:flex; align-items:center; gap:5px; font-family:var(--font-mono); font-size:9px; color:var(--ink-dim); white-space:nowrap; cursor:pointer; }
-.hours-row-ot input{ accent-color:var(--gold); cursor:pointer; }
-.hours-row-remove{ width:26px; height:26px; border-radius:8px; border:none; background:transparent; color:var(--ink-faint); cursor:pointer; font-size:16px; line-height:1; flex-shrink:0; }
-.hours-row-remove:hover{ background:var(--coral-soft); color:var(--coral); }
-.hours-add-row-btn{ width:100%; padding:9px 0; border-radius:10px; border:1px dashed var(--border); background:none; font-family:var(--font-body); font-weight:600; font-size:11.5px; color:var(--ink-dim); cursor:pointer; }
-.hours-add-row-btn:hover{ border-color:var(--gold); color:var(--gold-deep); }
-.hours-total-line{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); margin-top:8px; text-align:right; }
-@media (max-width:560px){ .hours-row{ grid-template-columns:1fr 1fr; } .hours-row select{ grid-column:1 / -1; } }
+/* radni sati — dnevni redovi unutar zadatak-modala */
+.ev-hours-row{ display:grid; grid-template-columns:1fr 56px 56px; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); }
+.ev-hours-row:last-child{ border-bottom:none; }
+.ev-hours-header{ font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-faint); text-align:center; padding:0 0 5px 0; }
+.ev-hours-header span:first-child{ text-align:left; }
+.ev-hours-date{ font-size:11.5px; color:var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ev-hours-list{ max-height:220px; overflow-y:auto; }
+.ev-hours-row input[type="number"]{ width:100%; text-align:center; border:1px solid var(--border); background:var(--card-soft); border-radius:7px; padding:6px 4px; font-family:var(--font-body); font-size:11.5px; outline:none; color:var(--ink); }
+.ev-hours-row input[type="number"]:focus{ border-color:var(--gold); }
+.ev-hours-row input[type="number"]:disabled{ opacity:0.5; }
 
 /* date range trigger + picker popover */
 .date-range-trigger{ display:flex; align-items:center; gap:8px; width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; box-sizing:border-box; }
@@ -1444,7 +1435,6 @@ select.native-select-hidden{ display:none; }
           <div class="week-agenda-panel">
             <div class="week-agenda-title" id="agendaTitle">Raspored · Utorak, 4. avgust</div>
             <div id="agendaList"></div>
-            <div class="week-agenda-hours-btn" id="weekAgendaHoursBtn">+ Unesi radne sate</div>
           </div>
         </div>
       </div>
@@ -2690,6 +2680,13 @@ select.native-select-hidden{ display:none; }
           <option value="visoka">Visoka</option>
         </select>
       </div>
+      <div class="modal-field ev-hours-field" id="evzHoursField" style="display:none;">
+        <label>Sati po danu</label>
+        <div class="ev-hours-row ev-hours-header">
+          <span></span><span>Redovno</span><span>Prekovr.</span>
+        </div>
+        <div class="ev-hours-list" id="evzHoursList"></div>
+      </div>
     </div>
 
     <div class="ev-tab-panel" id="evPanelOdsustvo" style="display:none;">
@@ -2738,30 +2735,6 @@ select.native-select-hidden{ display:none; }
       <button class="modal-delete" id="evDelete" style="display:none;">Obriši</button>
       <button class="modal-cancel" id="evCancel">Otkaži</button>
       <button class="modal-submit" id="evSubmit">Dodaj stavku</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="hoursModalOverlay">
-  <div class="modal-card">
-    <div class="modal-title">Radni sati</div>
-    <div class="modal-field">
-      <label>Zaposleni</label>
-      <select id="hoursEmployee"></select>
-    </div>
-    <div class="modal-field">
-      <label>Datum</label>
-      <input type="date" id="hoursDate">
-    </div>
-    <div class="modal-field">
-      <label>Odrađeni sati (po kadru)</label>
-      <div class="hours-row-list" id="hoursRowList"></div>
-      <button type="button" class="hours-add-row-btn" id="hoursAddRow">+ Dodaj red</button>
-      <div class="hours-total-line" id="hoursTotalLine"></div>
-    </div>
-    <div class="modal-actions">
-      <button class="modal-cancel" id="hoursCancel">Otkaži</button>
-      <button class="modal-submit" id="hoursSubmit">Sačuvaj sate</button>
     </div>
   </div>
 </div>
@@ -3329,8 +3302,7 @@ function renderCalendarDay(){
   }).join('');
   wrap.innerHTML =
     (list.length ? cards : `<div class="day-view-empty">Nema stavki za ovaj dan.</div>`) +
-    `<div class="day-view-add" data-date="${toISO(calCursor)}">+ Dodaj stavku</div>` +
-    `<div class="day-view-add day-view-hours-add" data-date="${toISO(calCursor)}">+ Unesi radne sate</div>`;
+    `<div class="day-view-add" data-date="${toISO(calCursor)}">+ Dodaj stavku</div>`;
   calWeeks.appendChild(wrap);
 }
 
@@ -3490,8 +3462,6 @@ calWeeks.addEventListener('click', (e)=>{
     persist();
     return;
   }
-  const hoursBtn = e.target.closest('.day-view-hours-add');
-  if(hoursBtn){ openHoursModal(hoursBtn.dataset.date, currentAccess()==='user' ? currentUser().name : null); return; }
   const addBtn = e.target.closest('.day-view-add');
   if(addBtn){ openEventModal(null, addBtn.dataset.date); return; }
   const bar = e.target.closest('.twg-bar, .day-view-card, .twg-holiday-bar');
@@ -3725,6 +3695,7 @@ function openEventModal(ev, prefillDateISO, prefillPerson){
     ['evzEmployee','evzProject','evzTask','evzStart','evzEnd','evzUrgency'].forEach(id=>{ document.getElementById(id).disabled = zReadOnly; });
     document.getElementById('evzEmployee').disabled = zReadOnly || lockPerson;
     document.getElementById('evzRangeTrigger').classList.toggle('disabled', zReadOnly);
+    renderEvzHours(ev && kind==='zadatak' ? ev : null);
   }
   if(!ev || kind==='odsustvo'){
     populateEmployeeSelect('evoEmployee', ev && kind==='odsustvo' ? ev.person : prefillEmployee);
@@ -3769,7 +3740,7 @@ document.getElementById('evDelete').addEventListener('click', ()=>{
   renderWeekWidget();
   persist();
 });
-document.getElementById('evSubmit').addEventListener('click', ()=>{
+document.getElementById('evSubmit').addEventListener('click', async ()=>{
   const kind = evActiveTab;
   let newEvent;
 
@@ -3816,162 +3787,90 @@ document.getElementById('evSubmit').addEventListener('click', ()=>{
   } else {
     events.push({ _id:nextId(), ...newEvent });
   }
+  if(kind==='zadatak') await saveEvzHours();
   closeEventModal();
   buildCalFilterMenus();
-  renderCalendar();
-  renderWeekWidget();
-  persist();
-});
-
-/* ==== RADNI SATI (time_entries) modal — dnevni unos odrađenih sati po kadru,
-   sa opcijom prekovremenog. Za razliku od "zadatak" događaja (koji je opseg
-   datuma bez broja sati), ovo je uvek tačno jedan (zaposleni, datum) par sa
-   0..N redova (po kadru), upisan direktno u Supabase. ==== */
-const hoursModalOverlay = document.getElementById('hoursModalOverlay');
-function closeHoursModal(){ hoursModalOverlay.classList.remove('open'); }
-document.getElementById('hoursCancel').addEventListener('click', closeHoursModal);
-wireOverlayClose(hoursModalOverlay, closeHoursModal);
-
-function hoursRefreshRowProjects(row, keepProjectCode){
-  const employeeName = document.getElementById('hoursEmployee').value;
-  const projectSel = row.querySelector('.hours-row-project');
-  const projects = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===employeeName));
-  projectSel.innerHTML = projects.length
-    ? projects.map(p=>`<option value="${p.code}">${p.code} — ${escapeHtml(p.name)}</option>`).join('')
-    : `<option value="">Nema projekata</option>`;
-  projectSel.value = (keepProjectCode && projects.some(p=>p.code===keepProjectCode)) ? keepProjectCode : (projects[0] ? projects[0].code : '');
-}
-function hoursRefreshRowKadrovi(row, keepKadarDbId){
-  const employeeName = document.getElementById('hoursEmployee').value;
-  const projectSel = row.querySelector('.hours-row-project');
-  const kadarSel = row.querySelector('.hours-row-kadar');
-  const proj = allProjects.find(p=>p.code===projectSel.value);
-  const kadrovi = proj ? proj.kadrovi.filter(k=>k.employee===employeeName) : [];
-  kadarSel.innerHTML = kadrovi.length
-    ? kadrovi.map(k=>`<option value="${k.dbId}">${escapeHtml(k.name)} (${escapeHtml(k.type)})</option>`).join('')
-    : `<option value="">Nema kadrova</option>`;
-  kadarSel.value = (keepKadarDbId && kadrovi.some(k=>k.dbId===keepKadarDbId)) ? keepKadarDbId : (kadrovi[0] ? kadrovi[0].dbId : '');
-}
-function updateHoursTotalLine(){
-  let reg = 0, ot = 0;
-  document.querySelectorAll('#hoursRowList .hours-row').forEach(row=>{
-    const h = parseFloat(row.querySelector('.hours-row-hours').value) || 0;
-    if(row.querySelector('.hours-row-overtime').checked) ot += h; else reg += h;
-  });
-  document.getElementById('hoursTotalLine').textContent = (reg || ot) ? `Ukupno: ${reg}h redovno${ot ? ` + ${ot}h prekovremeno` : ''}` : '';
-}
-function addHoursRow(existing){
-  const row = document.createElement('div');
-  row.className = 'hours-row';
-  row.dataset.dbId = existing ? existing.dbId : '';
-  row.innerHTML = `
-    <button type="button" class="hours-row-remove" title="Ukloni">×</button>
-    <div class="hours-row-top">
-      <select class="hours-row-project"></select>
-      <select class="hours-row-kadar"></select>
-    </div>
-    <div class="hours-row-bottom">
-      <input type="number" class="hours-row-hours" min="0.5" max="24" step="0.5" placeholder="Sati" value="${existing ? existing.hours : ''}">
-      <label class="hours-row-ot"><input type="checkbox" class="hours-row-overtime" ${existing && existing.overtime ? 'checked' : ''}> Prekovremeno</label>
-    </div>`;
-  document.getElementById('hoursRowList').appendChild(row);
-
-  let initialProjectCode = '';
-  if(existing){
-    const found = findKadarByDbId(existing.kadarDbId);
-    if(found) initialProjectCode = found.project.code;
-  }
-  hoursRefreshRowProjects(row, initialProjectCode);
-  enhanceSelect(row.querySelector('.hours-row-project'));
-  hoursRefreshRowKadrovi(row, existing ? existing.kadarDbId : null);
-  enhanceSelect(row.querySelector('.hours-row-kadar'));
-
-  row.querySelector('.hours-row-project').addEventListener('change', ()=>{ hoursRefreshRowKadrovi(row, null); updateHoursTotalLine(); });
-  row.querySelector('.hours-row-kadar').addEventListener('change', updateHoursTotalLine);
-  row.querySelector('.hours-row-hours').addEventListener('input', updateHoursTotalLine);
-  row.querySelector('.hours-row-overtime').addEventListener('change', updateHoursTotalLine);
-  row.querySelector('.hours-row-remove').addEventListener('click', ()=>{ row.remove(); updateHoursTotalLine(); });
-  return row;
-}
-function loadHoursForCurrentSelection(){
-  document.getElementById('hoursRowList').innerHTML = '';
-  const employeeName = document.getElementById('hoursEmployee').value;
-  const dateVal = document.getElementById('hoursDate').value;
-  const emp = teamMembers.find(t=>t.name===employeeName);
-  const existingRows = emp ? timeEntries.filter(e=>e.employeeId===emp.authId && e.date===dateVal) : [];
-  if(existingRows.length) existingRows.forEach(e=> addHoursRow(e));
-  else addHoursRow(null);
-  updateHoursTotalLine();
-}
-document.getElementById('hoursAddRow').addEventListener('click', ()=>{ addHoursRow(null); updateHoursTotalLine(); });
-document.getElementById('hoursEmployee').addEventListener('change', ()=>{
-  document.querySelectorAll('#hoursRowList .hours-row').forEach(row=>{
-    hoursRefreshRowProjects(row, row.querySelector('.hours-row-project').value);
-    hoursRefreshRowKadrovi(row, null);
-  });
-  updateHoursTotalLine();
-});
-document.getElementById('hoursDate').addEventListener('change', loadHoursForCurrentSelection);
-
-function openHoursModal(dateISO, personName){
-  const lockPerson = currentAccess()==='user';
-  const employeeName = lockPerson ? currentUser().name : (personName || (currentUser() ? currentUser().name : teamMembers[0].name));
-  populateEmployeeSelect('hoursEmployee', employeeName);
-  document.getElementById('hoursEmployee').disabled = lockPerson;
-  document.getElementById('hoursDate').value = dateISO || toISO(TODAY);
-  loadHoursForCurrentSelection();
-  hoursModalOverlay.classList.add('open');
-}
-
-document.getElementById('hoursSubmit').addEventListener('click', async ()=>{
-  if(!sb) return;
-  const employeeName = document.getElementById('hoursEmployee').value;
-  const emp = teamMembers.find(t=>t.name===employeeName);
-  const dateVal = document.getElementById('hoursDate').value;
-  if(!emp || !dateVal) return;
-
-  const validRows = Array.from(document.querySelectorAll('#hoursRowList .hours-row')).map(row=>({
-    dbId: row.dataset.dbId || null,
-    kadarDbId: row.querySelector('.hours-row-kadar').value,
-    hours: parseFloat(row.querySelector('.hours-row-hours').value),
-    overtime: row.querySelector('.hours-row-overtime').checked
-  })).filter(r=> r.kadarDbId && r.hours > 0);
-  if(!validRows.length){ alert('Unesi bar jedan red sa satima veći od 0.'); return; }
-
-  const existingForDay = timeEntries.filter(e=>e.employeeId===emp.authId && e.date===dateVal);
-  const keptDbIds = new Set(validRows.filter(r=>r.dbId).map(r=>r.dbId));
-  const toDelete = existingForDay.filter(e=> !keptDbIds.has(e.dbId));
-  const errors = [];
-
-  for(const del of toDelete){
-    const { error } = await sb.from('time_entries').delete().eq('id', del.dbId);
-    if(error){ errors.push(error.message); continue; }
-    const idx = timeEntries.findIndex(t=>t.dbId===del.dbId);
-    if(idx>-1) timeEntries.splice(idx,1);
-  }
-  for(const r of validRows){
-    if(r.dbId){
-      const { data, error } = await sb.from('time_entries')
-        .update({ kadar_id:r.kadarDbId, hours:r.hours, overtime:r.overtime })
-        .eq('id', r.dbId).select().single();
-      if(error){ errors.push(error.message); continue; }
-      const local = timeEntries.find(t=>t.dbId===r.dbId);
-      if(local) Object.assign(local, { kadarDbId:data.kadar_id, hours:data.hours, overtime:data.overtime });
-    } else {
-      const { data, error } = await sb.from('time_entries')
-        .insert({ employee_id:emp.authId, kadar_id:r.kadarDbId, date:dateVal, hours:r.hours, overtime:r.overtime })
-        .select().single();
-      if(error){ errors.push(error.message); continue; }
-      timeEntries.push({ _id:nextId(), dbId:data.id, employee:employeeName, employeeId:emp.authId, kadarDbId:data.kadar_id, date:data.date, hours:data.hours, overtime:data.overtime });
-    }
-  }
-  if(errors.length){ alert('Čuvanje nije uspelo za neke redove: ' + errors[0]); }
-  closeHoursModal();
   renderCalendar();
   renderWeekWidget();
   renderWeeklyGoal();
   persist();
 });
+
+/* ==== RADNI SATI (time_entries) — direktno unutar "Izmeni stavku" (zadatak)
+   modala, kao redovi po danu za period tog zadatka: projekat/kadar/zaposleni
+   su već poznati iz zadatka, pa se bira samo broj redovnih i prekovremenih
+   sati po danu. Upisuje se direktno u Supabase pri Sačuvaj. ==== */
+function evzHoursDays(start, end){
+  const days = [];
+  let cur = start;
+  while(daysBetween(cur, end) >= 0){ days.push(cur); cur = addDays(cur, 1); }
+  return days;
+}
+function renderEvzHours(ev){
+  const field = document.getElementById('evzHoursField');
+  const proj = ev ? allProjects.find(p=>p.code===ev.projectCode) : null;
+  const kadar = proj ? proj.kadrovi.find(k=>k.name===ev.taskName) : null;
+  const emp = ev ? teamMembers.find(t=>t.name===ev.person) : null;
+  if(!ev || !proj || !kadar || !emp){ field.style.display = 'none'; return; }
+  const readOnly = !canEditCalendarFor(ev.person);
+  const list = document.getElementById('evzHoursList');
+  list.innerHTML = evzHoursDays(ev.start, ev.end).map(d=>{
+    const iso = toISO(d);
+    const reg = timeEntries.find(e=>e.employeeId===emp.authId && e.kadarDbId===kadar.dbId && e.date===iso && !e.overtime);
+    const ot = timeEntries.find(e=>e.employeeId===emp.authId && e.kadarDbId===kadar.dbId && e.date===iso && e.overtime);
+    const dow = dowLabels[(toJSDate(d).getDay()+6)%7];
+    return `
+    <div class="ev-hours-row" data-date="${iso}" data-reg-id="${reg ? reg.dbId : ''}" data-ot-id="${ot ? ot.dbId : ''}">
+      <span class="ev-hours-date">${dow} ${d.d}. ${calMonthNames[d.m-1].slice(0,3).toLowerCase()}</span>
+      <input type="number" class="ev-hours-reg" min="0" max="24" step="0.5" value="${reg ? reg.hours : ''}" ${readOnly?'disabled':''}>
+      <input type="number" class="ev-hours-ot" min="0" max="24" step="0.5" value="${ot ? ot.hours : ''}" ${readOnly?'disabled':''}>
+    </div>`;
+  }).join('');
+  field.dataset.kadarDbId = kadar.dbId;
+  field.dataset.employeeId = emp.authId;
+  field.style.display = '';
+}
+async function saveOneHoursCell(dbId, employeeId, employeeName, kadarDbId, dateVal, hours, overtime){
+  if(hours > 0){
+    if(dbId){
+      const { data, error } = await sb.from('time_entries').update({ hours, overtime }).eq('id', dbId).select().single();
+      if(error) return error.message;
+      const local = timeEntries.find(t=>t.dbId===dbId);
+      if(local) Object.assign(local, { hours:data.hours, overtime:data.overtime });
+    } else {
+      const { data, error } = await sb.from('time_entries')
+        .insert({ employee_id:employeeId, kadar_id:kadarDbId, date:dateVal, hours, overtime })
+        .select().single();
+      if(error) return error.message;
+      timeEntries.push({ _id:nextId(), dbId:data.id, employee:employeeName, employeeId:data.employee_id, kadarDbId:data.kadar_id, date:data.date, hours:data.hours, overtime:data.overtime });
+    }
+  } else if(dbId){
+    const { error } = await sb.from('time_entries').delete().eq('id', dbId);
+    if(error) return error.message;
+    const idx = timeEntries.findIndex(t=>t.dbId===dbId);
+    if(idx>-1) timeEntries.splice(idx,1);
+  }
+  return null;
+}
+async function saveEvzHours(){
+  const field = document.getElementById('evzHoursField');
+  if(field.style.display === 'none' || !sb) return;
+  const kadarDbId = field.dataset.kadarDbId, employeeId = field.dataset.employeeId;
+  if(!kadarDbId || !employeeId) return;
+  const emp = teamMembers.find(t=>t.authId===employeeId);
+  const employeeName = emp ? emp.name : '';
+  const errors = [];
+  for(const row of document.querySelectorAll('#evzHoursList .ev-hours-row')){
+    const iso = row.dataset.date;
+    const regVal = parseFloat(row.querySelector('.ev-hours-reg').value) || 0;
+    const otVal = parseFloat(row.querySelector('.ev-hours-ot').value) || 0;
+    const err1 = await saveOneHoursCell(row.dataset.regId || null, employeeId, employeeName, kadarDbId, iso, regVal, false);
+    if(err1) errors.push(err1);
+    const err2 = await saveOneHoursCell(row.dataset.otId || null, employeeId, employeeName, kadarDbId, iso, otVal, true);
+    if(err2) errors.push(err2);
+  }
+  if(errors.length) alert('Čuvanje sati nije uspelo za neke dane: ' + errors[0]);
+}
 
 /* ==== NEDELJNI CILJ (fun-goal) — procenat po danu + rotirajuće poruke ==== */
 const weeklyGoalMessages = {
@@ -6647,12 +6546,12 @@ function renderWeekWidget(){
   function agendaItemHtml(e){
     const code = eventDisplayCode(e);
     if(e.kind !== 'zadatak'){
-      return `<div class="agenda-item"><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`;
+      return `<div class="agenda-item" data-id="${e._id}"><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`;
     }
     const proj = allProjects.find(p=>p.code===e.projectCode);
     const urgLabel = urgencyLabels[e.urgency] || '';
     return `
-    <div class="agenda-item">
+    <div class="agenda-item" data-id="${e._id}">
       <span class="agenda-time">${escapeHtml(code)}</span>
       <div style="flex:1; min-width:0;">
         <div class="agenda-text">${escapeHtml(e.taskName || '')}</div>
@@ -6668,7 +6567,6 @@ function renderWeekWidget(){
     document.getElementById('agendaList').innerHTML = dayEvents.length
       ? dayEvents.map(agendaItemHtml).join('')
       : '<div class="agenda-empty">Nema zakazanih stavki.</div>';
-    document.getElementById('weekAgendaHoursBtn').dataset.date = toISO(d);
   }
   document.querySelectorAll('#weekDaysVert .wd-row').forEach(row=>{
     row.addEventListener('click', ()=>{
@@ -6681,8 +6579,11 @@ function renderWeekWidget(){
   renderAgendaForIdx(todayIdx>=0 ? todayIdx : 0);
 }
 renderWeekWidget();
-document.getElementById('weekAgendaHoursBtn').addEventListener('click', (e)=>{
-  openHoursModal(e.currentTarget.dataset.date, currentAccess()==='user' ? currentUser().name : null);
+document.getElementById('agendaList').addEventListener('click', (e)=>{
+  const item = e.target.closest('.agenda-item');
+  if(!item) return;
+  const evObj = events.find(x=>x._id===Number(item.dataset.id));
+  if(evObj) openEventModal(evObj, null);
 });
 
 function fmtRSD(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' RSD'; }
