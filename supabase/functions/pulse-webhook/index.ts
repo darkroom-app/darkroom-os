@@ -15,11 +15,17 @@
 // id). That id is resolved to a real person via team_members.renderflow_user_id
 // (populated once by hand from RenderFlow's GET /api/v1/users "alias" field —
 // see supabase/schema.sql "Phase 2.1"). The job/task name is at root `name`;
-// status at root `status`. There's no discrete project-code field — project
-// numbers only appear embedded in file paths — so project_code stays unmapped
-// for now. Kept permissive/defensive: an unrecognized user_id or an entirely
-// different payload shape still inserts the row (raw_payload always captures
-// what arrived) rather than rejecting, so nothing is silently lost.
+// status at root `status`.
+//
+// There's no discrete project-code field either, but a real payload shows the
+// studio's network render paths are consistent:
+//   \\DATACENTER\Projekti\P0288 - 55 Deans\Renderi\...
+//   \\DATACENTER\Projekti\P0288 - 55 Deans\Max\...
+// found in steps[].props[].value.path / .original_path (Scene File / Render
+// Output props). extractProjectCode() pulls the "P####" segment straight out
+// of the folder name right after "Projekti\", so kind of render notifications
+// can land in the right project's own Discord channel (projects.discord_webhook_url,
+// Phase 3f) instead of only the general fallback channel.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -47,6 +53,33 @@ function pick(obj: unknown, paths: string[]): string | null {
       cur = (cur as Record<string, unknown>)[key];
     }
     if (typeof cur === "string" && cur.trim()) return cur;
+  }
+  return null;
+}
+
+// Walks every step's props looking for a file path (Scene File's
+// original_path, Render Output's path, or any other prop shaped the same
+// way) and pulls the "P####" code out of the "...\Projekti\P0288 - 55
+// Deans\..." folder segment.
+function extractProjectCode(payload: Record<string, unknown>): string | null {
+  const steps = Array.isArray(payload.steps) ? payload.steps as Record<string, unknown>[] : [];
+  const paths: string[] = [];
+  for (const step of steps) {
+    const props = Array.isArray(step.props) ? step.props as Record<string, unknown>[] : [];
+    for (const prop of props) {
+      const value = prop.value;
+      if (value && typeof value === "object") {
+        const v = value as Record<string, unknown>;
+        if (typeof v.path === "string") paths.push(v.path);
+        if (typeof v.original_path === "string") paths.push(v.original_path);
+      }
+    }
+  }
+  for (const p of paths) {
+    const folderMatch = p.match(/\\Projekti\\([^\\]+)/i);
+    if (!folderMatch) continue;
+    const codeMatch = folderMatch[1].match(/^(P\d+)/i);
+    if (codeMatch) return codeMatch[1].toUpperCase();
   }
   return null;
 }
@@ -88,7 +121,7 @@ Deno.serve(async (req) => {
     "owner", "owner.name", "artist", "job.user", "job.user.name",
     "job.owner", "job.submittedBy",
   ]) ?? "UNKNOWN_SUBMITTER";
-  const projectCode = pick(payload, ["projectCode", "project_code", "job.projectCode"]);
+  const projectCode = pick(payload, ["projectCode", "project_code", "job.projectCode"]) ?? extractProjectCode(payload);
   const taskName = pick(payload, ["taskName", "task_name", "name", "job.name", "file", "job.file"]);
   const status = pick(payload, ["status", "job.status", "event"]);
 
@@ -119,5 +152,5 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: error.message }, 500);
   }
 
-  return jsonResponse({ ok: true, id: data.id, matchedEmployee: employee !== "UNKNOWN_SUBMITTER" }, 200);
+  return jsonResponse({ ok: true, id: data.id, matchedEmployee: employee !== "UNKNOWN_SUBMITTER", projectCode }, 200);
 });
