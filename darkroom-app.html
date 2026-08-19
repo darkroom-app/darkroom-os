@@ -7479,7 +7479,8 @@ function renderPricingList(){
   const q = priceState.search.trim().toLowerCase();
   const list = allProjects.filter(p=>
     (priceState.client==="Svi klijenti" || p.client===priceState.client) &&
-    (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)));
+    (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q))
+  ).sort((a,b)=> (parseInt((a.code||'').replace(/\D/g,''),10)||0) - (parseInt((b.code||'').replace(/\D/g,''),10)||0));
   document.getElementById('priceProjectList').innerHTML = list.map(p=>{
     const charges = extraCharges.filter(c=>c.projectDbId===p.dbId);
     const total = projectPricedItems(p).reduce((s,r)=>s+r.price,0);
