@@ -809,6 +809,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fg-title{ font-family:var(--font-display); font-weight:700; font-size:15.5px; margin-bottom:4px; }
 .fg-note{ font-size:11.5px; color:var(--ink-dim); }
 
+.fg-ot{ font-size:10.5px; font-weight:600; color:var(--coral); margin-bottom:4px; }
+.fg-ot span{ font-weight:700; }
+
 /* ==== FUN-GOAL WEATHER + CLOCK WIDGET ==== */
 .fun-weather{ flex:1; display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0; }
 .fw-icon{ width:54px; height:54px; position:relative; flex-shrink:0; }
@@ -879,15 +882,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ta-avatar:nth-child(4){ transform:rotate(3deg); }
 .ta-avatar:hover{ transform:translateY(-5px) scale(1.08) rotate(0deg); z-index:5; }
 .ta-more{ background:var(--ink) !important; font-size:10.5px; }
-
-.ot-panel{ margin-bottom:16px; }
-.ot-panel .panel-title svg{ color:var(--coral); }
-.ot-empty{ font-size:12.5px; color:var(--ink-faint); padding:4px 0; }
-.ot-list{ display:flex; flex-wrap:wrap; gap:10px; }
-.ot-chip{ display:flex; align-items:center; gap:9px; padding:6px 14px 6px 6px; border-radius:999px; background:var(--coral-soft); border:1px solid var(--border); }
-.ot-chip-avatar{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:11px; color:#fff; background-size:cover; background-position:center; flex-shrink:0; }
-.ot-chip-name{ font-size:12.5px; font-weight:600; color:var(--ink); }
-.ot-chip-hours{ font-size:12px; font-weight:800; color:var(--coral); }
 
 /* ---- HERO ROW ---- */
 .hero-row{ display:grid; grid-template-columns:300px calc(53.5% - 327px) 2fr 1fr; gap:18px; margin-bottom:16px; flex:0 0 auto; }
@@ -1436,6 +1430,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="fun-goal-text">
           <div class="fg-kicker">🔥 Nedeljni cilj</div>
           <div class="fg-title">30.4h / 40h</div>
+          <div class="fg-ot" id="funOtStat">⏱️ Prekovremeno: <span id="fotValue">0.0h</span></div>
           <div class="fg-note">Još malo pa cilj nedelje — samo napred!</div>
         </div>
         <div class="fun-weather" id="funWeather">
@@ -1455,13 +1450,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         </div>
         <div class="team-avatars" id="collabAvatars"></div>
       </div>
-    </div>
-
-    <div class="panel ot-panel">
-      <div class="panel-head">
-        <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Prekovremeni sati ove nedelje</div>
-      </div>
-      <div class="ot-list" id="otList"></div>
     </div>
 
     <div class="hero-row">
@@ -3944,7 +3932,7 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
   renderCalendar();
   renderWeekWidget();
   renderWeeklyGoal();
-  renderOvertimePanel();
+  renderOvertimeStat();
   persist();
 });
 
@@ -4115,31 +4103,20 @@ function weeklyGoalHours(){
 function weeklyGoalPercent(){
   return Math.max(0, Math.min(100, Math.round(weeklyGoalHours()/40*100)));
 }
-/* Team-wide overtime this week — separate from the personal 40h goal above,
-   since "ko koliko ima prekovremenih sati" is inherently about everyone, not
-   just the logged-in user. */
-function weekOvertimeByPerson(){
+/* Current user's own overtime this week — shown as a small stat right next
+   to the personal 40h goal, same Mon-through-today window as weeklyGoalHours(). */
+function weeklyOvertimeHours(){
+  const u = currentUser();
+  if(!u) return 0;
   const monday = mondayOf(TODAY);
   const monISO = toISO(monday), todayISO = toISO(TODAY);
-  const totals = {};
-  timeEntries.forEach(e=>{
-    if(!e.overtime || e.date<monISO || e.date>todayISO) return;
-    totals[e.employee] = (totals[e.employee]||0) + e.hours;
-  });
-  return Object.keys(totals).map(name=>({name, hours:totals[name]})).sort((a,b)=>b.hours-a.hours);
+  return timeEntries
+    .filter(e=> e.employeeId===u.authId && e.overtime && e.date>=monISO && e.date<=todayISO)
+    .reduce((sum,e)=> sum + e.hours, 0);
 }
-function renderOvertimePanel(){
-  const listEl = document.getElementById('otList');
-  if(!listEl) return;
-  const rows = weekOvertimeByPerson();
-  if(!rows.length){
-    listEl.innerHTML = `<div class="ot-empty">Niko nema prekovremene sate ove nedelje.</div>`;
-    return;
-  }
-  listEl.innerHTML = rows.map(r=>{
-    const av = avatarBgInner(r.name);
-    return `<div class="ot-chip"><div class="ot-chip-avatar" style="${av.bg}">${av.inner}</div><div class="ot-chip-name">${escapeHtml(r.name.split(' ')[0])}</div><div class="ot-chip-hours">${r.hours.toFixed(1)}h</div></div>`;
-  }).join('');
+function renderOvertimeStat(){
+  const valEl = document.getElementById('fotValue');
+  if(valEl) valEl.textContent = `${weeklyOvertimeHours().toFixed(1)}h`;
 }
 function weeklyGoalTier(pct){
   if(pct < 40) return 'low';
@@ -8464,7 +8441,7 @@ function applyCurrentUser(){
   renderDashboardProjects();
   renderDashboardFinance();
   renderWeeklyGoal();
-  renderOvertimePanel();
+  renderOvertimeStat();
   renderDashboardNotifications();
   syncRemoteNotifications();
   subscribeRemoteNotifications();
