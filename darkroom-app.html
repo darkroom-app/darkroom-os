@@ -661,12 +661,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .port-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .port-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
 .port-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(70,55,20,0.28); }
-.port-thumb{ height:128px; position:relative; overflow:hidden; }
+.port-thumb{ height:128px; position:relative; overflow:hidden; cursor:zoom-in; }
 .port-thumb .vfc{ position:absolute; width:9px; height:9px; border-color:rgba(255,255,255,0.75); z-index:2; }
 .port-thumb .vfc.tl{ top:8px; left:8px; border-top:1.4px solid; border-left:1.4px solid; }
 .port-thumb .vfc.br{ bottom:8px; right:8px; border-bottom:1.4px solid; border-right:1.4px solid; }
 .port-type-badge{ position:absolute; top:9px; left:9px; z-index:2; background:rgba(20,16,8,0.55); color:#fff; padding:3px 9px; border-radius:20px; font-family:var(--font-mono); font-size:8px; text-transform:uppercase; letter-spacing:0.03em; }
-.port-body{ padding:11px 13px 12px; }
+.port-thumb-zoom{ position:absolute; top:8px; right:8px; z-index:2; width:22px; height:22px; border-radius:50%; background:rgba(20,16,8,0.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; opacity:0; transition:opacity .15s ease; }
+.port-card:hover .port-thumb-zoom{ opacity:1; }
+.port-body{ padding:11px 13px 12px; cursor:pointer; }
 .port-title{ font-family:var(--font-display); font-weight:600; font-size:12.5px; line-height:1.25; margin-bottom:3px; }
 .port-meta{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-bottom:10px; }
 .port-foot{ display:flex; align-items:center; justify-content:space-between; }
@@ -674,6 +676,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .port-avatar{ width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:7px; color:#fff; flex-shrink:0; }
 .port-artist span{ font-size:10.5px; color:var(--ink-dim); }
 .port-year{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); }
+
+.port-type-breakdown{ display:flex; flex-wrap:wrap; gap:9px; margin-bottom:16px; flex-shrink:0; }
+.ptb-chip{ display:flex; align-items:center; gap:7px; padding:7px 13px; border-radius:20px; background:var(--card); border:1px solid var(--border); font-size:11px; font-weight:600; color:var(--ink-dim); text-transform:capitalize; }
+.ptb-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+.ptb-count{ font-family:var(--font-mono); font-weight:700; color:var(--ink); }
+
+.lightbox-overlay{ position:fixed; inset:0; background:rgba(20,16,8,0.9); z-index:400; display:none; align-items:center; justify-content:center; padding:50px; }
+.lightbox-overlay.open{ display:flex; }
+.lightbox-img{ max-width:100%; max-height:100%; border-radius:12px; box-shadow:0 30px 70px -20px rgba(0,0,0,0.6); }
+.lightbox-close{ position:absolute; top:24px; right:28px; width:40px; height:40px; border-radius:50%; background:rgba(255,255,255,0.12); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; transition:background .15s ease; }
+.lightbox-close:hover{ background:rgba(255,255,255,0.22); }
 
 .port-compare-panel{ background:var(--card); border:1px solid var(--border); border-radius:20px; padding:20px 26px 22px; flex:0 0 auto; }
 .compare-title{ font-family:var(--font-display); font-weight:700; font-size:16px; margin-bottom:4px; }
@@ -1910,6 +1923,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
         </div>
 
+        <div class="port-type-breakdown" id="portTypeBreakdown"></div>
+
         <div class="port-gallery-scroll">
           <div class="port-grid" id="portGrid"></div>
           <div class="empty-state" id="portEmpty" style="display:none;">Nema radova za izabrane filtere.</div>
@@ -2832,6 +2847,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <button class="modal-submit" id="confirmModalOk">Potvrdi</button>
     </div>
   </div>
+</div>
+
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <div class="lightbox-close" id="lightboxClose">✕</div>
+  <img class="lightbox-img" id="lightboxImg" src="" alt="">
 </div>
 
 <div class="drp-popover" id="drpPopover">
@@ -5899,9 +5919,10 @@ function filteredPortfolio(){
 
 function portCardHTML(p){
   return `
-    <div class="port-card" data-id="${p._id}" style="cursor:pointer;">
+    <div class="port-card" data-id="${p._id}">
       <div class="port-thumb" style="background-image:url('${p.image}');background-size:cover;background-position:center;">
         <div class="port-type-badge">${escapeHtml(p.type)}</div>
+        <div class="port-thumb-zoom">🔍</div>
         <div class="vfc tl"></div><div class="vfc br"></div>
       </div>
       <div class="port-body">
@@ -5914,14 +5935,47 @@ function portCardHTML(p){
       </div>
     </div>`;
 }
+/* Clicking the image opens it full-size (openLightbox); clicking the rest
+   of the card (title/meta) navigates to the project — two separate click
+   targets instead of one, since "view the render" and "go to the project"
+   are different intents. */
 function wirePortCards(gridEl, list){
   gridEl.querySelectorAll('.port-card').forEach(el=>{
-    el.addEventListener('click', ()=>{
-      const item = list.find(x=>x._id===Number(el.dataset.id));
-      const proj = item && allProjects.find(x=>x.code===item.code);
+    const item = list.find(x=>x._id===Number(el.dataset.id));
+    if(!item) return;
+    el.querySelector('.port-thumb').addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openLightbox(item.image);
+    });
+    el.querySelector('.port-body').addEventListener('click', ()=>{
+      const proj = allProjects.find(x=>x.code===item.code);
       if(proj) openProjectDetail(proj);
     });
   });
+}
+function openLightbox(src){
+  document.getElementById('lightboxImg').src = src;
+  document.getElementById('lightboxOverlay').classList.add('open');
+}
+function closeLightbox(){
+  document.getElementById('lightboxOverlay').classList.remove('open');
+  document.getElementById('lightboxImg').src = '';
+}
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+document.getElementById('lightboxOverlay').addEventListener('click', (e)=>{
+  if(e.target.id==='lightboxOverlay') closeLightbox();
+});
+document.addEventListener('keydown', (e)=>{
+  if(e.key==='Escape' && document.getElementById('lightboxOverlay').classList.contains('open')) closeLightbox();
+});
+
+function renderPortTypeBreakdown(list){
+  const counts = {};
+  list.forEach(p=>{ counts[p.type] = (counts[p.type]||0)+1; });
+  const types = Object.keys(kadarTypeColorVar).filter(t=>counts[t]);
+  document.getElementById('portTypeBreakdown').innerHTML = types.map(t=>`
+    <div class="ptb-chip"><span class="ptb-dot" style="background:${kadarTypeColorVar[t]}"></span>${escapeHtml(t)} <span class="ptb-count">${counts[t]}</span></div>
+  `).join('');
 }
 
 function renderPortfolioGrid(){
@@ -5929,6 +5983,7 @@ function renderPortfolioGrid(){
   document.getElementById('portCountLabel').textContent = list.length + (list.length===1 ? ' rad' : ' radova');
   document.getElementById('portEmpty').style.display = list.length ? 'none' : 'block';
   document.getElementById('portGrid').style.display = list.length ? 'grid' : 'none';
+  renderPortTypeBreakdown(list);
 
   const gridEl = document.getElementById('portGrid');
   gridEl.innerHTML = list.map(portCardHTML).join('');
