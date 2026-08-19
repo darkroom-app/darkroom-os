@@ -3542,8 +3542,8 @@ function generateEventsFromKadrovi(){
 }
 
 function buildCalFilterMenus(){
-  const codes = uniqueSorted(events.filter(e=>e.kind==='zadatak').map(e=>e.projectCode));
-  const people = uniqueSorted(events.filter(e=>e.person).map(e=>e.person));
+  const codes = uniqueSorted(allProjects.map(p=>p.code));
+  const people = uniqueSorted(teamMembers.filter(t=>t.status==='Aktivan').map(t=>t.name));
   document.getElementById('filterProjektiMenu').innerHTML =
     `<div class="cal-filter-item" data-val="Svi Projekti">Svi Projekti</div>` +
     codes.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
@@ -3552,6 +3552,13 @@ function buildCalFilterMenus(){
     people.map(p=>`<div class="cal-filter-item" data-val="${p}"><span class="cal-filter-dot" style="background:${artistColors[p]||'var(--ink-faint)'}"></span>${p}</div>`).join('');
 
   document.querySelectorAll('#filterProjekti, #filterTim').forEach(f=>{
+    const btn = f.querySelector('.cal-filter-btn');
+    btn.onclick = (ev)=>{
+      ev.stopPropagation();
+      const wasOpen = f.classList.contains('open');
+      document.querySelectorAll('.cal-filter').forEach(x=>x.classList.remove('open'));
+      if(!wasOpen) f.classList.add('open');
+    };
     f.querySelectorAll('.cal-filter-item').forEach(item=>{
       item.onclick = ()=>{
         f.querySelector('span[id]').textContent = item.dataset.val;
@@ -7822,12 +7829,22 @@ function showView(name){
   document.getElementById('view-profil').classList.toggle('active', name==='profil');
   if(name==='statistika' && !statistikaInited){ statistikaInited = true; initStatistika(); }
   if(name==='finansije' && !finansijeInited){ finansijeInited = true; initFinansije(); }
+  setActiveNav(name);
+  if(!_histSyncing && (!history.state || history.state.view !== name)){
+    history.pushState({view:name}, '', location.href);
+  }
 }
+let _histSyncing = false;
+window.addEventListener('popstate', (e)=>{
+  const v = (e.state && e.state.view) || 'pregled';
+  _histSyncing = true;
+  showView(v);
+  _histSyncing = false;
+});
+history.replaceState({view:'pregled'}, '', location.href);
 document.querySelectorAll('.nav a').forEach(a=>{
   a.addEventListener('click', (e)=>{
     e.preventDefault();
-    document.querySelectorAll('.nav a').forEach(x=>x.classList.remove('active'));
-    a.classList.add('active');
     const v = a.dataset.view;
     if(v) showView(v);
   });
