@@ -1118,7 +1118,7 @@ select.native-select-hidden{ display:none; }
 .cal-filter-btn{ display:flex; align-items:center; gap:9px; padding:9px 14px; border-radius:12px; background:var(--card); border:1px solid var(--border); font-size:12.5px; font-weight:500; cursor:pointer; color:var(--ink); }
 .cal-filter-btn svg{ width:12px; height:12px; color:var(--ink-faint); transition:transform .15s ease; }
 .cal-filter.open .cal-filter-btn svg{ transform:rotate(180deg); }
-.cal-filter-menu{ position:absolute; top:calc(100% + 6px); right:0; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:6px; min-width:170px; box-shadow:0 16px 34px -12px rgba(70,55,20,0.28); display:none; z-index:30; }
+.cal-filter-menu{ position:absolute; top:calc(100% + 6px); right:0; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:6px; min-width:170px; max-height:300px; overflow-y:auto; box-shadow:0 16px 34px -12px rgba(70,55,20,0.28); display:none; z-index:30; }
 .cal-filter.open .cal-filter-menu{ display:block; }
 .cal-filter-item{ padding:8px 10px; border-radius:8px; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:8px; }
 .cal-filter-item:hover{ background:var(--card-soft); }
@@ -3541,15 +3541,43 @@ function generateEventsFromKadrovi(){
   });
 }
 
+const CAL_FILTER_SEARCH_THRESHOLD = 7;
+function renderCalFilterMenu(menuEl, items, allItemHtml){
+  const searchable = items.length > CAL_FILTER_SEARCH_THRESHOLD;
+  menuEl.innerHTML =
+    (searchable ? `<div class="xsel-search-wrap"><input type="text" class="xsel-search" placeholder="Pretraži…"></div>` : '') +
+    `<div class="cal-filter-items">${allItemHtml}${items.map(it=>it.html).join('')}</div>` +
+    `<div class="xsel-empty" style="display:none">Nema rezultata.</div>`;
+  const searchInput = menuEl.querySelector('.xsel-search');
+  if(!searchInput) return;
+  const itemsWrap = menuEl.querySelector('.cal-filter-items');
+  const empty = menuEl.querySelector('.xsel-empty');
+  searchInput.addEventListener('click', e=>e.stopPropagation());
+  searchInput.addEventListener('input', ()=>{
+    const q = searchInput.value.trim().toLowerCase();
+    let anyVisible = false;
+    itemsWrap.querySelectorAll('.cal-filter-item').forEach(item=>{
+      const match = !q || item.textContent.toLowerCase().includes(q);
+      item.style.display = match ? '' : 'none';
+      if(match) anyVisible = true;
+    });
+    empty.style.display = anyVisible ? 'none' : '';
+  });
+}
+
 function buildCalFilterMenus(){
   const codes = uniqueSorted(allProjects.map(p=>p.code));
   const people = uniqueSorted(teamMembers.filter(t=>t.status==='Aktivan').map(t=>t.name));
-  document.getElementById('filterProjektiMenu').innerHTML =
-    `<div class="cal-filter-item" data-val="Svi Projekti">Svi Projekti</div>` +
-    codes.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
-  document.getElementById('filterTimMenu').innerHTML =
-    `<div class="cal-filter-item" data-val="Ceo Tim"><span class="cal-filter-dot" style="background:var(--ink-faint)"></span>Ceo Tim</div>` +
-    people.map(p=>`<div class="cal-filter-item" data-val="${p}"><span class="cal-filter-dot" style="background:${artistColors[p]||'var(--ink-faint)'}"></span>${p}</div>`).join('');
+  renderCalFilterMenu(
+    document.getElementById('filterProjektiMenu'),
+    codes.map(c=>({html:`<div class="cal-filter-item" data-val="${c}">${c}</div>`})),
+    `<div class="cal-filter-item" data-val="Svi Projekti">Svi Projekti</div>`
+  );
+  renderCalFilterMenu(
+    document.getElementById('filterTimMenu'),
+    people.map(p=>({html:`<div class="cal-filter-item" data-val="${p}"><span class="cal-filter-dot" style="background:${artistColors[p]||'var(--ink-faint)'}"></span>${p}</div>`})),
+    `<div class="cal-filter-item" data-val="Ceo Tim"><span class="cal-filter-dot" style="background:var(--ink-faint)"></span>Ceo Tim</div>`
+  );
 
   document.querySelectorAll('#filterProjekti, #filterTim').forEach(f=>{
     const btn = f.querySelector('.cal-filter-btn');
@@ -3557,7 +3585,11 @@ function buildCalFilterMenus(){
       ev.stopPropagation();
       const wasOpen = f.classList.contains('open');
       document.querySelectorAll('.cal-filter').forEach(x=>x.classList.remove('open'));
-      if(!wasOpen) f.classList.add('open');
+      if(!wasOpen){
+        f.classList.add('open');
+        const si = f.querySelector('.xsel-search');
+        if(si) requestAnimationFrame(()=>si.focus());
+      }
     };
     f.querySelectorAll('.cal-filter-item').forEach(item=>{
       item.onclick = ()=>{
