@@ -1000,11 +1000,24 @@ select.native-select-hidden{ display:none; }
 .notif-unread + .notif-unread{ margin-top:2px; }
 
 /* ---- Dashboard mini-game panel (replaces the old Fokus Tracker / embedded chat) ---- */
-.dash-game{ display:flex; flex-direction:column; padding:0; overflow:hidden; }
-.dash-game .panel-head{ padding:15px 18px 12px; }
-.dino-wrap{ position:relative; flex:1; min-height:150px; margin:0 18px 18px; border-radius:12px; background:var(--card-soft); overflow:hidden; cursor:pointer; }
+.dash-corner{ display:flex; flex-direction:column; padding:0; overflow:hidden; }
+.dash-corner .panel-head{ padding:15px 18px 10px; }
+.corner-tab-row{ display:flex; gap:6px; margin:0 18px 10px; background:var(--card-soft); border-radius:10px; padding:4px; flex:0 0 auto; }
+.corner-tab-btn{ flex:1; padding:7px 0; border:none; background:none; border-radius:8px; font-family:var(--font-body); font-weight:600; font-size:11px; color:var(--ink-dim); cursor:pointer; }
+.corner-tab-btn.active{ background:var(--card); color:var(--ink); box-shadow:0 2px 6px rgba(40,30,10,0.08); }
+.corner-tab-panel{ flex:1; min-height:0; display:flex; }
+.dino-wrap{ position:relative; flex:1; min-height:120px; margin:0 18px 18px; border-radius:12px; background:var(--card-soft); overflow:hidden; cursor:pointer; }
 .dino-wrap canvas{ display:block; width:100%; height:100%; }
 .dino-overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 16px; font-family:var(--font-mono); font-size:10.5px; line-height:1.5; color:var(--ink-dim); }
+.breathe-wrap{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px; margin:0 18px 18px; border-radius:12px; background:var(--card-soft); }
+.breathe-circle{ width:70px; height:70px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--sky-soft), var(--sky)); box-shadow:0 0 0 1px var(--border) inset; animation:breatheScale 14s ease-in-out infinite; }
+@keyframes breatheScale{
+  0%{ transform:scale(0.55); }
+  28.6%{ transform:scale(1); }
+  57.1%{ transform:scale(1); }
+  100%{ transform:scale(0.55); }
+}
+.breathe-label{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); letter-spacing:0.03em; }
 
 /* ---- Zadaci & Beleske ---- */
 .todo-scroll{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
@@ -1451,14 +1464,26 @@ select.native-select-hidden{ display:none; }
         </div>
       </div>
 
-      <div class="panel dash-game">
+      <div class="panel dash-corner">
         <div class="panel-head">
-          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M8 10.5v4M6 12.5h4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18.5" cy="14" r="1"/></svg>Predah</div>
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V9l4-3v15M11 21V5l4 3v13M17 21v-9l3 2v7"/></svg>Dubai Corner</div>
           <div class="panel-sub" id="dinoScoreSub">Skor: 0</div>
         </div>
-        <div class="dino-wrap">
-          <canvas id="dinoCanvas"></canvas>
-          <div class="dino-overlay" id="dinoOverlay">Klikni ili pritisni SPACE za start</div>
+        <div class="corner-tab-row">
+          <button type="button" class="corner-tab-btn active" data-corner-tab="game">Igrica</button>
+          <button type="button" class="corner-tab-btn" data-corner-tab="breathe">Disanje</button>
+        </div>
+        <div class="corner-tab-panel" id="cornerPanelGame">
+          <div class="dino-wrap">
+            <canvas id="dinoCanvas"></canvas>
+            <div class="dino-overlay" id="dinoOverlay">Klikni ili pritisni SPACE za start</div>
+          </div>
+        </div>
+        <div class="corner-tab-panel" id="cornerPanelBreathe" style="display:none;">
+          <div class="breathe-wrap">
+            <div class="breathe-circle" id="breatheCircle"></div>
+            <div class="breathe-label" id="breatheLabel">Udahni...</div>
+          </div>
         </div>
       </div>
     </div>
@@ -8095,9 +8120,10 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
   });
 })();
 
-/* ==== Dashboard "Predah" — mala Dino Runner igra (canvas), zamena za
-   Fokus Tracker/ugrađenog asistenta. Čisto vizuelna razonoda, ne čuva se
-   nigde osim najboljeg skora u localStorage. ==== */
+/* ==== Dashboard "Dubai Corner" — mala Dino Runner igra (canvas, pixel-art
+   sprite u google-dino stilu) + vežba disanja za smirenje, kao dva taba u
+   istom boksu. Čisto vizuelna razonoda, ne čuva se nigde osim najboljeg
+   skora u localStorage. ==== */
 (function(){
   const canvas = document.getElementById('dinoCanvas');
   if(!canvas) return;
@@ -8105,14 +8131,28 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
   const wrap = canvas.parentElement;
   const overlay = document.getElementById('dinoOverlay');
   const scoreSub = document.getElementById('dinoScoreSub');
-  let running = false, dead = false, score = 0;
+  let running = false, dead = false, score = 0, gameActive = true;
   let best = Number(localStorage.getItem('dinoBest') || 0);
   let dino, obstacles, groundY, speed, frame;
   const gravity = 0.6;
 
+  const DINO_A = ["000110000","000111000","000111100","011111100","111111100","111111110","111111000","011011000","011011000"];
+  const DINO_B = ["000110000","000111000","000111100","011111100","111111100","111111110","111111000","011000110","001100011"];
+  const CACTUS = ["00100","00100","01100","01111","01100","00100","00100","00100"];
+
   function cssVar(name, fallback){
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     return v || fallback;
+  }
+  function drawPixels(rows, x, y, w, h, color){
+    const cols = rows[0].length, rc = rows.length;
+    const cw = w/cols, ch = h/rc;
+    ctx.fillStyle = color;
+    for(let r=0;r<rc;r++){
+      for(let c=0;c<cols;c++){
+        if(rows[r][c]==='1') ctx.fillRect(x+c*cw, y+r*ch, cw+0.5, ch+0.5);
+      }
+    }
   }
   function resize(){
     canvas.width = wrap.clientWidth;
@@ -8123,7 +8163,7 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
 
   function reset(){
     resize();
-    dino = { x:20, y:groundY-22, w:18, h:22, vy:0, jumping:false };
+    dino = { x:20, y:groundY-24, w:20, h:24, vy:0, jumping:false };
     obstacles = [];
     speed = 4.2;
     score = 0;
@@ -8152,19 +8192,18 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = cssVar('--border', '#ddd');
     ctx.fillRect(0, groundY, canvas.width, 2);
-    ctx.fillStyle = cssVar('--ink', '#333');
-    ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
-    ctx.fillStyle = cssVar('--coral', '#c66');
-    obstacles.forEach(o=> ctx.fillRect(o.x, groundY-o.h, o.w, o.h));
+    const legFrame = dino.jumping ? DINO_A : (Math.floor(frame/8)%2===0 ? DINO_A : DINO_B);
+    drawPixels(legFrame, dino.x, dino.y, dino.w, dino.h, cssVar('--ink', '#333'));
+    obstacles.forEach(o=> drawPixels(CACTUS, o.x, groundY-o.h, o.w, o.h, cssVar('--sage', '#7a9')));
   }
   function loop(){
-    if(!running) return;
+    if(!running || !gameActive) return;
     frame++;
     dino.vy += gravity;
     dino.y += dino.vy;
     if(dino.y > groundY-dino.h){ dino.y = groundY-dino.h; dino.vy = 0; dino.jumping = false; }
     if(frame % Math.max(38, 85-Math.floor(speed*3)) === 0){
-      obstacles.push({ x:canvas.width, w:8+Math.random()*8, h:14+Math.random()*14 });
+      obstacles.push({ x:canvas.width, w:9+Math.random()*6, h:16+Math.random()*14 });
     }
     obstacles.forEach(o=> o.x -= speed);
     obstacles = obstacles.filter(o=> o.x+o.w > 0);
@@ -8175,20 +8214,56 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
     speed += 0.0015;
     scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`;
     draw();
-    if(running) requestAnimationFrame(loop);
+    if(running && gameActive) requestAnimationFrame(loop);
   }
 
   resize();
   scoreSub.textContent = `Skor: 0 · rekord ${best}`;
   overlay.addEventListener('click', jump);
   document.addEventListener('keydown', e=>{
-    if(e.code !== 'Space') return;
+    if(e.code !== 'Space' || !gameActive) return;
     const tag = document.activeElement && document.activeElement.tagName;
     if(tag === 'INPUT' || tag === 'TEXTAREA') return;
     const pregled = document.getElementById('view-pregled');
     if(!pregled || !pregled.classList.contains('active')) return;
     e.preventDefault();
     jump();
+  });
+
+  /* Vežba disanja: 4s udah / 4s zadrži / 6s izdah, u petlji. Krug se skalira
+     kroz CSS animaciju (breatheScale, 14s), tekst prati iste faze preko rAF. */
+  let breatheActive = false, breatheStart = null;
+  const breatheLabel = document.getElementById('breatheLabel');
+  const breathePhases = [ {label:'Udahni...', dur:4000}, {label:'Zadrži...', dur:4000}, {label:'Izdahni...', dur:6000} ];
+  const breatheTotal = breathePhases.reduce((s,p)=>s+p.dur, 0);
+  function breatheTick(ts){
+    if(!breatheActive) return;
+    if(!breatheStart) breatheStart = ts;
+    const elapsed = (ts - breatheStart) % breatheTotal;
+    let acc = 0, label = breathePhases[0].label;
+    for(const p of breathePhases){ if(elapsed < acc+p.dur){ label = p.label; break; } acc += p.dur; }
+    breatheLabel.textContent = label;
+    requestAnimationFrame(breatheTick);
+  }
+
+  document.querySelectorAll('.corner-tab-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const tab = btn.dataset.cornerTab;
+      document.querySelectorAll('.corner-tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
+      document.getElementById('cornerPanelGame').style.display = tab==='game' ? '' : 'none';
+      document.getElementById('cornerPanelBreathe').style.display = tab==='breathe' ? '' : 'none';
+      scoreSub.style.display = tab==='game' ? '' : 'none';
+      if(tab==='game'){
+        gameActive = true;
+        breatheActive = false;
+        if(running) requestAnimationFrame(loop);
+      } else {
+        gameActive = false;
+        breatheActive = true;
+        breatheStart = null;
+        requestAnimationFrame(breatheTick);
+      }
+    });
   });
 })();
 
