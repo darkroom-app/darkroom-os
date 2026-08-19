@@ -1814,47 +1814,52 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="page-title">Portfolio</div>
           <div class="page-sub" id="portCountLabel">14 radova</div>
         </div>
-        <button class="btn-primary" id="newPortBtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
-          Novi rad
-        </button>
       </div>
 
-      <div class="proj-toolbar">
-        <div class="proj-filters">
-          <div class="cal-filter" id="pfGodina">
-            <div class="cal-filter-btn"><span id="pfGodinaLabel">Sve godine</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
-            <div class="cal-filter-menu" id="pfGodinaMenu"></div>
+      <div class="stat-tabs">
+        <button class="stat-tab-btn active" data-porttab="galerija">🖼️ Galerija</button>
+        <button class="stat-tab-btn" data-porttab="statistika">📊 Statistika i poređenje</button>
+      </div>
+
+      <div class="stat-tab-panel active" id="portTabGalerija">
+        <div class="proj-toolbar">
+          <div class="proj-filters">
+            <div class="cal-filter" id="pfGodina">
+              <div class="cal-filter-btn"><span id="pfGodinaLabel">Sve godine</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="pfGodinaMenu"></div>
+            </div>
+            <div class="cal-filter" id="pfTip">
+              <div class="cal-filter-btn"><span id="pfTipLabel">Svi tipovi</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="pfTipMenu"></div>
+            </div>
+            <div class="cal-filter" id="pfKlijent">
+              <div class="cal-filter-btn"><span id="pfKlijentLabel">Svi klijenti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="pfKlijentMenu"></div>
+            </div>
+            <div class="cal-filter" id="pfProjekat">
+              <div class="cal-filter-btn"><span id="pfProjekatLabel">Svi projekti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="pfProjekatMenu"></div>
+            </div>
+            <div class="cal-filter" id="pfUmetnik">
+              <div class="cal-filter-btn"><span id="pfUmetnikLabel">Svi zaposleni</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="pfUmetnikMenu"></div>
+            </div>
           </div>
-          <div class="cal-filter" id="pfTip">
-            <div class="cal-filter-btn"><span id="pfTipLabel">Svi tipovi</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
-            <div class="cal-filter-menu" id="pfTipMenu"></div>
-          </div>
-          <div class="cal-filter" id="pfKlijent">
-            <div class="cal-filter-btn"><span id="pfKlijentLabel">Svi klijenti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
-            <div class="cal-filter-menu" id="pfKlijentMenu"></div>
-          </div>
-          <div class="cal-filter" id="pfProjekat">
-            <div class="cal-filter-btn"><span id="pfProjekatLabel">Svi projekti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
-            <div class="cal-filter-menu" id="pfProjekatMenu"></div>
-          </div>
-          <div class="cal-filter" id="pfUmetnik">
-            <div class="cal-filter-btn"><span id="pfUmetnikLabel">Svi zaposleni</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
-            <div class="cal-filter-menu" id="pfUmetnikMenu"></div>
-          </div>
+        </div>
+
+        <div class="port-gallery-scroll">
+          <div class="port-grid" id="portGrid"></div>
+          <div class="empty-state" id="portEmpty" style="display:none;">Nema radova za izabrane filtere.</div>
         </div>
       </div>
 
-      <div class="port-gallery-scroll">
-        <div class="port-grid" id="portGrid"></div>
-        <div class="empty-state" id="portEmpty" style="display:none;">Nema radova za izabrane filtere.</div>
-      </div>
-
-      <div class="port-compare-panel">
-        <div class="compare-title">📊 Statistika i poređenje umetnika</div>
-        <div class="compare-hint">Izaberi do dva umetnika za poređenje</div>
-        <div class="artist-chip-row" id="artistChipRow"></div>
-        <div class="compare-grid" id="compareGrid"></div>
+      <div class="stat-tab-panel" id="portTabStatistika">
+        <div class="port-compare-panel">
+          <div class="compare-title">📊 Statistika i poređenje zaposlenih</div>
+          <div class="compare-hint">Izaberi do dva zaposlena za poređenje</div>
+          <div class="artist-chip-row" id="artistChipRow"></div>
+          <div class="compare-grid" id="compareGrid"></div>
+        </div>
       </div>
 
     </div>
@@ -2639,74 +2644,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   </div>
 </div>
 
-<div class="modal-overlay" id="portModalOverlay">
-  <div class="modal-card">
-    <div class="modal-title" id="portTitle">Novi rad</div>
-    <div class="modal-field">
-      <label>Naziv rada</label>
-      <input type="text" id="portNameInput" placeholder="npr. Eksterijer — Glavna fasada">
-    </div>
-    <div class="modal-field">
-      <label>Projekat</label>
-      <input type="text" id="portProjectInput" placeholder="npr. Vila Sunčana Padina">
-    </div>
-    <div class="modal-field">
-      <label>Kod projekta</label>
-      <input type="text" id="portCodeInput" placeholder="npr. P2026-104">
-    </div>
-    <div class="modal-field">
-      <label>Klijent</label>
-      <input type="text" id="portClientInput" placeholder="npr. Gensler Dubai">
-    </div>
-    <div class="modal-field">
-      <label>Umetnik</label>
-      <select id="portArtistInput">
-        <option value="Dušan Stević">Dušan Stević</option>
-        <option value="Stefana Ristić">Stefana Ristić</option>
-        <option value="Radoslav Milanović">Radoslav Milanović</option>
-        <option value="Dalibor Mitić">Dalibor Mitić</option>
-        <option value="Katarina Đorđević">Katarina Đorđević</option>
-        <option value="Aleksandra Vukašinović">Aleksandra Vukašinović</option>
-        <option value="Mihajlo Nagradić">Mihajlo Nagradić</option>
-        <option value="Nikola Jovanović">Nikola Jovanović</option>
-        <option value="Anđela Pešić">Anđela Pešić</option>
-        <option value="Marija Todorović">Marija Todorović</option>
-        <option value="Ana Krstić">Ana Krstić</option>
-        <option value="Miljana Cvetković">Miljana Cvetković</option>
-        <option value="Miloš Tasić">Miloš Tasić</option>
-        <option value="Ivana Sazdov">Ivana Sazdov</option>
-        <option value="Lazar Pešić">Lazar Pešić</option>
-        <option value="Damjan Mitrović">Damjan Mitrović</option>
-        <option value="Aleksandar Jovanović">Aleksandar Jovanović</option>
-        <option value="Marija Milenković">Marija Milenković</option>
-      </select>
-    </div>
-    <div class="modal-field">
-      <label>Godina</label>
-      <select id="portYearInput">
-        <option value="2026">2026</option>
-        <option value="2025">2025</option>
-        <option value="2024">2024</option>
-      </select>
-    </div>
-    <div class="modal-field">
-      <label>Tip</label>
-      <select id="portTypeInput">
-        <option value="Render">Render</option>
-        <option value="Animacija">Animacija</option>
-        <option value="Walkthrough">Walkthrough</option>
-        <option value="Print">Print</option>
-        <option value="VR Prikaz">VR Prikaz</option>
-      </select>
-    </div>
-    <div class="modal-actions">
-      <button class="modal-delete" id="portDelete" style="display:none;">Obriši</button>
-      <button class="modal-cancel" id="portCancel">Otkaži</button>
-      <button class="modal-submit" id="portSubmit">Dodaj rad</button>
-    </div>
-  </div>
-</div>
-
 <div class="modal-overlay" id="eventModalOverlay">
   <div class="modal-card">
     <div class="modal-title" id="evTitle">Nova stavka</div>
@@ -2911,12 +2848,14 @@ function fromPersisted(key, arr){
 function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      teamMembers, allTransactions, portfolioItems,
+      teamMembers, allTransactions,
       projectPricing, salaryEntries, events, todoItems, salConfirmedMonths, notifications
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
       // identity fields. projCodeCounter removed — codes are now assigned
       // server-side by a Postgres sequence/trigger (see schema.sql).
+      // portfolioItems removed (Phase 3g) — Portfolio is now derived live from
+      // allProjects/kadrovi (see portfolioEntries()), nothing left to persist.
     }));
   } catch(e){}
 }
@@ -4956,6 +4895,8 @@ document.getElementById('npDelete').addEventListener('click', async ()=>{
   closeProjectModal();
   buildFilterMenus();
   renderProjectsPage();
+  buildPortFilterMenus();
+  renderPortfolioGrid();
 });
 document.getElementById('npSubmit').addEventListener('click', async ()=>{
   const name = document.getElementById('npName').value.trim();
@@ -5211,6 +5152,7 @@ document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
   renderProjectsPage();
+  renderPortfolioGrid();
 });
 
 /* ==== TASK (KADAR) MODAL ==== */
@@ -5316,6 +5258,7 @@ document.getElementById('taskDelete').addEventListener('click', async ()=>{
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
   renderProjectsPage();
+  renderPortfolioGrid();
 });
 document.getElementById('taskSubmit').addEventListener('click', async ()=>{
   const name = document.getElementById('taskName').value.trim();
@@ -5362,6 +5305,8 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
   renderProjectsPage();
+  buildPortFilterMenus();
+  renderPortfolioGrid();
 });
 
 /* ==== ROUND UPLOAD MODAL ==== */
@@ -5448,6 +5393,7 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
   pushNotification(notifRecipientId(proj.managerName), 'round', `Nova ${billable ? 'runda' : 'revizija'} (${label}) dodata za kadar "${kadar.name}" (${kadar.employee}) u projektu ${proj.name}`, proj._id);
   closeRoundModal();
   renderProjectsPage();
+  renderPortfolioGrid();
   if(activeProjectDetailId){ renderProjectDetailStats(); renderProjectDetailKadrovi(); }
 });
 
@@ -5789,48 +5735,47 @@ const artistInitials = {
   "Miloš Tasić":"MT", "Ivana Sazdov":"IS", "Lazar Pešić":"LP", "Damjan Mitrović":"DM",
   "Aleksandar Jovanović":"AJ", "Marija Milenković":"MM"
 };
-const typeColorVar = { "Render":"var(--gold)", "Animacija":"var(--teal)", "Walkthrough":"var(--sky)", "Print":"var(--plum)", "VR Prikaz":"var(--sage)" };
-const typeHours = { "Render":4, "Animacija":10, "Walkthrough":8, "Print":3, "VR Prikaz":12 };
-
-const portfolioItems = [
-  {title:"Eksterijer — Glavna fasada", project:"Projekat Koncept 7", code:"P2026-106", client:"Gensler Dubai", artist:"Dušan Stević", year:2026, type:"Render", seed:1.1},
-  {title:"Noćni eksterijer render", project:"Vila Sunčana Padina", code:"P2026-104", client:"Gensler San Francisco", artist:"Stefana Ristić", year:2026, type:"Render", seed:2.2},
-  {title:"Walkthrough animacija — Prizemlje", project:"Vila Sunčana Padina", code:"P2026-104", client:"Gensler San Francisco", artist:"Radoslav Milanović", year:2026, type:"Animacija", seed:3.3},
-  {title:"Fasadna revizija — Rev02", project:"Poslovni Kompleks Delta", code:"P2026-098", client:"Arvi Studios", artist:"Dalibor Mitić", year:2026, type:"Render", seed:4.4},
-  {title:"Enterijer — Dnevna soba", project:"Rezidencija Javor", code:"P2026-092", client:"Rilea Group", artist:"Katarina Đorđević", year:2026, type:"Render", seed:5.5},
-  {title:"Drone walkthrough", project:"Hotel Panorama", code:"P2026-087", client:"Growcott Freer", artist:"Aleksandra Vukašinović", year:2026, type:"Walkthrough", seed:6.6},
-  {title:"Ptičja perspektiva — Kompleks", project:"Stambeni Blok Riva", code:"P2026-081", client:"One World Properties", artist:"Mihajlo Nagradić", year:2026, type:"Render", seed:7.7},
-  {title:"Print materijal — Brošura", project:"Enterijer Penthouse K", code:"P2025-076", client:"Woods Bagot", artist:"Nikola Jovanović", year:2025, type:"Print", seed:8.8},
-  {title:"Konceptualni render", project:"Poslovna Zgrada Vertex", code:"P2025-134", client:"One Line Design", artist:"Anđela Pešić", year:2025, type:"Render", seed:9.9},
-  {title:"Finalni render — Enterijer", project:"Vikendica Zlatibor", code:"P2025-120", client:"Woods Bagot", artist:"Marija Todorović", year:2025, type:"Render", seed:1.5},
-  {title:"Dan/noć animacija", project:"Šoping Centar Aurora", code:"P2025-101", client:"Southern Land Company", artist:"Ana Krstić", year:2025, type:"Animacija", seed:2.5},
-  {title:"Predajni set — Fasada", project:"Rezidencijalni Kompleks Nova", code:"P2024-088", client:"Arvi Studios", artist:"Miljana Cvetković", year:2024, type:"Render", seed:3.5},
-  {title:"Enterijer walkthrough", project:"Apartman Studio M", code:"P2024-054", client:"Woods Bagot", artist:"Miloš Tasić", year:2024, type:"Walkthrough", seed:4.5},
-  {title:"VR prikaz — Showroom", project:"Projekat Koncept 7", code:"P2026-106", client:"Gensler Dubai", artist:"Ivana Sazdov", year:2026, type:"VR Prikaz", seed:5.9},
-];
-portfolioItems.forEach(p=>p._id=nextId());
-fromPersisted('portfolioItems', portfolioItems);
+const kadarTypeColorVar = {
+  enterijer:"var(--gold)", eksterijer:"var(--teal)", aerial:"var(--sky)", animacija:"var(--coral)",
+  Navi:"var(--plum)", VR:"var(--sage)", model:"var(--gold-deep)", ostalo:"var(--ink-faint)"
+};
+/* Portfolio is derived directly from real kadrovi across allProjects — every
+   render/task ever entered on a project doubles as a portfolio entry, so
+   there's nothing to manually add/edit here (see Phase 3g note: this used
+   to be a hand-curated mock array of 14 fake works with fake project codes,
+   completely disconnected from the studio's real project history). */
+function portfolioEntries(){
+  return allProjects.flatMap(p=>p.kadrovi.map(k=>{
+    const lastImg = k.rounds && k.rounds.length ? [...k.rounds].reverse().find(r=>r.image) : null;
+    return {
+      _id: k._id, title: k.name, project: p.name, code: p.code, client: p.client,
+      artist: k.employee, year: p.year, type: k.type, status: k.status,
+      image: lastImg ? lastImg.image : null, seedNum: k._id
+    };
+  }));
+}
 
 const portFilters = { godina:"Sve godine", tip:"Svi tipovi", klijent:"Svi klijenti", projekat:"Svi projekti", umetnik:"Svi zaposleni" };
 let compareSelection = ["Dušan Stević","Stefana Ristić"];
 
 function buildPortFilterMenus(){
-  const years = uniqueSorted(portfolioItems.map(p=>p.year)).reverse();
-  const types = uniqueSorted(portfolioItems.map(p=>p.type));
-  const clients = uniqueSorted(portfolioItems.map(p=>p.client));
-  const projects = uniqueSorted(portfolioItems.map(p=>p.project));
-  const artists = uniqueSorted(portfolioItems.map(p=>p.artist));
+  const entries = portfolioEntries();
+  const years = uniqueSorted(entries.map(p=>p.year)).reverse();
+  const types = uniqueSorted(entries.map(p=>p.type));
+  const clients = uniqueSorted(entries.map(p=>p.client));
+  const projects = uniqueSorted(entries.map(p=>p.project));
+  const artists = uniqueSorted(entries.map(p=>p.artist));
 
   document.getElementById('pfGodinaMenu').innerHTML = `<div class="cal-filter-item" data-val="Sve godine">Sve godine</div>` +
     years.map(y=>`<div class="cal-filter-item" data-val="${y}">${y}</div>`).join('');
   document.getElementById('pfTipMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi tipovi">Svi tipovi</div>` +
-    types.map(t=>`<div class="cal-filter-item" data-val="${t}"><span class="cal-filter-dot" style="background:${typeColorVar[t]}"></span>${t}</div>`).join('');
+    types.map(t=>`<div class="cal-filter-item" data-val="${t}"><span class="cal-filter-dot" style="background:${kadarTypeColorVar[t]||'var(--ink-faint)'}"></span>${t}</div>`).join('');
   document.getElementById('pfKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
     clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
   document.getElementById('pfProjekatMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi projekti">Svi projekti</div>` +
     projects.map(p=>`<div class="cal-filter-item" data-val="${p}">${p}</div>`).join('');
   document.getElementById('pfUmetnikMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi zaposleni">Svi zaposleni</div>` +
-    artists.map(a=>`<div class="cal-filter-item" data-val="${a}"><span class="cal-filter-dot" style="background:${artistColors[a]}"></span>${a}</div>`).join('');
+    artists.map(a=>`<div class="cal-filter-item" data-val="${a}"><span class="cal-filter-dot" style="background:${artistColors[a]||'var(--ink-faint)'}"></span>${a}</div>`).join('');
 
   document.querySelectorAll('#pfGodina, #pfTip, #pfKlijent, #pfProjekat, #pfUmetnik').forEach(f=>{
     const btn = f.querySelector('.cal-filter-btn');
@@ -5857,13 +5802,13 @@ function buildPortFilterMenus(){
 }
 
 function filteredPortfolio(){
-  return portfolioItems.filter(p=>
+  return portfolioEntries().filter(p=>
     (portFilters.godina==="Sve godine" || String(p.year)===String(portFilters.godina)) &&
     (portFilters.tip==="Svi tipovi" || p.type===portFilters.tip) &&
     (portFilters.klijent==="Svi klijenti" || p.client===portFilters.klijent) &&
     (portFilters.projekat==="Svi projekti" || p.project===portFilters.projekat) &&
     (portFilters.umetnik==="Svi zaposleni" || p.artist===portFilters.umetnik)
-  );
+  ).sort((a,b)=> (parseInt((b.code||'').replace(/\D/g,''),10)||0) - (parseInt((a.code||'').replace(/\D/g,''),10)||0));
 }
 
 function renderPortfolioGrid(){
@@ -5874,8 +5819,8 @@ function renderPortfolioGrid(){
 
   document.getElementById('portGrid').innerHTML = list.map(p=>`
     <div class="port-card" data-id="${p._id}" style="cursor:pointer;">
-      <div class="port-thumb" style="${thumbStyle(p.seed,320)}">
-        <div class="port-type-badge">${p.type}</div>
+      <div class="port-thumb" style="${p.image ? `background-image:url('${p.image}');background-size:cover;background-position:center;` : thumbStyle(p.seedNum,320)}">
+        <div class="port-type-badge">${escapeHtml(p.type)}</div>
         <div class="vfc tl"></div><div class="vfc br"></div>
       </div>
       <div class="port-body">
@@ -5890,21 +5835,11 @@ function renderPortfolioGrid(){
 
   document.querySelectorAll('#portGrid .port-card').forEach(el=>{
     el.addEventListener('click', ()=>{
-      const item = portfolioItems.find(x=>x._id===Number(el.dataset.id));
-      if(item) openPortModal(item);
+      const item = filteredPortfolio().find(x=>x._id===Number(el.dataset.id));
+      const proj = item && allProjects.find(x=>x.code===item.code);
+      if(proj) openProjectDetail(proj);
     });
   });
-}
-
-function artistStats(name){
-  const items = portfolioItems.filter(p=>p.artist===name);
-  const byType = {};
-  items.forEach(p=>{ byType[p.type] = (byType[p.type]||0) + 1; });
-  const hours = items.reduce((sum,p)=> sum + (typeHours[p.type]||0), 0);
-  const clientCounts = {};
-  items.forEach(p=>{ clientCounts[p.client] = (clientCounts[p.client]||0) + 1; });
-  const topClient = Object.entries(clientCounts).sort((a,b)=>b[1]-a[1])[0];
-  return { total: items.length, byType, hours, topClient: topClient ? topClient[0] : "—" };
 }
 
 function renderArtistChips(){
@@ -5929,104 +5864,26 @@ function renderArtistChips(){
   });
 }
 
-function compareCardHTML(name){
-  if(!name){
-    return `<div class="empty-state" style="padding:30px 10px;">Izaberi umetnika</div>`;
-  }
-  const s = artistStats(name);
-  const types = Object.keys(typeColorVar);
-  const stackSegs = types.filter(t=>s.byType[t]).map(t=>
-    `<div class="cc-stack-seg" style="width:${(s.byType[t]/Math.max(s.total,1))*100}%; background:${typeColorVar[t]}"></div>`
-  ).join('');
-  const legend = types.filter(t=>s.byType[t]).map(t=>`
-    <div class="cc-legend-item">
-      <span class="cc-legend-left"><span class="cc-legend-dot" style="background:${typeColorVar[t]}"></span>${t}</span>
-      <span>${s.byType[t]}</span>
-    </div>`).join('');
-  return `
-    <div class="cc-artist-head">
-      <div class="cc-artist-avatar" style="${avatarBgInner(name).bg}">${avatarBgInner(name).inner}</div>
-      <div><div class="cc-artist-name">${name}</div><div class="cc-artist-role">Umetnik</div></div>
-    </div>
-    <div class="cc-stack">${stackSegs}</div>
-    <div class="cc-legend">${legend}</div>
-    <div class="cc-metrics">
-      <div class="cc-metric"><div class="cc-metric-val">${s.total}</div><div class="cc-metric-label">Ukupno radova</div></div>
-      <div class="cc-metric"><div class="cc-metric-val">${s.hours}h</div><div class="cc-metric-label">Procenjeni sati</div></div>
-      <div class="cc-metric" style="grid-column:1 / -1;"><div class="cc-metric-val" style="font-size:13px;">${s.topClient}</div><div class="cc-metric-label">Najčešći klijent</div></div>
-    </div>`;
-}
-
+/* Reuses Statistika's real-data person card (empKadarStats/personProductionCardHTML,
+   pulling from allKadrovi() — the actual renders entered on real projects) instead of
+   the old mock-portfolio-only artistStats/compareCardHTML pair. */
 function renderCompare(){
   document.getElementById('compareGrid').innerHTML = `
-    <div>${compareCardHTML(compareSelection[0])}</div>
+    <div>${personProductionCardHTML(compareSelection[0])}</div>
     <div class="compare-vs">VS</div>
-    <div>${compareCardHTML(compareSelection[1])}</div>`;
+    <div>${personProductionCardHTML(compareSelection[1])}</div>`;
 }
-
-const portModalOverlay = document.getElementById('portModalOverlay');
-let editingPortId = null;
-function closePortModal(){
-  portModalOverlay.classList.remove('open');
-  editingPortId = null;
-}
-function openPortModal(item){
-  editingPortId = item._id;
-  document.getElementById('portTitle').textContent = "Izmeni rad";
-  document.getElementById('portSubmit').textContent = "Sačuvaj";
-  document.getElementById('portDelete').style.display = 'block';
-  document.getElementById('portNameInput').value = item.title;
-  document.getElementById('portProjectInput').value = item.project;
-  document.getElementById('portCodeInput').value = item.code;
-  document.getElementById('portClientInput').value = item.client;
-  document.getElementById('portArtistInput').value = item.artist;
-  document.getElementById('portYearInput').value = String(item.year);
-  document.getElementById('portTypeInput').value = item.type;
-  portModalOverlay.classList.add('open');
-}
-document.getElementById('newPortBtn').addEventListener('click', ()=>{
-  editingPortId = null;
-  document.getElementById('portTitle').textContent = "Novi rad";
-  document.getElementById('portSubmit').textContent = "Dodaj rad";
-  document.getElementById('portDelete').style.display = 'none';
-  ['portNameInput','portProjectInput','portCodeInput','portClientInput'].forEach(id=>document.getElementById(id).value='');
-  portModalOverlay.classList.add('open');
-});
-document.getElementById('portCancel').addEventListener('click', closePortModal);
-wireOverlayClose(portModalOverlay, closePortModal);
-document.getElementById('portDelete').addEventListener('click', ()=>{
-  if(!editingPortId) return;
-  if(!confirm('Obrisati ovaj rad iz portfolija?')) return;
-  const idx = portfolioItems.findIndex(p=>p._id===editingPortId);
-  if(idx>-1) portfolioItems.splice(idx,1);
-  closePortModal();
-  buildPortFilterMenus();
-  renderPortfolioGrid();
-  persist();
-});
-document.getElementById('portSubmit').addEventListener('click', ()=>{
-  const title = document.getElementById('portNameInput').value.trim();
-  if(!title) return;
-  const project = document.getElementById('portProjectInput').value.trim() || "—";
-  const code = document.getElementById('portCodeInput').value.trim() || "—";
-  const client = document.getElementById('portClientInput').value.trim() || "—";
-  const artist = document.getElementById('portArtistInput').value;
-  const year = parseInt(document.getElementById('portYearInput').value);
-  const type = document.getElementById('portTypeInput').value;
-
-  if(editingPortId){
-    const item = portfolioItems.find(p=>p._id===editingPortId);
-    if(item) Object.assign(item, {title, project, code, client, artist, year, type});
-  } else {
-    portfolioItems.unshift({_id:nextId(), title, project, code, client, artist, year, type, seed: Math.random()*10});
-  }
-  closePortModal();
-  buildPortFilterMenus();
-  renderPortfolioGrid();
-  persist();
-});
 
 buildPortFilterMenus();
+
+document.querySelectorAll('#view-portfolio .stat-tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#view-portfolio .stat-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('#view-portfolio .stat-tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.porttab==='galerija' ? 'portTabGalerija' : 'portTabStatistika').classList.add('active');
+  });
+});
 
 function animateCountUp(el, target, opts={}){
   const duration = opts.duration || 1100;
@@ -6048,10 +5905,6 @@ const monthNamesFull = ["Januar","Februar","Mart","April","Maj","Jun","Jul","Avg
 const monthNamesShort = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg","Sep","Okt","Nov","Dec"];
 
 /* ==== STATISTIKA — real-data helpers (kadrovi/rounds su izvor istine) ==== */
-const kadarTypeColorVar = {
-  enterijer:"var(--gold)", eksterijer:"var(--teal)", aerial:"var(--sky)", animacija:"var(--coral)",
-  Navi:"var(--plum)", VR:"var(--sage)", model:"var(--gold-deep)", ostalo:"var(--ink-faint)"
-};
 function allKadrovi(){
   return allProjects.flatMap(p=>p.kadrovi.map(k=>({...k, projectCode:p.code, projectName:p.name, client:p.client, projectStartDate:p.startDate})));
 }
@@ -8257,7 +8110,7 @@ function chatbotSearch(query){
     const hay = `${c.name} ${c.contact} ${c.email}`.toLowerCase();
     if(hay.includes(q)) results.push({ icon:'🏢', type:'Klijent', title:c.name, meta:c.contact, action:()=>openClient(c) });
   });
-  portfolioItems.forEach(p=>{
+  portfolioEntries().forEach(p=>{
     const hay = `${p.title} ${p.project} ${p.client} ${p.artist} ${p.type}`.toLowerCase();
     if(hay.includes(q)) results.push({ icon:'🖼️', type:'Portfolio', title:p.title, meta:`${p.type} · ${p.artist}`, action:()=>openPortfolioItem() });
   });
@@ -8981,6 +8834,10 @@ async function resolveSessionLogin(session){
     renderCalendar();
     renderWeekWidget();
     buildFilterMenus();
+    buildPortFilterMenus();
+    renderPortfolioGrid();
+    renderArtistChips();
+    renderCompare();
     const match = teamMembers.find(t=>t.authId===session.user.id);
     _resolvingSessionPromise = null;
     if(!match) return false;
