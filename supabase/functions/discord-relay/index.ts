@@ -12,11 +12,13 @@
 // Phase 3f: the studio runs one Discord channel per project, so the
 // trigger looks up that project's own webhook URL (projects.discord_webhook_url,
 // set through the project's edit form in the app) and passes it as
-// `webhook_url` in the body — this function posts there instead of the
-// single DISCORD_WEBHOOK_URL secret whenever one is provided, falling
-// back to that secret as a general channel otherwise.
+// `webhook_url` in the body — this function posts there.
+// Phase 3g: dropped the DISCORD_WEBHOOK_URL fallback-to-a-single-shared-
+// channel behavior — it meant every project without its own webhook
+// configured silently posted into whatever channel that secret happened
+// to point at (surprising and confusing once there were dozens of
+// projects). A project with no webhook set now just gets skipped.
 
-const DISCORD_WEBHOOK_URL = Deno.env.get("DISCORD_WEBHOOK_URL") ?? "";
 const DB_WEBHOOK_SECRET = Deno.env.get("DB_WEBHOOK_SECRET") ?? "";
 
 function jsonResponse(body: unknown, status: number) {
@@ -49,11 +51,10 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, skipped: true }, 200);
   }
 
-  const targetUrl = (typeof payload.webhook_url === "string" && payload.webhook_url) || DISCORD_WEBHOOK_URL;
+  const targetUrl = typeof payload.webhook_url === "string" ? payload.webhook_url : "";
   if (!targetUrl) {
-    // No per-project channel set and no general fallback configured —
-    // nothing to do, but not an error (most projects won't have a
-    // channel wired up yet).
+    // This project has no Discord channel configured — skip rather than
+    // posting into some unrelated shared channel (see Phase 3g note above).
     return jsonResponse({ ok: true, skipped: true, reason: "no webhook url" }, 200);
   }
 
