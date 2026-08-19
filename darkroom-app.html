@@ -999,12 +999,12 @@ select.native-select-hidden{ display:none; }
 .notif-unread{ background:rgba(198,145,40,0.07); border-radius:10px; margin:0 -8px; padding:9px 8px; border-bottom-color:transparent; }
 .notif-unread + .notif-unread{ margin-top:2px; }
 
-/* ---- Dashboard AI assistant panel (replaces the old Fokus Tracker) ---- */
-.dash-chat{ display:flex; flex-direction:column; padding:0; overflow:hidden; }
-.dash-chat .panel-head{ padding:15px 18px 12px; }
-.dash-chat-body{ height:210px; padding:4px 18px 6px; }
-.dash-chat .chat-suggest-row{ padding:2px 18px 10px; }
-.dash-chat .chat-input-row{ padding:12px 18px; border-top:1px solid var(--border); background:transparent; }
+/* ---- Dashboard mini-game panel (replaces the old Fokus Tracker / embedded chat) ---- */
+.dash-game{ display:flex; flex-direction:column; padding:0; overflow:hidden; }
+.dash-game .panel-head{ padding:15px 18px 12px; }
+.dino-wrap{ position:relative; flex:1; min-height:150px; margin:0 18px 18px; border-radius:12px; background:var(--card-soft); overflow:hidden; cursor:pointer; }
+.dino-wrap canvas{ display:block; width:100%; height:100%; }
+.dino-overlay{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; padding:0 16px; font-family:var(--font-mono); font-size:10.5px; line-height:1.5; color:var(--ink-dim); }
 
 /* ---- Zadaci & Beleske ---- */
 .todo-scroll{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
@@ -1451,15 +1451,14 @@ select.native-select-hidden{ display:none; }
         </div>
       </div>
 
-      <div class="panel dash-chat">
+      <div class="panel dash-game">
         <div class="panel-head">
-          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>DARKROOM Asistent</div>
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="7" width="20" height="11" rx="4"/><path d="M8 10.5v4M6 12.5h4"/><circle cx="16" cy="11.5" r="1"/><circle cx="18.5" cy="14" r="1"/></svg>Predah</div>
+          <div class="panel-sub" id="dinoScoreSub">Skor: 0</div>
         </div>
-        <div class="chat-body dash-chat-body" id="dashChatBody"></div>
-        <div class="chat-suggest-row" id="dashChatSuggestRow"></div>
-        <div class="chat-input-row">
-          <input type="text" id="dashChatInput" placeholder="Pitaj o projektima, klijentima...">
-          <button id="dashChatSend"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg></button>
+        <div class="dino-wrap">
+          <canvas id="dinoCanvas"></canvas>
+          <div class="dino-overlay" id="dinoOverlay">Klikni ili pritisni SPACE za start</div>
         </div>
       </div>
     </div>
@@ -8055,16 +8054,13 @@ function renderChatMessages(){
           <span class="chat-result-type">${r.type}</span>
         </div>`).join('')}</div>` : ''}
     </div>`).join('');
-  ['chatBody','dashChatBody'].forEach(id=>{
-    const body = document.getElementById(id);
-    if(!body) return;
-    body.innerHTML = html;
-    body.scrollTop = body.scrollHeight;
-    body.querySelectorAll('.chat-result-card').forEach(card=>{
-      card.addEventListener('click', ()=>{
-        const mi = parseInt(card.dataset.msg), ri = parseInt(card.dataset.ri);
-        chatMessages[mi].results[ri].action();
-      });
+  const body = document.getElementById('chatBody');
+  body.innerHTML = html;
+  body.scrollTop = body.scrollHeight;
+  body.querySelectorAll('.chat-result-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const mi = parseInt(card.dataset.msg), ri = parseInt(card.dataset.ri);
+      chatMessages[mi].results[ri].action();
     });
   });
 }
@@ -8089,17 +8085,112 @@ function sendChatFrom(input){
 }
 document.getElementById('chatSend').addEventListener('click', ()=> sendChatFrom(document.getElementById('chatInput')));
 document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChatFrom(document.getElementById('chatInput')); });
-document.getElementById('dashChatSend').addEventListener('click', ()=> sendChatFrom(document.getElementById('dashChatInput')));
-document.getElementById('dashChatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChatFrom(document.getElementById('dashChatInput')); });
 
 const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Workflow standardi"];
-['chatSuggestRow','dashChatSuggestRow'].forEach(id=>{
-  const row = document.getElementById(id);
+(function(){
+  const row = document.getElementById('chatSuggestRow');
   row.innerHTML = chatSuggestions.map(s=>`<div class="chat-suggest-chip">${s}</div>`).join('');
   row.querySelectorAll('.chat-suggest-chip').forEach(chip=>{
     chip.addEventListener('click', ()=> runChatSearch(chip.textContent));
   });
-});
+})();
+
+/* ==== Dashboard "Predah" — mala Dino Runner igra (canvas), zamena za
+   Fokus Tracker/ugrađenog asistenta. Čisto vizuelna razonoda, ne čuva se
+   nigde osim najboljeg skora u localStorage. ==== */
+(function(){
+  const canvas = document.getElementById('dinoCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const wrap = canvas.parentElement;
+  const overlay = document.getElementById('dinoOverlay');
+  const scoreSub = document.getElementById('dinoScoreSub');
+  let running = false, dead = false, score = 0;
+  let best = Number(localStorage.getItem('dinoBest') || 0);
+  let dino, obstacles, groundY, speed, frame;
+  const gravity = 0.6;
+
+  function cssVar(name, fallback){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function resize(){
+    canvas.width = wrap.clientWidth;
+    canvas.height = wrap.clientHeight;
+    groundY = canvas.height - 18;
+  }
+  window.addEventListener('resize', resize);
+
+  function reset(){
+    resize();
+    dino = { x:20, y:groundY-22, w:18, h:22, vy:0, jumping:false };
+    obstacles = [];
+    speed = 4.2;
+    score = 0;
+    frame = 0;
+    dead = false;
+  }
+  function start(){
+    reset();
+    running = true;
+    overlay.style.display = 'none';
+    requestAnimationFrame(loop);
+  }
+  function endGame(){
+    running = false;
+    dead = true;
+    best = Math.max(best, Math.floor(score));
+    localStorage.setItem('dinoBest', String(best));
+    overlay.innerHTML = `Kraj — skor ${Math.floor(score)} · rekord ${best}<br>Klikni za restart`;
+    overlay.style.display = 'flex';
+  }
+  function jump(){
+    if(dead || !running){ start(); return; }
+    if(!dino.jumping){ dino.vy = -10; dino.jumping = true; }
+  }
+  function draw(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = cssVar('--border', '#ddd');
+    ctx.fillRect(0, groundY, canvas.width, 2);
+    ctx.fillStyle = cssVar('--ink', '#333');
+    ctx.fillRect(dino.x, dino.y, dino.w, dino.h);
+    ctx.fillStyle = cssVar('--coral', '#c66');
+    obstacles.forEach(o=> ctx.fillRect(o.x, groundY-o.h, o.w, o.h));
+  }
+  function loop(){
+    if(!running) return;
+    frame++;
+    dino.vy += gravity;
+    dino.y += dino.vy;
+    if(dino.y > groundY-dino.h){ dino.y = groundY-dino.h; dino.vy = 0; dino.jumping = false; }
+    if(frame % Math.max(38, 85-Math.floor(speed*3)) === 0){
+      obstacles.push({ x:canvas.width, w:8+Math.random()*8, h:14+Math.random()*14 });
+    }
+    obstacles.forEach(o=> o.x -= speed);
+    obstacles = obstacles.filter(o=> o.x+o.w > 0);
+    for(const o of obstacles){
+      if(dino.x < o.x+o.w && dino.x+dino.w > o.x && dino.y+dino.h > groundY-o.h){ endGame(); break; }
+    }
+    score += speed*0.05;
+    speed += 0.0015;
+    scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`;
+    draw();
+    if(running) requestAnimationFrame(loop);
+  }
+
+  resize();
+  scoreSub.textContent = `Skor: 0 · rekord ${best}`;
+  overlay.addEventListener('click', jump);
+  document.addEventListener('keydown', e=>{
+    if(e.code !== 'Space') return;
+    const tag = document.activeElement && document.activeElement.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const pregled = document.getElementById('view-pregled');
+    if(!pregled || !pregled.classList.contains('active')) return;
+    e.preventDefault();
+    jump();
+  });
+})();
 
 pushChatMessage('bot', "Zdravo! 👋 Mogu da pretražim projekte, klijente, portfolio, DR Playbook i tim. Šta tražiš?");
 
