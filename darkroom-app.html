@@ -685,6 +685,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ac-avatar{ width:24px; height:24px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:9px; color:#fff; flex-shrink:0; }
 .ac-name{ font-size:11.5px; font-weight:600; }
 
+/* Vs. tab employee picker — same bordered-card-grid convention as the
+   Finansije→Plate employee grid (.sal-emp-grid/.sal-emp-card), so people
+   line up in even rows instead of the ragged wrap a pill row produces. */
+#cmpGodina .cal-filter-menu{ left:0; right:auto; }
+.cmp-emp-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:10px; margin-bottom:24px; }
+.cmp-emp-card{ display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:14px; border:2px solid var(--border); background:var(--card); cursor:pointer; transition:border-color .15s ease, background .15s ease; }
+.cmp-emp-card:hover{ border-color:var(--gold-soft); }
+.cmp-emp-card.selected{ border-color:var(--gold); background:var(--gold-soft); }
+.cmp-emp-avatar{ width:32px; height:32px; border-radius:11px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:11px; color:#fff; flex-shrink:0; }
+.cmp-emp-name{ font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
 .task-emp-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:9px; margin-bottom:6px; }
 .task-emp-card{ display:flex; align-items:center; gap:10px; padding:9px 11px; border-radius:14px; border:2px solid var(--border); background:var(--card); cursor:pointer; transition:border-color .15s ease, background .15s ease; text-align:left; }
 .task-emp-card:hover{ border-color:var(--gold-soft); }
@@ -713,19 +724,52 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cc-metric-val{ font-family:var(--font-display); font-weight:700; font-size:17px; }
 .cc-metric-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; margin-top:2px; }
 
-.cc-card-wrap{ position:relative; border-radius:16px; }
-.cc-crown{ position:absolute; top:-16px; left:50%; font-size:26px; z-index:5; transform:translateX(-50%) scale(0) rotate(-15deg); animation:crownPop .55s cubic-bezier(.34,1.56,.64,1) .15s forwards; filter:drop-shadow(0 4px 8px rgba(70,55,20,0.35)); }
+/* Each side of the comparison gets its own card shell (instead of floating
+   loose on the shared panel background) so the two people read as visually
+   separate, with a thin top bar in their own artist color as the divider. */
+.cc-card-wrap{ position:relative; border-radius:16px; background:var(--card-soft); border:1px solid var(--border); padding:20px 18px 18px; border-top:4px solid var(--cc-accent, var(--border)); }
+.cc-crown{ position:absolute; top:-18px; left:50%; font-size:28px; z-index:5; transform:translateX(-50%) scale(0) rotate(-15deg); animation:crownPop .6s cubic-bezier(.34,1.56,.64,1) .15s forwards, crownBob 1.9s ease-in-out .8s infinite; filter:drop-shadow(0 4px 8px rgba(70,55,20,0.35)); }
 @keyframes crownPop{
   0%{ transform:translateX(-50%) scale(0) rotate(-15deg); }
-  60%{ transform:translateX(-50%) scale(1.3) rotate(10deg); }
+  55%{ transform:translateX(-50%) scale(1.35) rotate(12deg); }
+  75%{ transform:translateX(-50%) scale(0.92) rotate(-6deg); }
   100%{ transform:translateX(-50%) scale(1) rotate(0deg); }
 }
-.cc-winner{ animation:winnerGlow 1.3s ease-in-out .2s 2; }
+@keyframes crownBob{
+  0%,100%{ transform:translateX(-50%) translateY(0) rotate(0deg); }
+  50%{ transform:translateX(-50%) translateY(-4px) rotate(-4deg); }
+}
+.cc-winner{ animation:winnerPanelPop .5s cubic-bezier(.34,1.56,.64,1) both, winnerGlow 1.6s ease-in-out .5s 2; border-color:var(--gold); }
 .cc-winner .cc-artist-avatar{ box-shadow:0 0 0 3px var(--gold), 0 0 22px -2px var(--gold); }
+@keyframes winnerPanelPop{
+  0%{ transform:scale(0.97); }
+  60%{ transform:scale(1.015); }
+  100%{ transform:scale(1); }
+}
 @keyframes winnerGlow{
   0%,100%{ box-shadow:none; }
   50%{ box-shadow:0 14px 30px -14px rgba(201,140,20,0.55); }
 }
+.confetti-burst{ position:fixed; z-index:500; pointer-events:none; width:0; height:0; }
+.confetti-burst .confetto{ position:absolute; left:0; top:0; width:7px; height:7px; margin-left:-3.5px; margin-top:-3.5px; border-radius:2px; opacity:0; animation:confettoPop 1s cubic-bezier(.2,.8,.3,1) forwards; }
+@keyframes confettoPop{
+  0%{ transform:translate(0,0) scale(0.4) rotate(0deg); opacity:0; }
+  12%{ opacity:1; }
+  100%{ transform:translate(var(--dx),var(--dy)) scale(0.5) rotate(var(--rot)); opacity:0; }
+}
+
+/* Renders-of-selected: two distinct columns (one per person) with a
+   vertical divider, instead of one merged grid — mirrors the compare-grid
+   split above it. */
+.compare-renders-split{ display:grid; grid-template-columns:1fr 1fr; gap:26px; }
+.compare-renders-split.single{ grid-template-columns:1fr; }
+.crs-col{ min-width:0; }
+.crs-col + .crs-col{ border-left:1px solid var(--border); padding-left:26px; }
+.crs-head{ display:flex; align-items:center; gap:9px; margin-bottom:12px; }
+.crs-head-name{ font-family:var(--font-display); font-weight:700; font-size:13px; }
+.crs-head-count{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:1px; }
+.crs-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:12px; }
+@media (max-width:1200px){ .compare-renders-split{ grid-template-columns:1fr; } .crs-col + .crs-col{ border-left:none; padding-left:0; border-top:1px solid var(--border); padding-top:18px; margin-top:4px; } }
 
 @media (max-width:1400px){ .port-grid{ grid-template-columns:repeat(3,1fr); } }
 @media (max-width:1000px){
@@ -1875,15 +1919,27 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <div class="stat-tab-panel" id="portTabStatistika">
         <div class="port-compare-panel">
           <div class="compare-title">🆚 Vs.</div>
-          <div class="compare-hint">Izaberi do dva zaposlena za poređenje</div>
-          <div class="artist-chip-row" id="artistChipRow"></div>
+          <div class="compare-hint">Izaberi do dva zaposlena za poređenje — filtriraj po periodu da poređenje bude pošteno</div>
+          <div class="proj-filters" style="margin-bottom:18px;">
+            <div class="cal-filter" id="cmpGodina">
+              <div class="cal-filter-btn"><span id="cmpGodinaLabel">Sve godine</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="cmpGodinaMenu"></div>
+            </div>
+            <div class="cal-filter" id="cmpTip">
+              <div class="cal-filter-btn"><span id="cmpTipLabel">Svi tipovi</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="cmpTipMenu"></div>
+            </div>
+            <div class="cal-filter" id="cmpKlijent">
+              <div class="cal-filter-btn"><span id="cmpKlijentLabel">Svi klijenti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
+              <div class="cal-filter-menu" id="cmpKlijentMenu"></div>
+            </div>
+          </div>
+          <div class="cmp-emp-grid" id="artistChipRow"></div>
           <div class="compare-grid" id="compareGrid"></div>
         </div>
         <div class="port-compare-panel" id="compareRendersWrap" style="margin-top:16px; display:none;">
           <div class="compare-title">🖼️ Renderi selektovanih</div>
-          <div class="compare-hint" id="compareRendersHint"></div>
-          <div class="port-grid" id="compareRendersGrid"></div>
-          <div class="empty-state" id="compareRendersEmpty" style="display:none;">Nema unetih radova za izabrane zaposlene.</div>
+          <div class="compare-renders-split" id="compareRendersSplit"></div>
         </div>
       </div>
 
@@ -4921,6 +4977,7 @@ document.getElementById('npDelete').addEventListener('click', async ()=>{
   buildFilterMenus();
   renderProjectsPage();
   buildPortFilterMenus();
+  buildCompareFilterMenus();
   renderPortfolioGrid();
 });
 document.getElementById('npSubmit').addEventListener('click', async ()=>{
@@ -5331,6 +5388,7 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
   renderProjectDetailKadrovi();
   renderProjectsPage();
   buildPortFilterMenus();
+  buildCompareFilterMenus();
   renderPortfolioGrid();
 });
 
@@ -5769,18 +5827,18 @@ const kadarTypeColorVar = {
    there's nothing to manually add/edit here (see Phase 3g note: this used
    to be a hand-curated mock array of 14 fake works with fake project codes,
    completely disconnected from the studio's real project history). Only
-   kadrovi with at least one actual round entered count as "in the
-   portfolio" — a kadar with zero rounds has nothing to show but a
-   placeholder thumbnail, which isn't real portfolio work yet. */
+   kadrovi with an actual uploaded round image count as "in the portfolio" —
+   no generated stock-photo placeholders here, ever; a kadar with rounds but
+   no uploaded image yet just isn't shown until someone uploads one. */
 function portfolioEntries(){
-  return allProjects.flatMap(p=>p.kadrovi.filter(k=>k.rounds && k.rounds.length>0).map(k=>{
-    const lastImg = [...k.rounds].reverse().find(r=>r.image);
+  return allProjects.flatMap(p=>p.kadrovi.map(k=>{
+    const lastImg = k.rounds && [...k.rounds].reverse().find(r=>r.image);
+    if(!lastImg) return null;
     return {
       _id: k._id, title: k.name, project: p.name, code: p.code, client: p.client,
-      artist: k.employee, year: p.year, type: k.type, status: k.status,
-      image: lastImg ? lastImg.image : null, seedNum: k._id
+      artist: k.employee, year: p.year, type: k.type, status: k.status, image: lastImg.image
     };
-  }));
+  }).filter(Boolean));
 }
 
 const portFilters = { godina:"Sve godine", tip:"Svi tipovi", klijent:"Svi klijenti", projekat:"Svi projekti", umetnik:"Svi zaposleni" };
@@ -5842,7 +5900,7 @@ function filteredPortfolio(){
 function portCardHTML(p){
   return `
     <div class="port-card" data-id="${p._id}" style="cursor:pointer;">
-      <div class="port-thumb" style="${p.image ? `background-image:url('${p.image}');background-size:cover;background-position:center;` : thumbStyle(p.seedNum,320)}">
+      <div class="port-thumb" style="background-image:url('${p.image}');background-size:cover;background-position:center;">
         <div class="port-type-badge">${escapeHtml(p.type)}</div>
         <div class="vfc tl"></div><div class="vfc br"></div>
       </div>
@@ -5880,11 +5938,11 @@ function renderPortfolioGrid(){
 function renderArtistChips(){
   const artists = Object.keys(artistGrad).sort((a,b)=>a.localeCompare(b));
   document.getElementById('artistChipRow').innerHTML = artists.map(a=>{ const av = avatarBgInner(a); return `
-    <div class="artist-chip ${compareSelection.includes(a)?'selected':''}" data-artist="${a}">
-      <span class="ac-avatar" style="${av.bg}">${av.inner}</span>
-      <span class="ac-name">${a}</span>
+    <div class="cmp-emp-card ${compareSelection.includes(a)?'selected':''}" data-artist="${a}">
+      <span class="cmp-emp-avatar" style="${av.bg}">${av.inner}</span>
+      <span class="cmp-emp-name">${escapeHtml(a)}</span>
     </div>`; }).join('');
-  document.querySelectorAll('.artist-chip').forEach(chip=>{
+  document.querySelectorAll('#artistChipRow .cmp-emp-card').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       const a = chip.dataset.artist;
       if(compareSelection.includes(a)){
@@ -5899,43 +5957,139 @@ function renderArtistChips(){
   });
 }
 
-/* Reuses Statistika's real-data person card (empKadarStats/personProductionCardHTML,
-   pulling from allKadrovi() — the actual renders entered on real projects) instead of
-   the old mock-portfolio-only artistStats/compareCardHTML pair. */
-function renderCompare(){
-  const [a,b] = compareSelection;
-  const sa = a ? empKadarStats(a) : null;
-  const sb = b ? empKadarStats(b) : null;
-  let winner = null;
-  if(a && b && sa.total !== sb.total) winner = sa.total > sb.total ? a : b;
-  const cardWrap = (name)=> `
-    <div class="cc-card-wrap ${name && name===winner ? 'cc-winner' : ''}">
-      ${name && name===winner ? '<div class="cc-crown">👑</div>' : ''}
-      ${personProductionCardHTML(name)}
-    </div>`;
-  document.getElementById('compareGrid').innerHTML = `
-    ${cardWrap(a)}
-    <div class="compare-vs">VS</div>
-    ${cardWrap(b)}`;
-  renderCompareRenders();
+/* Comparison has its own godina/tip/klijent filters (separate from Galerija's
+   portFilters) — otherwise whoever's been at the studio longest always wins
+   on raw totals, which isn't a fair "ko je bolji" comparison. */
+const compareFilters = { godina:"Sve godine", tip:"Svi tipovi", klijent:"Svi klijenti" };
+function compareKadrovi(name){
+  return allProjects.flatMap(p=>p.kadrovi.filter(k=>k.employee===name).map(k=>({...k, year:p.year, client:p.client, projectCode:p.code})));
+}
+function compareStats(name){
+  let mine = compareKadrovi(name);
+  if(compareFilters.godina!=="Sve godine") mine = mine.filter(k=>String(k.year)===String(compareFilters.godina));
+  if(compareFilters.tip!=="Svi tipovi") mine = mine.filter(k=>k.type===compareFilters.tip);
+  if(compareFilters.klijent!=="Svi klijenti") mine = mine.filter(k=>k.client===compareFilters.klijent);
+  return computeKadarStats(mine);
+}
+function buildCompareFilterMenus(){
+  const all = allProjects.flatMap(p=>p.kadrovi.map(k=>({...k, year:p.year, client:p.client})));
+  const years = uniqueSorted(all.map(k=>k.year)).reverse();
+  const types = uniqueSorted(all.map(k=>k.type));
+  const clients = uniqueSorted(all.map(k=>k.client));
+
+  document.getElementById('cmpGodinaMenu').innerHTML = `<div class="cal-filter-item" data-val="Sve godine">Sve godine</div>` +
+    years.map(y=>`<div class="cal-filter-item" data-val="${y}">${y}</div>`).join('');
+  document.getElementById('cmpTipMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi tipovi">Svi tipovi</div>` +
+    types.map(t=>`<div class="cal-filter-item" data-val="${t}"><span class="cal-filter-dot" style="background:${kadarTypeColorVar[t]||'var(--ink-faint)'}"></span>${t}</div>`).join('');
+  document.getElementById('cmpKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
+    clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
+
+  document.querySelectorAll('#cmpGodina, #cmpTip, #cmpKlijent').forEach(f=>{
+    const btn = f.querySelector('.cal-filter-btn');
+    btn.onclick = (ev)=>{
+      ev.stopPropagation();
+      const wasOpen = f.classList.contains('open');
+      document.querySelectorAll('.cal-filter').forEach(x=>x.classList.remove('open'));
+      if(!wasOpen) f.classList.add('open');
+    };
+    f.querySelectorAll('.cal-filter-item').forEach(item=>{
+      item.onclick = ()=>{
+        const label = f.querySelector('span[id]');
+        label.textContent = item.dataset.val;
+        f.classList.remove('open');
+        if(f.id==='cmpGodina') compareFilters.godina = item.dataset.val;
+        if(f.id==='cmpTip') compareFilters.tip = item.dataset.val;
+        if(f.id==='cmpKlijent') compareFilters.klijent = item.dataset.val;
+        renderCompare();
+      };
+    });
+  });
 }
 
+function spawnWinnerConfetti(originEl){
+  if(!originEl) return;
+  const rect = originEl.getBoundingClientRect();
+  const wrap = document.createElement('div');
+  wrap.className = 'confetti-burst';
+  wrap.style.left = (rect.left + rect.width/2) + 'px';
+  wrap.style.top = (rect.top + rect.height/2) + 'px';
+  const colors = ['var(--gold)','var(--teal)','var(--coral)','var(--plum)','var(--sky)','var(--sage)'];
+  const n = 12;
+  let html = '';
+  for(let i=0;i<n;i++){
+    const angle = (Math.PI*2*i/n) + (Math.random()*0.5-0.25);
+    const dist = 42 + Math.random()*28;
+    const dx = Math.round(Math.cos(angle)*dist);
+    const dy = Math.round(Math.sin(angle)*dist - 12);
+    const rot = Math.round(Math.random()*360-180);
+    const delay = (Math.random()*0.1).toFixed(2);
+    html += `<div class="confetto" style="background:${colors[i%colors.length]}; --dx:${dx}px; --dy:${dy}px; --rot:${rot}deg; animation-delay:${delay}s;"></div>`;
+  }
+  wrap.innerHTML = html;
+  document.body.appendChild(wrap);
+  setTimeout(()=>wrap.remove(), 1200);
+}
+
+/* Reuses Statistika's real-data person card (personProductionCardHTML), fed with
+   compareStats() (the filtered variant) instead of the plain empKadarStats — so the
+   winner crown reflects the selected godina/tip/klijent filters, not raw all-time totals. */
+function renderCompare(){
+  const [a,b] = compareSelection;
+  const sa = a ? compareStats(a) : null;
+  const sb = b ? compareStats(b) : null;
+  let winner = null;
+  if(a && b && sa.total !== sb.total) winner = sa.total > sb.total ? a : b;
+  const cardWrap = (name, stats)=> `
+    <div class="cc-card-wrap ${name && name===winner ? 'cc-winner' : ''}" style="${name ? `--cc-accent:${artistColors[name]||'var(--border)'};` : ''}">
+      ${name && name===winner ? '<div class="cc-crown">👑</div>' : ''}
+      ${personProductionCardHTML(name, stats)}
+    </div>`;
+  document.getElementById('compareGrid').innerHTML = `
+    ${cardWrap(a, sa)}
+    <div class="compare-vs">VS</div>
+    ${cardWrap(b, sb)}`;
+  renderCompareRenders();
+  if(winner){
+    setTimeout(()=>spawnWinnerConfetti(document.querySelector('.cc-crown')), 550);
+  }
+}
+
+/* Two separate columns (one per person) instead of one merged grid, so the
+   renders stay visually tied to whoever made them — same godina/tip/klijent
+   filters as the stats above, so the list below matches what's being compared. */
 function renderCompareRenders(){
   const wrap = document.getElementById('compareRendersWrap');
-  const gridEl = document.getElementById('compareRendersGrid');
+  const splitEl = document.getElementById('compareRendersSplit');
   if(!compareSelection.length){ wrap.style.display = 'none'; return; }
   wrap.style.display = '';
-  const list = portfolioEntries().filter(p=>compareSelection.includes(p.artist))
-    .sort((a,b)=> (parseInt((b.code||'').replace(/\D/g,''),10)||0) - (parseInt((a.code||'').replace(/\D/g,''),10)||0));
-  document.getElementById('compareRendersHint').textContent =
-    list.length + (list.length===1 ? ' rad' : ' radova') + ' — ' + compareSelection.join(' & ');
-  document.getElementById('compareRendersEmpty').style.display = list.length ? 'none' : 'block';
-  gridEl.style.display = list.length ? 'grid' : 'none';
-  gridEl.innerHTML = list.map(portCardHTML).join('');
-  wirePortCards(gridEl, list);
+  splitEl.classList.toggle('single', compareSelection.length===1);
+
+  const filtered = portfolioEntries().filter(p=>compareSelection.includes(p.artist) &&
+    (compareFilters.godina==="Sve godine" || String(p.year)===String(compareFilters.godina)) &&
+    (compareFilters.tip==="Svi tipovi" || p.type===compareFilters.tip) &&
+    (compareFilters.klijent==="Svi klijenti" || p.client===compareFilters.klijent)
+  ).sort((a,b)=> (parseInt((b.code||'').replace(/\D/g,''),10)||0) - (parseInt((a.code||'').replace(/\D/g,''),10)||0));
+
+  splitEl.innerHTML = compareSelection.map(name=>{
+    const list = filtered.filter(p=>p.artist===name);
+    const av = avatarBgInner(name);
+    return `
+      <div class="crs-col">
+        <div class="crs-head">
+          <span class="cmp-emp-avatar" style="${av.bg}">${av.inner}</span>
+          <div><div class="crs-head-name">${escapeHtml(name)}</div><div class="crs-head-count">${list.length} ${list.length===1?'rad':'radova'}</div></div>
+        </div>
+        ${list.length
+          ? `<div class="crs-grid">${list.map(portCardHTML).join('')}</div>`
+          : `<div class="empty-state" style="padding:20px 10px;">Nema unetih radova za izabrani filter.</div>`}
+      </div>`;
+  }).join('');
+
+  wirePortCards(splitEl, filtered);
 }
 
 buildPortFilterMenus();
+buildCompareFilterMenus();
 
 document.querySelectorAll('#view-portfolio .stat-tab-btn').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -6024,8 +6178,7 @@ function avgProjectDuration(){
   }, 0);
   return Math.round(total/withRounds.length);
 }
-function empKadarStats(name){
-  const mine = allKadrovi().filter(k=>k.employee===name);
+function computeKadarStats(mine){
   const rounds = mine.flatMap(k=>k.rounds);
   const approved = mine.filter(k=>k.status==='odobren').length;
   const decided = mine.filter(k=>k.status==='odobren'||k.status==='otkazan').length;
@@ -6043,6 +6196,9 @@ function empKadarStats(name){
     avgRounds: withRounds.length ? +(rounds.length/withRounds.length).toFixed(1) : 0,
     byType, activeProjects, topClient
   };
+}
+function empKadarStats(name){
+  return computeKadarStats(allKadrovi().filter(k=>k.employee===name));
 }
 function empMonthlyOutput(name){
   return monthlyOutput(allRounds().filter(r=>r.employee===name && r.billable));
@@ -6294,9 +6450,9 @@ function renderPeopleKpis(){
     </div>`; }).join('');
 }
 
-function personProductionCardHTML(name){
+function personProductionCardHTML(name, statsOverride){
   if(!name) return `<div class="empty-state" style="padding:30px 10px;">Izaberi zaposlenog</div>`;
-  const s = empKadarStats(name);
+  const s = statsOverride || empKadarStats(name);
   const types = Object.keys(kadarTypeColorVar).filter(t=>s.byType[t]);
   const stackSegs = types.map(t=>
     `<div class="cc-stack-seg" style="width:${(s.byType[t]/Math.max(s.total,1))*100}%; background:${kadarTypeColorVar[t]}"></div>`
@@ -8896,6 +9052,7 @@ async function resolveSessionLogin(session){
     renderWeekWidget();
     buildFilterMenus();
     buildPortFilterMenus();
+    buildCompareFilterMenus();
     renderPortfolioGrid();
     renderArtistChips();
     renderCompare();
