@@ -239,6 +239,13 @@ select.native-select-hidden{ display:none; }
 .modal-cancel{ background:var(--card-soft); color:var(--ink-dim); }
 .modal-submit{ background:var(--gold); color:#3a2704; }
 .modal-delete{ background:var(--coral-soft); color:var(--coral); flex:0 0 auto !important; padding:10px 14px !important; }
+.modal-submit.danger{ background:var(--coral); color:#fff; }
+
+/* Shared confirm/alert dialog — replaces native confirm()/alert() so
+   destructive/blocking prompts match the app's own design instead of a
+   generic browser chrome popup. */
+.modal-card-sm{ width:340px; }
+.confirm-modal-msg{ font-size:13px; color:var(--ink-dim); line-height:1.5; }
 
 /* project detail page */
 .pd-back-row{ margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
@@ -2798,6 +2805,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   </div>
 </div>
 
+<div class="modal-overlay" id="confirmModalOverlay">
+  <div class="modal-card modal-card-sm">
+    <div class="modal-title" id="confirmModalTitle">Da li si siguran/na?</div>
+    <div class="confirm-modal-msg" id="confirmModalMsg"></div>
+    <div class="modal-actions" id="confirmModalActions">
+      <button class="modal-cancel" id="confirmModalCancel">Otkaži</button>
+      <button class="modal-submit" id="confirmModalOk">Potvrdi</button>
+    </div>
+  </div>
+</div>
+
 <div class="drp-popover" id="drpPopover">
   <div class="drp-header">
     <button type="button" class="drp-nav-btn" id="drpPrev">‹</button>
@@ -3461,13 +3479,13 @@ async function reassignZadatakPerson(evObj){
   if(sb && kadar.dbId){
     const employeeId = teamMembers.find(t=>t.name===evObj.person)?.authId;
     const { error } = await sb.from('kadrovi').update({ employee_id: employeeId }).eq('id', kadar.dbId);
-    if(error){ alert('Ažuriranje kadra u bazi nije uspelo: ' + error.message); return; }
+    if(error){ await customAlert('Ažuriranje kadra u bazi nije uspelo: ' + error.message); return; }
   }
   renderProjectsPage();
   if(activeProjectDetailId === proj._id){ renderProjectDetailKadrovi(); renderProjectDetailStats(); }
 }
 
-function endBarDrag(){
+async function endBarDrag(){
   document.removeEventListener('mousemove', onBarDrag);
   document.removeEventListener('mouseup', endBarDrag);
   if(!barDragState) return;
@@ -3487,7 +3505,7 @@ function endBarDrag(){
       const confirmMsg = reassigned
         ? `Prebaciti "${label}" sa ${origPerson} na ${evObj.person} (${rangeLabel})?`
         : `${mode === 'move' ? 'Pomeriti' : 'Promeniti trajanje za'} "${evObj.person} · ${label}" na ${rangeLabel}?`;
-      if(confirm(confirmMsg)){
+      if(await customConfirm(confirmMsg)){
         if(reassigned) reassignZadatakPerson(evObj);
         buildCalFilterMenus();
         persist();
@@ -3507,13 +3525,13 @@ function endBarDrag(){
   renderCalendar();
 }
 
-calWeeks.addEventListener('click', (e)=>{
+calWeeks.addEventListener('click', async (e)=>{
   if(suppressBarClick){ suppressBarClick = false; return; }
   const delBtn = e.target.closest('.cb-delete');
   if(delBtn){
     const evObj = events.find(x=>x._id===Number(delBtn.dataset.id));
     if(!evObj || !canEditCalendarFor(evObj.person)) return;
-    if(!confirm('Obrisati ovu stavku iz kalendara?')) return;
+    if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
     const idx = events.findIndex(x=>x._id===evObj._id);
     if(idx>-1) events.splice(idx,1);
     buildCalFilterMenus();
@@ -3864,10 +3882,66 @@ function wireOverlayClose(overlay, closeFn){
     downOnOverlay = false;
   });
 }
+
+/* ==== Shared confirm/alert dialog — replaces native confirm()/alert() so
+   destructive/blocking prompts match the app instead of generic browser
+   chrome. Both resolve once the user picks an option (or dismisses via
+   backdrop/Escape, treated as cancel/acknowledge). ==== */
+const confirmModalOverlay = document.getElementById('confirmModalOverlay');
+const confirmModalTitleEl = document.getElementById('confirmModalTitle');
+const confirmModalMsgEl = document.getElementById('confirmModalMsg');
+const confirmModalOkBtn = document.getElementById('confirmModalOk');
+const confirmModalCancelBtn = document.getElementById('confirmModalCancel');
+function openConfirmModal({ title, message, okLabel, cancelLabel, danger, showCancel }){
+  return new Promise(resolve=>{
+    confirmModalTitleEl.textContent = title;
+    confirmModalMsgEl.textContent = message;
+    confirmModalOkBtn.textContent = okLabel;
+    confirmModalOkBtn.className = 'modal-submit' + (danger ? ' danger' : '');
+    confirmModalCancelBtn.style.display = showCancel ? '' : 'none';
+    confirmModalCancelBtn.textContent = cancelLabel;
+    confirmModalOverlay.classList.add('open');
+    let settled = false;
+    function finish(result){
+      if(settled) return;
+      settled = true;
+      confirmModalOverlay.classList.remove('open');
+      confirmModalOkBtn.removeEventListener('click', onOk);
+      confirmModalCancelBtn.removeEventListener('click', onCancel);
+      confirmModalOverlay.removeEventListener('mousedown', onBackdropDown);
+      confirmModalOverlay.removeEventListener('click', onBackdropClick);
+      resolve(result);
+    }
+    let downOnOverlay = false;
+    function onBackdropDown(e){ downOnOverlay = (e.target===confirmModalOverlay); }
+    function onBackdropClick(e){ if(downOnOverlay && e.target===confirmModalOverlay) finish(false); downOnOverlay=false; }
+    function onOk(){ finish(true); }
+    function onCancel(){ finish(false); }
+    confirmModalOkBtn.addEventListener('click', onOk);
+    confirmModalCancelBtn.addEventListener('click', onCancel);
+    confirmModalOverlay.addEventListener('mousedown', onBackdropDown);
+    confirmModalOverlay.addEventListener('click', onBackdropClick);
+  });
+}
+function customConfirm(message, opts={}){
+  return openConfirmModal({
+    title: opts.title || 'Da li si siguran/na?', message,
+    okLabel: opts.okLabel || 'Potvrdi', cancelLabel: opts.cancelLabel || 'Otkaži',
+    danger: opts.danger !== false, showCancel: true
+  });
+}
+function customAlert(message, opts={}){
+  return openConfirmModal({
+    title: opts.title || 'Obaveštenje', message,
+    okLabel: opts.okLabel || 'U redu', cancelLabel: '',
+    danger: false, showCancel: false
+  });
+}
+
 wireOverlayClose(eventModalOverlay, closeEventModal);
-document.getElementById('evDelete').addEventListener('click', ()=>{
+document.getElementById('evDelete').addEventListener('click', async ()=>{
   if(!editingEventId) return;
-  if(!confirm('Obrisati ovu stavku iz kalendara?')) return;
+  if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
   const idx = events.findIndex(e=>e._id===editingEventId);
   if(idx>-1) events.splice(idx,1);
   closeEventModal();
@@ -4011,7 +4085,7 @@ async function saveEvzHours(){
     const err2 = await saveOneHoursCell(row.dataset.otId || null, employeeId, employeeName, kadarDbId, iso, otVal, true);
     if(err2) errors.push(err2);
   }
-  if(errors.length) alert('Čuvanje sati nije uspelo za neke dane: ' + errors[0]);
+  if(errors.length) await customAlert('Čuvanje sati nije uspelo za neke dane: ' + errors[0]);
   return savedAny && !errors.length;
 }
 function spawnHourCoins(originEl){
@@ -4779,11 +4853,11 @@ async function compressImageFile(file, maxDim, quality){
 async function processImageUpload(file, bucket){
   let blob;
   try { blob = await compressImageFile(file); }
-  catch(e){ alert('Nije moguće obraditi tu sliku.'); return null; }
+  catch(e){ await customAlert('Nije moguće obraditi tu sliku.'); return null; }
   if(sb){
     const path = `${crypto.randomUUID()}.jpg`;
     const { error } = await sb.storage.from(bucket).upload(path, blob, { contentType:'image/jpeg' });
-    if(error){ alert('Otpremanje slike nije uspelo: ' + error.message); return null; }
+    if(error){ await customAlert('Otpremanje slike nije uspelo: ' + error.message); return null; }
     return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
   }
   return await new Promise(resolve=>{
@@ -4840,13 +4914,13 @@ document.getElementById('npCancel').addEventListener('click', closeProjectModal)
 wireOverlayClose(modalOverlay, closeProjectModal);
 document.getElementById('npDelete').addEventListener('click', async ()=>{
   if(!editingProjectId) return;
-  if(!(isSuperAdmin() || currentAccess()==='admin')){ alert('Samo admin i superadmin mogu da brišu projekte.'); return; }
-  if(!confirm('Obrisati ovaj projekat?')) return;
+  if(!(isSuperAdmin() || currentAccess()==='admin')){ await customAlert('Samo admin i superadmin mogu da brišu projekte.'); return; }
+  if(!await customConfirm('Obrisati ovaj projekat?')) return;
   const proj = allProjects.find(p=>p._id===editingProjectId);
   if(!proj) return;
   if(sb && proj.dbId){
     const { error } = await sb.from('projects').delete().eq('id', proj.dbId);
-    if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
   }
   const idx = allProjects.findIndex(p=>p._id===editingProjectId);
   if(idx>-1) allProjects.splice(idx,1);
@@ -4859,8 +4933,8 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
   if(!name) return;
   const client = document.getElementById('npClient').value;
   const managerName = document.getElementById('npManager').value;
-  if(!client){ alert('Izaberi klijenta.'); return; }
-  if(!managerName){ alert('Izaberi projekt menadžera.'); return; }
+  if(!client){ await customAlert('Izaberi klijenta.'); return; }
+  if(!managerName){ await customAlert('Izaberi projekt menadžera.'); return; }
   const startDate = document.getElementById('npStartDate').value || toISO(TODAY);
   const year = parseInt(startDate.split('-')[0], 10);
   const status = document.getElementById('npStatus').value;
@@ -4876,7 +4950,7 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
         const { data, error } = await sb.from('projects')
           .update({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail, discord_webhook_url:discordWebhookUrl })
           .eq('id', proj.dbId).select().single();
-        if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
+        if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
         Object.assign(proj, { name:data.name, client, managerName, year:data.year, startDate:data.start_date, status:data.status, thumbnail:data.thumbnail, discordWebhookUrl:data.discord_webhook_url });
       } else {
         Object.assign(proj, {name, client, managerName, year, startDate, status, thumbnail, discordWebhookUrl});
@@ -4892,7 +4966,7 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
       const { data, error } = await sb.from('projects')
         .insert({ name, client_id:clientId, manager_id:managerId, year, start_date:startDate, status, thumbnail, discord_webhook_url:discordWebhookUrl })
         .select().single();
-      if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+      if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
       const proj = {
         _id: nextId(), dbId: data.id, code: data.code, name: data.name,
         client, managerName, year: data.year, startDate: data.start_date, status: data.status,
@@ -5090,7 +5164,7 @@ function storagePathFromUrl(url, bucket){
   return idx===-1 ? null : url.slice(idx + marker.length);
 }
 document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
-  if(!confirm('Obrisati ovu rundu?')) return;
+  if(!await customConfirm('Obrisati ovu rundu?')) return;
   const proj = allProjects.find(p=>p._id===activeRoundViewProjectId);
   const kadar = proj && proj.kadrovi.find(k=>k._id===activeRoundViewTaskId);
   if(!kadar) return;
@@ -5098,7 +5172,7 @@ document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(!round) return;
   if(sb && round.dbId){
     const { error } = await sb.from('rounds').delete().eq('id', round.dbId);
-    if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
     const imgPath = storagePathFromUrl(round.image, 'round-images');
     if(imgPath) sb.storage.from('round-images').remove([imgPath]);
   }
@@ -5198,14 +5272,14 @@ document.getElementById('taskCancel').addEventListener('click', closeTaskModal);
 wireOverlayClose(taskModalOverlay, closeTaskModal);
 document.getElementById('taskDelete').addEventListener('click', async ()=>{
   if(!editingTaskId) return;
-  if(!confirm('Obrisati ovaj kadar?')) return;
+  if(!await customConfirm('Obrisati ovaj kadar?')) return;
   const proj = allProjects.find(p=>p._id===activeTaskProjectId);
   if(!proj) return;
   const kadar = proj.kadrovi.find(k=>k._id===editingTaskId);
   if(!kadar) return;
   if(sb && kadar.dbId){
     const { error } = await sb.from('kadrovi').delete().eq('id', kadar.dbId);
-    if(error){ alert('Brisanje nije uspelo: ' + error.message); return; }
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
   }
   const idx = proj.kadrovi.findIndex(k=>k._id===editingTaskId);
   if(idx>-1) proj.kadrovi.splice(idx,1);
@@ -5217,7 +5291,7 @@ document.getElementById('taskDelete').addEventListener('click', async ()=>{
 document.getElementById('taskSubmit').addEventListener('click', async ()=>{
   const name = document.getElementById('taskName').value.trim();
   if(!name) return;
-  if(!pendingTaskEmployee){ alert('Izaberi izvršioca.'); return; }
+  if(!pendingTaskEmployee){ await customAlert('Izaberi izvršioca.'); return; }
   const type = document.getElementById('taskType').value;
   const status = document.getElementById('taskStatus').value;
   const proj = allProjects.find(p=>p._id===activeTaskProjectId);
@@ -5234,7 +5308,7 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
         const { data, error } = await sb.from('kadrovi')
           .update({ name, type, employee_id:employeeId, status })
           .eq('id', kadar.dbId).select().single();
-        if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
+        if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
         Object.assign(kadar, { name:data.name, type:data.type, employee:pendingTaskEmployee, status:data.status });
       } else {
         Object.assign(kadar, {name, type, employee:pendingTaskEmployee, status});
@@ -5245,7 +5319,7 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
       const { data, error } = await sb.from('kadrovi')
         .insert({ project_id:proj.dbId, type, name, employee_id:employeeId, status })
         .select().single();
-      if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+      if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
       proj.kadrovi.push({ _id: nextId(), dbId: data.id, type: data.type, name: data.name, employee: pendingTaskEmployee, status: data.status, rounds: [] });
     } else {
       proj.kadrovi.push(mkKadar(type, name, pendingTaskEmployee, status, []));
@@ -5336,7 +5410,7 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
     const { data, error } = await sb.from('rounds')
       .insert({ kadar_id:kadar.dbId, label, billable, date, image })
       .select().single();
-    if(error){ alert('Dodavanje nije uspelo: ' + error.message); return; }
+    if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
     kadar.rounds.push({ _id: nextId(), dbId: data.id, label: data.label, billable: data.billable, date: data.date, image: data.image });
   } else {
     kadar.rounds.push(mkRound(label, billable, date));
