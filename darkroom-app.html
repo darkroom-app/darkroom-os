@@ -295,6 +295,30 @@ select.native-select-hidden{ display:none; }
 @keyframes bootPulse{ 0%,100%{ opacity:0.35; } 50%{ opacity:1; } }
 body.app-booting .boot-loader{ display:flex; }
 body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatFab{ display:none !important; }
+
+/* ==== "COIN" REWARD BURST — playful nudge when someone logs hours ==== */
+.coin-burst{ position:fixed; z-index:500; pointer-events:none; width:0; height:0; }
+.coin-burst .coin{
+  position:absolute; left:0; top:0; width:24px; height:24px; margin-left:-12px; margin-top:-12px;
+  border-radius:50%; opacity:0;
+  background:radial-gradient(circle at 35% 30%, #fff2cf, var(--gold) 55%, var(--gold-deep) 100%);
+  box-shadow:0 3px 10px rgba(120,90,10,0.35);
+}
+.coin-burst .coin::after{ content:''; position:absolute; inset:3px; border-radius:50%; border:1px dashed rgba(255,255,255,0.55); }
+.coin-burst .coin.left{ animation:coinPopL 0.9s cubic-bezier(.2,.8,.3,1) forwards; }
+.coin-burst .coin.right{ animation:coinPopR 0.9s cubic-bezier(.2,.8,.3,1) forwards; animation-delay:0.06s; }
+@keyframes coinPopL{
+  0%{ transform:translate(0,0) scale(0.3) rotate(0deg); opacity:0; }
+  15%{ opacity:1; }
+  55%{ transform:translate(-26px,-46px) scale(1.05) rotate(-200deg); opacity:1; }
+  100%{ transform:translate(-34px,-18px) scale(0.85) rotate(-340deg); opacity:0; }
+}
+@keyframes coinPopR{
+  0%{ transform:translate(0,0) scale(0.3) rotate(0deg); opacity:0; }
+  15%{ opacity:1; }
+  55%{ transform:translate(26px,-46px) scale(1.05) rotate(200deg); opacity:1; }
+  100%{ transform:translate(34px,-18px) scale(0.85) rotate(340deg); opacity:0; }
+}
 .login-screen::before{ content:""; position:absolute; inset:0; background:linear-gradient(160deg, rgba(20,16,8,0.6), rgba(20,16,8,0.78)); z-index:0; }
 .login-card{ position:relative; z-index:1; background:var(--card); border-radius:20px; padding:32px; width:380px; max-width:90vw; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4); }
 .login-brand{ display:flex; flex-direction:column; align-items:center; gap:8px; margin-bottom:22px; }
@@ -855,6 +879,15 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ta-avatar:nth-child(4){ transform:rotate(3deg); }
 .ta-avatar:hover{ transform:translateY(-5px) scale(1.08) rotate(0deg); z-index:5; }
 .ta-more{ background:var(--ink) !important; font-size:10.5px; }
+
+.ot-panel{ margin-bottom:16px; }
+.ot-panel .panel-title svg{ color:var(--coral); }
+.ot-empty{ font-size:12.5px; color:var(--ink-faint); padding:4px 0; }
+.ot-list{ display:flex; flex-wrap:wrap; gap:10px; }
+.ot-chip{ display:flex; align-items:center; gap:9px; padding:6px 14px 6px 6px; border-radius:999px; background:var(--coral-soft); border:1px solid var(--border); }
+.ot-chip-avatar{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:11px; color:#fff; background-size:cover; background-position:center; flex-shrink:0; }
+.ot-chip-name{ font-size:12.5px; font-weight:600; color:var(--ink); }
+.ot-chip-hours{ font-size:12px; font-weight:800; color:var(--coral); }
 
 /* ---- HERO ROW ---- */
 .hero-row{ display:grid; grid-template-columns:300px calc(53.5% - 327px) 2fr 1fr; gap:18px; margin-bottom:16px; flex:0 0 auto; }
@@ -1422,6 +1455,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         </div>
         <div class="team-avatars" id="collabAvatars"></div>
       </div>
+    </div>
+
+    <div class="panel ot-panel">
+      <div class="panel-head">
+        <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>Prekovremeni sati ove nedelje</div>
+      </div>
+      <div class="ot-list" id="otList"></div>
     </div>
 
     <div class="hero-row">
@@ -3895,12 +3935,16 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
   } else {
     events.push({ _id:nextId(), ...newEvent });
   }
-  if(kind==='zadatak') await saveEvzHours();
+  if(kind==='zadatak'){
+    const savedHours = await saveEvzHours();
+    if(savedHours) spawnHourCoins(document.getElementById('evSubmit'));
+  }
   closeEventModal();
   buildCalFilterMenus();
   renderCalendar();
   renderWeekWidget();
   renderWeeklyGoal();
+  renderOvertimePanel();
   persist();
 });
 
@@ -3962,22 +4006,36 @@ async function saveOneHoursCell(dbId, employeeId, employeeName, kadarDbId, dateV
 }
 async function saveEvzHours(){
   const field = document.getElementById('evzHoursField');
-  if(field.style.display === 'none' || !sb) return;
+  if(field.style.display === 'none' || !sb) return false;
   const kadarDbId = field.dataset.kadarDbId, employeeId = field.dataset.employeeId;
-  if(!kadarDbId || !employeeId) return;
+  if(!kadarDbId || !employeeId) return false;
   const emp = teamMembers.find(t=>t.authId===employeeId);
   const employeeName = emp ? emp.name : '';
   const errors = [];
+  let savedAny = false;
   for(const row of document.querySelectorAll('#evzHoursList .ev-hours-row')){
     const iso = row.dataset.date;
     const regVal = parseFloat(row.querySelector('.ev-hours-reg').value) || 0;
     const otVal = parseFloat(row.querySelector('.ev-hours-ot').value) || 0;
+    if(regVal > 0 || otVal > 0) savedAny = true;
     const err1 = await saveOneHoursCell(row.dataset.regId || null, employeeId, employeeName, kadarDbId, iso, regVal, false);
     if(err1) errors.push(err1);
     const err2 = await saveOneHoursCell(row.dataset.otId || null, employeeId, employeeName, kadarDbId, iso, otVal, true);
     if(err2) errors.push(err2);
   }
   if(errors.length) alert('Čuvanje sati nije uspelo za neke dane: ' + errors[0]);
+  return savedAny && !errors.length;
+}
+function spawnHourCoins(originEl){
+  if(!originEl) return;
+  const rect = originEl.getBoundingClientRect();
+  const wrap = document.createElement('div');
+  wrap.className = 'coin-burst';
+  wrap.style.left = (rect.left + rect.width/2) + 'px';
+  wrap.style.top = rect.top + 'px';
+  wrap.innerHTML = `<div class="coin left"></div><div class="coin right"></div>`;
+  document.body.appendChild(wrap);
+  setTimeout(()=>wrap.remove(), 1000);
 }
 
 /* ==== NEDELJNI CILJ (fun-goal) — procenat po danu + rotirajuće poruke ==== */
@@ -4056,6 +4114,32 @@ function weeklyGoalHours(){
 }
 function weeklyGoalPercent(){
   return Math.max(0, Math.min(100, Math.round(weeklyGoalHours()/40*100)));
+}
+/* Team-wide overtime this week — separate from the personal 40h goal above,
+   since "ko koliko ima prekovremenih sati" is inherently about everyone, not
+   just the logged-in user. */
+function weekOvertimeByPerson(){
+  const monday = mondayOf(TODAY);
+  const monISO = toISO(monday), todayISO = toISO(TODAY);
+  const totals = {};
+  timeEntries.forEach(e=>{
+    if(!e.overtime || e.date<monISO || e.date>todayISO) return;
+    totals[e.employee] = (totals[e.employee]||0) + e.hours;
+  });
+  return Object.keys(totals).map(name=>({name, hours:totals[name]})).sort((a,b)=>b.hours-a.hours);
+}
+function renderOvertimePanel(){
+  const listEl = document.getElementById('otList');
+  if(!listEl) return;
+  const rows = weekOvertimeByPerson();
+  if(!rows.length){
+    listEl.innerHTML = `<div class="ot-empty">Niko nema prekovremene sate ove nedelje.</div>`;
+    return;
+  }
+  listEl.innerHTML = rows.map(r=>{
+    const av = avatarBgInner(r.name);
+    return `<div class="ot-chip"><div class="ot-chip-avatar" style="${av.bg}">${av.inner}</div><div class="ot-chip-name">${escapeHtml(r.name.split(' ')[0])}</div><div class="ot-chip-hours">${r.hours.toFixed(1)}h</div></div>`;
+  }).join('');
 }
 function weeklyGoalTier(pct){
   if(pct < 40) return 'low';
@@ -8380,6 +8464,7 @@ function applyCurrentUser(){
   renderDashboardProjects();
   renderDashboardFinance();
   renderWeeklyGoal();
+  renderOvertimePanel();
   renderDashboardNotifications();
   syncRemoteNotifications();
   subscribeRemoteNotifications();
