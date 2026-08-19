@@ -652,6 +652,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 }
 
 /* ==== PORTFOLIO VIEW ==== */
+/* pfGodina is the leftmost filter; the shared .cal-filter-menu right-aligns
+   (extends left from the button), which here runs past the panel's left
+   edge and gets clipped by #portTabGalerija's overflow-y:auto (that forces
+   overflow-x to auto too, per spec). Open it left-aligned instead. */
+#pfGodina .cal-filter-menu{ left:0; right:auto; }
 .port-gallery-scroll{ flex:1; min-height:0; overflow-y:auto; margin-bottom:18px; padding-right:2px; }
 .port-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
 .port-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; }
@@ -707,6 +712,20 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cc-metric{ background:var(--card-soft); border-radius:12px; padding:11px 12px; }
 .cc-metric-val{ font-family:var(--font-display); font-weight:700; font-size:17px; }
 .cc-metric-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; margin-top:2px; }
+
+.cc-card-wrap{ position:relative; border-radius:16px; }
+.cc-crown{ position:absolute; top:-16px; left:50%; font-size:26px; z-index:5; transform:translateX(-50%) scale(0) rotate(-15deg); animation:crownPop .55s cubic-bezier(.34,1.56,.64,1) .15s forwards; filter:drop-shadow(0 4px 8px rgba(70,55,20,0.35)); }
+@keyframes crownPop{
+  0%{ transform:translateX(-50%) scale(0) rotate(-15deg); }
+  60%{ transform:translateX(-50%) scale(1.3) rotate(10deg); }
+  100%{ transform:translateX(-50%) scale(1) rotate(0deg); }
+}
+.cc-winner{ animation:winnerGlow 1.3s ease-in-out .2s 2; }
+.cc-winner .cc-artist-avatar{ box-shadow:0 0 0 3px var(--gold), 0 0 22px -2px var(--gold); }
+@keyframes winnerGlow{
+  0%,100%{ box-shadow:none; }
+  50%{ box-shadow:0 14px 30px -14px rgba(201,140,20,0.55); }
+}
 
 @media (max-width:1400px){ .port-grid{ grid-template-columns:repeat(3,1fr); } }
 @media (max-width:1000px){
@@ -1818,7 +1837,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
       <div class="stat-tabs">
         <button class="stat-tab-btn active" data-porttab="galerija">🖼️ Galerija</button>
-        <button class="stat-tab-btn" data-porttab="statistika">📊 Statistika i poređenje</button>
+        <button class="stat-tab-btn" data-porttab="statistika">🆚 Vs.</button>
       </div>
 
       <div class="stat-tab-panel active" id="portTabGalerija">
@@ -1855,10 +1874,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
       <div class="stat-tab-panel" id="portTabStatistika">
         <div class="port-compare-panel">
-          <div class="compare-title">📊 Statistika i poređenje zaposlenih</div>
+          <div class="compare-title">🆚 Vs.</div>
           <div class="compare-hint">Izaberi do dva zaposlena za poređenje</div>
           <div class="artist-chip-row" id="artistChipRow"></div>
           <div class="compare-grid" id="compareGrid"></div>
+        </div>
+        <div class="port-compare-panel" id="compareRendersWrap" style="margin-top:16px; display:none;">
+          <div class="compare-title">🖼️ Renderi selektovanih</div>
+          <div class="compare-hint" id="compareRendersHint"></div>
+          <div class="port-grid" id="compareRendersGrid"></div>
+          <div class="empty-state" id="compareRendersEmpty" style="display:none;">Nema unetih radova za izabrane zaposlene.</div>
         </div>
       </div>
 
@@ -5743,10 +5768,13 @@ const kadarTypeColorVar = {
    render/task ever entered on a project doubles as a portfolio entry, so
    there's nothing to manually add/edit here (see Phase 3g note: this used
    to be a hand-curated mock array of 14 fake works with fake project codes,
-   completely disconnected from the studio's real project history). */
+   completely disconnected from the studio's real project history). Only
+   kadrovi with at least one actual round entered count as "in the
+   portfolio" — a kadar with zero rounds has nothing to show but a
+   placeholder thumbnail, which isn't real portfolio work yet. */
 function portfolioEntries(){
-  return allProjects.flatMap(p=>p.kadrovi.map(k=>{
-    const lastImg = k.rounds && k.rounds.length ? [...k.rounds].reverse().find(r=>r.image) : null;
+  return allProjects.flatMap(p=>p.kadrovi.filter(k=>k.rounds && k.rounds.length>0).map(k=>{
+    const lastImg = [...k.rounds].reverse().find(r=>r.image);
     return {
       _id: k._id, title: k.name, project: p.name, code: p.code, client: p.client,
       artist: k.employee, year: p.year, type: k.type, status: k.status,
@@ -5811,13 +5839,8 @@ function filteredPortfolio(){
   ).sort((a,b)=> (parseInt((b.code||'').replace(/\D/g,''),10)||0) - (parseInt((a.code||'').replace(/\D/g,''),10)||0));
 }
 
-function renderPortfolioGrid(){
-  const list = filteredPortfolio();
-  document.getElementById('portCountLabel').textContent = list.length + (list.length===1 ? ' rad' : ' radova');
-  document.getElementById('portEmpty').style.display = list.length ? 'none' : 'block';
-  document.getElementById('portGrid').style.display = list.length ? 'grid' : 'none';
-
-  document.getElementById('portGrid').innerHTML = list.map(p=>`
+function portCardHTML(p){
+  return `
     <div class="port-card" data-id="${p._id}" style="cursor:pointer;">
       <div class="port-thumb" style="${p.image ? `background-image:url('${p.image}');background-size:cover;background-position:center;` : thumbStyle(p.seedNum,320)}">
         <div class="port-type-badge">${escapeHtml(p.type)}</div>
@@ -5831,19 +5854,31 @@ function renderPortfolioGrid(){
           <span class="port-year">${p.year}</span>
         </div>
       </div>
-    </div>`).join('');
-
-  document.querySelectorAll('#portGrid .port-card').forEach(el=>{
+    </div>`;
+}
+function wirePortCards(gridEl, list){
+  gridEl.querySelectorAll('.port-card').forEach(el=>{
     el.addEventListener('click', ()=>{
-      const item = filteredPortfolio().find(x=>x._id===Number(el.dataset.id));
+      const item = list.find(x=>x._id===Number(el.dataset.id));
       const proj = item && allProjects.find(x=>x.code===item.code);
       if(proj) openProjectDetail(proj);
     });
   });
 }
 
+function renderPortfolioGrid(){
+  const list = filteredPortfolio();
+  document.getElementById('portCountLabel').textContent = list.length + (list.length===1 ? ' rad' : ' radova');
+  document.getElementById('portEmpty').style.display = list.length ? 'none' : 'block';
+  document.getElementById('portGrid').style.display = list.length ? 'grid' : 'none';
+
+  const gridEl = document.getElementById('portGrid');
+  gridEl.innerHTML = list.map(portCardHTML).join('');
+  wirePortCards(gridEl, list);
+}
+
 function renderArtistChips(){
-  const artists = Object.keys(artistGrad);
+  const artists = Object.keys(artistGrad).sort((a,b)=>a.localeCompare(b));
   document.getElementById('artistChipRow').innerHTML = artists.map(a=>{ const av = avatarBgInner(a); return `
     <div class="artist-chip ${compareSelection.includes(a)?'selected':''}" data-artist="${a}">
       <span class="ac-avatar" style="${av.bg}">${av.inner}</span>
@@ -5868,10 +5903,36 @@ function renderArtistChips(){
    pulling from allKadrovi() — the actual renders entered on real projects) instead of
    the old mock-portfolio-only artistStats/compareCardHTML pair. */
 function renderCompare(){
+  const [a,b] = compareSelection;
+  const sa = a ? empKadarStats(a) : null;
+  const sb = b ? empKadarStats(b) : null;
+  let winner = null;
+  if(a && b && sa.total !== sb.total) winner = sa.total > sb.total ? a : b;
+  const cardWrap = (name)=> `
+    <div class="cc-card-wrap ${name && name===winner ? 'cc-winner' : ''}">
+      ${name && name===winner ? '<div class="cc-crown">👑</div>' : ''}
+      ${personProductionCardHTML(name)}
+    </div>`;
   document.getElementById('compareGrid').innerHTML = `
-    <div>${personProductionCardHTML(compareSelection[0])}</div>
+    ${cardWrap(a)}
     <div class="compare-vs">VS</div>
-    <div>${personProductionCardHTML(compareSelection[1])}</div>`;
+    ${cardWrap(b)}`;
+  renderCompareRenders();
+}
+
+function renderCompareRenders(){
+  const wrap = document.getElementById('compareRendersWrap');
+  const gridEl = document.getElementById('compareRendersGrid');
+  if(!compareSelection.length){ wrap.style.display = 'none'; return; }
+  wrap.style.display = '';
+  const list = portfolioEntries().filter(p=>compareSelection.includes(p.artist))
+    .sort((a,b)=> (parseInt((b.code||'').replace(/\D/g,''),10)||0) - (parseInt((a.code||'').replace(/\D/g,''),10)||0));
+  document.getElementById('compareRendersHint').textContent =
+    list.length + (list.length===1 ? ' rad' : ' radova') + ' — ' + compareSelection.join(' & ');
+  document.getElementById('compareRendersEmpty').style.display = list.length ? 'none' : 'block';
+  gridEl.style.display = list.length ? 'grid' : 'none';
+  gridEl.innerHTML = list.map(portCardHTML).join('');
+  wirePortCards(gridEl, list);
 }
 
 buildPortFilterMenus();
