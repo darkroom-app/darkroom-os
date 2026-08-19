@@ -3486,7 +3486,7 @@ calWeeks.addEventListener('click', (e)=>{
    povezan sa stvarnim podacima. Grubo je namerno (privremeno rešenje, može
    se kasnije zameniti preciznijim rasporedom). */
 function generateEventsFromKadrovi(){
-  events = events.filter(e=>e.kind!=='zadatak');
+  for(let i=events.length-1; i>=0; i--){ if(events[i].kind==='zadatak') events.splice(i,1); }
   const start = {y:TODAY.y, m:TODAY.m, d:TODAY.d};
   const end = addDays(start, 2);
   allProjects.forEach(p=>{
