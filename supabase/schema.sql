@@ -489,3 +489,77 @@ create policy "own or superadmin can delete time_entries" on public.time_entries
   );
 
 create index time_entries_employee_date_idx on public.time_entries (employee_id, date);
+
+
+-- ==== Phase 5: real pricing, extra charges, and the transactions ledger ====
+-- (run as a fourteenth query)
+--
+-- Replaces three local-only mock structures with real, studio-billing-shaped
+-- data:
+--
+-- 1. `kadrovi.base_price`/`price_status` — the agreed price for a kadar,
+--    understood by the studio (not enforced in the schema) to cover the
+--    deliverable plus the first 4 rounds. Nullable: a historical kadar with
+--    no price set just shows as unpriced rather than 0.
+--
+-- 2. `extra_charges` — money billed beyond the base price, one row per
+--    project. A row can represent one paid revision round or a bundle of
+--    several negotiated at a fixed cost — the studio decides what a row
+--    covers via its free-text description, this table doesn't try to map
+--    charges to specific rounds 1:1 (rounds.billable already lets the UI
+--    *count* rounds beyond the included 4 as a hint; it deliberately isn't
+--    wired to auto-generate or reconcile against extra_charges rows).
+--
+-- 3. `transactions` — the cash ledger, replacing the old local
+--    `allTransactions` mock array. `extra_charge_id`/`kadar_id` are optional
+--    back-references: set automatically when a transaction is auto-created
+--    by marking a price/charge "naplaćeno" (see txAutoLogPayment() in the
+--    app), null for anything entered by hand via "Nova transakcija" like
+--    today.
+--
+-- All three follow the same fully-open-to-authenticated shape as
+-- kadrovi/rounds/projects — this app has no access gating on financial data
+-- today (Cenovnik/Transakcije have never checked `access` client-side
+-- either), so the migration doesn't invent a new restriction the app didn't
+-- already have.
+
+alter table public.kadrovi add column if not exists base_price numeric;
+alter table public.kadrovi add column if not exists price_status text; -- 'neplaceno' | 'fakturisano' | 'naplaceno' — null until a price is first set
+
+create table public.extra_charges (
+  id uuid primary key default gen_random_uuid(),
+  project_id uuid not null references public.projects(id) on delete cascade,
+  description text not null,
+  amount numeric not null,
+  date date not null,
+  status text not null default 'neplaceno', -- 'neplaceno' | 'fakturisano' | 'naplaceno'
+  created_at timestamptz not null default now()
+);
+alter table public.extra_charges enable row level security;
+
+create policy "authenticated can read extra_charges" on public.extra_charges for select to authenticated using (true);
+create policy "authenticated can insert extra_charges" on public.extra_charges for insert to authenticated with check (true);
+create policy "authenticated can update extra_charges" on public.extra_charges for update to authenticated using (true) with check (true);
+create policy "authenticated can delete extra_charges" on public.extra_charges for delete to authenticated using (true);
+
+create table public.transactions (
+  id uuid primary key default gen_random_uuid(),
+  date date not null,
+  type text not null,                  -- 'Priliv' | 'Odliv'
+  category text not null,
+  description text not null,
+  method text not null default 'Račun', -- 'Račun' | 'Gotovina'
+  amount numeric not null,
+  extra_charge_id uuid references public.extra_charges(id) on delete set null,
+  kadar_id uuid references public.kadrovi(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+alter table public.transactions enable row level security;
+
+create policy "authenticated can read transactions" on public.transactions for select to authenticated using (true);
+create policy "authenticated can insert transactions" on public.transactions for insert to authenticated with check (true);
+create policy "authenticated can update transactions" on public.transactions for update to authenticated using (true) with check (true);
+create policy "authenticated can delete transactions" on public.transactions for delete to authenticated using (true);
+
+create index transactions_date_idx on public.transactions (date desc);
+create index extra_charges_project_idx on public.extra_charges (project_id);

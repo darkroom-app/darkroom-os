@@ -474,6 +474,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .price-kadar-amt{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); }
 .price-add-row{ padding-top:8px; }
 .price-add-btn{ font-family:var(--font-mono); font-size:10px; color:var(--gold-deep); background:var(--gold-soft); border:none; border-radius:8px; padding:6px 11px; cursor:pointer; }
+.price-kadar-unset{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); font-style:italic; }
+.price-extra-hint{ font-family:var(--font-mono); font-size:9.5px; color:var(--coral); }
+.price-charges-list{ border-top:1px dashed var(--border); padding:10px 18px 12px; }
+.price-charges-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
+.kadar-price-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); margin:-6px 0 14px; }
 
 .sal-table2{ overflow-x:auto; }
 .sal-head2, .sal-row2{ display:grid; grid-template-columns:1.5fr repeat(7, 0.72fr) 0.85fr 0.9fr; gap:6px; align-items:center; min-width:820px; }
@@ -2392,13 +2397,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 <div class="modal-overlay" id="kadarModalOverlay">
   <div class="modal-card">
-    <div class="modal-title" id="kadarTitle">Novi kadar</div>
+    <div class="modal-title" id="kadarTitle">Cena kadra</div>
+    <div class="kadar-price-meta" id="kadarMeta"></div>
     <div class="modal-field">
-      <label>Naziv kadra</label>
-      <input type="text" id="kadarNameInput" placeholder="npr. Eksterijer_02">
-    </div>
-    <div class="modal-field">
-      <label>Cena (RSD)</label>
+      <label>Osnovna cena — uključuje 4 runde (RSD)</label>
       <input type="number" id="kadarAmountInput" placeholder="npr. 45000">
     </div>
     <div class="modal-field">
@@ -2410,9 +2412,40 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       </select>
     </div>
     <div class="modal-actions">
-      <button class="modal-delete" id="kadarDelete" style="display:none;">Obriši</button>
+      <button class="modal-delete" id="kadarDelete" style="display:none;">Ukloni cenu</button>
       <button class="modal-cancel" id="kadarCancel">Otkaži</button>
-      <button class="modal-submit" id="kadarSubmit">Dodaj kadar</button>
+      <button class="modal-submit" id="kadarSubmit">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="extraChargeModalOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="extraChargeTitle">Dodatna naplata</div>
+    <div class="modal-field">
+      <label>Opis (šta pokriva)</label>
+      <input type="text" id="extraChargeDescInput" placeholder="npr. 3 dodatne runde — Kitchen + Living Room">
+    </div>
+    <div class="modal-field">
+      <label>Iznos (RSD)</label>
+      <input type="number" id="extraChargeAmountInput" placeholder="npr. 30000">
+    </div>
+    <div class="modal-field">
+      <label>Datum</label>
+      <input type="date" id="extraChargeDateInput">
+    </div>
+    <div class="modal-field">
+      <label>Status</label>
+      <select id="extraChargeStatusInput">
+        <option value="Naplaćeno">Naplaćeno</option>
+        <option value="Fakturisano">Fakturisano</option>
+        <option value="Neplaćeno">Neplaćeno</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-delete" id="extraChargeDelete" style="display:none;">Obriši</button>
+      <button class="modal-cancel" id="extraChargeCancel">Otkaži</button>
+      <button class="modal-submit" id="extraChargeSubmit">Dodaj</button>
     </div>
   </div>
 </div>
@@ -2949,14 +2982,17 @@ function fromPersisted(key, arr){
 function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      teamMembers, allTransactions,
-      projectPricing, salaryEntries, events, todoItems, salConfirmedMonths, notifications
+      teamMembers,
+      salaryEntries, events, todoItems, salConfirmedMonths, notifications
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
       // identity fields. projCodeCounter removed — codes are now assigned
       // server-side by a Postgres sequence/trigger (see schema.sql).
       // portfolioItems removed (Phase 3g) — Portfolio is now derived live from
       // allProjects/kadrovi (see portfolioEntries()), nothing left to persist.
+      // allTransactions/projectPricing removed (Phase 5) — the ledger and
+      // per-kadar pricing are now Supabase-backed the same way; kadrovi's
+      // base_price/price_status ride along with loadProjectsFromSupabase().
     }));
   } catch(e){}
 }
@@ -4782,7 +4818,7 @@ function projectEditBtn(p){
 function clientPaymentTotals(clientName){
   let total = 0, paid = 0, owed = 0;
   allProjects.filter(p=>p.client===clientName).forEach(p=>{
-    (projectPricing[p.code]||[]).forEach(r=>{
+    projectPricedItems(p).forEach(r=>{
       total += r.price;
       if(r.status==='Naplaćeno') paid += r.price; else owed += r.price;
     });
@@ -6988,60 +7024,15 @@ function fmtK(n){ return Math.round(n/1000) + 'k'; }
 
 const monthAbbrRS = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg"];
 
-let allTransactions = [
-  {date:"2026-01-12", type:"Priliv", category:"Uplata klijenta", desc:"Gensler Dubai — avans P2026-106", method:"Račun", amount:450000},
-  {date:"2026-01-18", type:"Odliv", category:"Zakup prostora", desc:"Kirija — januar", method:"Račun", amount:95000},
-  {date:"2026-02-05", type:"Odliv", category:"Softver", desc:"Corona Renderer licence (6x)", method:"Račun", amount:62000},
-  {date:"2026-02-14", type:"Priliv", category:"Uplata klijenta", desc:"Arvi Studios — Faza 01", method:"Račun", amount:620000},
-  {date:"2026-02-20", type:"Odliv", category:"Zakup prostora", desc:"Kirija — februar", method:"Račun", amount:95000},
-  {date:"2026-03-08", type:"Priliv", category:"Uplata klijenta", desc:"Growcott Freer — finalna isplata", method:"Račun", amount:780000},
-  {date:"2026-03-15", type:"Odliv", category:"Oprema", desc:"2× RTX 4080 grafičke kartice", method:"Račun", amount:340000},
-  {date:"2026-03-22", type:"Odliv", category:"Zakup prostora", desc:"Kirija — mart", method:"Račun", amount:95000},
-  {date:"2026-04-10", type:"Priliv", category:"Uplata klijenta", desc:"Rilea Group — avans", method:"Račun", amount:390000},
-  {date:"2026-04-19", type:"Odliv", category:"Zakup prostora", desc:"Kirija — april", method:"Račun", amount:95000},
-  {date:"2026-05-06", type:"Priliv", category:"Uplata klijenta", desc:"One World Properties — Faza 01", method:"Račun", amount:510000},
-  {date:"2026-05-21", type:"Odliv", category:"Ostalo", desc:"Knjigovodstvene usluge", method:"Račun", amount:38000},
-  {date:"2026-05-24", type:"Odliv", category:"Zakup prostora", desc:"Kirija — maj", method:"Račun", amount:95000},
-  {date:"2026-06-09", type:"Priliv", category:"Uplata klijenta", desc:"Southern Land Company — avans", method:"Račun", amount:340000},
-  {date:"2026-06-18", type:"Odliv", category:"Zakup prostora", desc:"Kirija — jun", method:"Račun", amount:95000},
-  {date:"2026-07-03", type:"Priliv", category:"Uplata klijenta", desc:"Gensler Dubai — Faza 02", method:"Račun", amount:280000},
-  {date:"2026-07-15", type:"Odliv", category:"Softver", desc:"Adobe Creative Cloud — godišnja", method:"Račun", amount:118000},
-  {date:"2026-07-25", type:"Odliv", category:"Zakup prostora", desc:"Kirija — jul", method:"Račun", amount:95000},
-  {date:"2026-08-01", type:"Priliv", category:"Uplata klijenta", desc:"Arvi Studios — Faza 02", method:"Račun", amount:410000},
-  {date:"2026-08-04", type:"Odliv", category:"Zakup prostora", desc:"Kirija — avgust", method:"Gotovina", amount:95000},
-];
-allTransactions.forEach(t=>t._id=nextId());
-fromPersisted('allTransactions', allTransactions);
+/* allTransactions (the ledger) and per-kadar pricing are now Supabase-backed
+   — see loadTransactionsFromSupabase()/loadExtraChargesFromSupabase() and
+   the base_price/price_status fields loadProjectsFromSupabase() attaches to
+   each kadar (Phase 5, schema.sql). The old local mock arrays (P001-P020
+   phantom project codes, disconnected from real kadrovi) are gone; nothing
+   left to seed here. */
 
 const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55" };
 const openingBalance = 850000;
-
-const projectPricing = {
-  "P001": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"}, {name:"Enterijer_07", price:120000, status:"Fakturisano"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"} ],
-  "P002": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"}, {name:"Enterijer_07", price:120000, status:"Fakturisano"} ],
-  "P003": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Naplaćeno"} ],
-  "P004": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"} ],
-  "P005": [ {name:"Amenities_01", price:120000, status:"Fakturisano"}, {name:"Amenities_02", price:120000, status:"Neplaćeno"}, {name:"Amenities_03", price:120000, status:"Fakturisano"}, {name:"Amenities_04", price:120000, status:"Neplaćeno"}, {name:"Amenities_05", price:120000, status:"Naplaćeno"}, {name:"Amenities_06", price:120000, status:"Neplaćeno"}, {name:"Amenities_07", price:120000, status:"Fakturisano"}, {name:"Amenities_08", price:120000, status:"Neplaćeno"} ],
-  "P006": [ {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Aerial_01", price:150000, status:"Neplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
-  "P007": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Fakturisano"}, {name:"Enterijer_10", price:120000, status:"Fakturisano"}, {name:"Enterijer_11", price:120000, status:"Neplaćeno"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Naplaćeno"}, {name:"Enterijer_14", price:120000, status:"Fakturisano"}, {name:"Enterijer_15", price:120000, status:"Neplaćeno"}, {name:"Enterijer_16", price:120000, status:"Neplaćeno"}, {name:"Enterijer_17", price:120000, status:"Naplaćeno"}, {name:"Enterijer_18", price:120000, status:"Fakturisano"}, {name:"Enterijer_19", price:120000, status:"Neplaćeno"}, {name:"Enterijer_20", price:120000, status:"Neplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_06", price:150000, status:"Fakturisano"}, {name:"Eksterijer_07", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_08", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_09", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_10", price:150000, status:"Fakturisano"}, {name:"Animacija_01", price:500000, status:"Neplaćeno"}, {name:"Animacija_02", price:500000, status:"Neplaćeno"}, {name:"Navi_01", price:500000, status:"Fakturisano"} ],
-  "P009": [ {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
-  "P010": [ {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"} ],
-  "P011": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"} ],
-  "P012": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Neplaćeno"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Fakturisano"}, {name:"Enterijer_07", price:120000, status:"Neplaćeno"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Fakturisano"}, {name:"Enterijer_10", price:120000, status:"Fakturisano"}, {name:"Enterijer_11", price:120000, status:"Neplaćeno"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Naplaćeno"}, {name:"Enterijer_14", price:120000, status:"Fakturisano"}, {name:"Enterijer_15", price:120000, status:"Neplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Eksterijer_04", price:150000, status:"Neplaćeno"}, {name:"Eksterijer_05", price:150000, status:"Neplaćeno"} ],
-  "P013": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Fakturisano"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"} ],
-  "P014": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Fakturisano"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"} ],
-  "P015": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"} ],
-  "P016": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Fakturisano"}, {name:"Eksterijer_04", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Naplaćeno"} ],
-  "P017": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Fakturisano"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Fakturisano"} ],
-  "P018": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Naplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Fakturisano"}, {name:"Eksterijer_02", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_03", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_04", price:150000, status:"Fakturisano"}, {name:"Animacija_01", price:500000, status:"Naplaćeno"} ],
-  "P019": [ {name:"Enterijer_01", price:120000, status:"Naplaćeno"}, {name:"Enterijer_02", price:120000, status:"Fakturisano"}, {name:"Enterijer_03", price:120000, status:"Naplaćeno"}, {name:"Enterijer_04", price:120000, status:"Naplaćeno"}, {name:"Enterijer_05", price:120000, status:"Fakturisano"}, {name:"Enterijer_06", price:120000, status:"Naplaćeno"}, {name:"Eksterijer_01", price:150000, status:"Naplaćeno"}, {name:"Eksterijer_02", price:150000, status:"Fakturisano"}, {name:"Eksterijer_03", price:150000, status:"Naplaćeno"}, {name:"Animacija_01", price:500000, status:"Naplaćeno"} ],
-  "P020": [ {name:"Enterijer_01", price:120000, status:"Fakturisano"}, {name:"Enterijer_02", price:120000, status:"Neplaćeno"}, {name:"Enterijer_03", price:120000, status:"Fakturisano"}, {name:"Enterijer_04", price:120000, status:"Neplaćeno"}, {name:"Enterijer_05", price:120000, status:"Naplaćeno"}, {name:"Enterijer_06", price:120000, status:"Neplaćeno"}, {name:"Enterijer_07", price:120000, status:"Fakturisano"}, {name:"Enterijer_08", price:120000, status:"Neplaćeno"}, {name:"Enterijer_09", price:120000, status:"Naplaćeno"}, {name:"Enterijer_10", price:120000, status:"Neplaćeno"}, {name:"Enterijer_11", price:120000, status:"Fakturisano"}, {name:"Enterijer_12", price:120000, status:"Neplaćeno"}, {name:"Enterijer_13", price:120000, status:"Fakturisano"}, {name:"Enterijer_14", price:120000, status:"Neplaćeno"}, {name:"Enterijer_15", price:120000, status:"Fakturisano"}, {name:"Enterijer_16", price:120000, status:"Neplaćeno"}, {name:"Enterijer_17", price:120000, status:"Naplaćeno"}, {name:"Enterijer_18", price:120000, status:"Neplaćeno"}, {name:"Enterijer_19", price:120000, status:"Fakturisano"}, {name:"Enterijer_20", price:120000, status:"Neplaćeno"}, {name:"Enterijer_21", price:120000, status:"Naplaćeno"}, {name:"Enterijer_22", price:120000, status:"Neplaćeno"}, {name:"Enterijer_23", price:120000, status:"Fakturisano"}, {name:"Enterijer_24", price:120000, status:"Neplaćeno"}, {name:"Enterijer_25", price:120000, status:"Fakturisano"}, {name:"Enterijer_26", price:120000, status:"Neplaćeno"}, {name:"Enterijer_27", price:120000, status:"Fakturisano"}, {name:"Enterijer_28", price:120000, status:"Neplaćeno"}, {name:"Enterijer_29", price:120000, status:"Naplaćeno"}, {name:"Enterijer_30", price:120000, status:"Neplaćeno"} ],
-};
-Object.values(projectPricing).forEach(rows=>rows.forEach(r=>r._id=nextId()));
-if(_persistedRaw && _persistedRaw.projectPricing){
-  Object.keys(projectPricing).forEach(k=>delete projectPricing[k]);
-  Object.assign(projectPricing, _persistedRaw.projectPricing);
-}
 
 const salaryBaseByEmp = {
   "Dušan Stević":240000, "Stefana Ristić":190000, "Radoslav Milanović":190000, "Dalibor Mitić":145000,
@@ -7082,9 +7073,7 @@ function yearPayrollTotal(){ return salaryEntries.reduce((s,e)=>s+salUkupno(e),0
 function txMonth(dateStr){ return parseInt(dateStr.split('-')[1],10) - 1; }
 
 function receivablesTotal(){
-  let sum = 0;
-  Object.values(projectPricing).forEach(rows=>rows.forEach(r=>{ if(r.status==='Fakturisano' || r.status==='Neplaćeno') sum += r.price; }));
-  return sum;
+  return allPricedItems().filter(r=>r.status==='Fakturisano' || r.status==='Neplaćeno').reduce((s,r)=>s+r.price,0);
 }
 
 function renderFinKpis(){
@@ -7181,13 +7170,14 @@ function renderFinDonut(){
 }
 
 function projectValueByCode(code){
-  return (projectPricing[code]||[]).reduce((s,r)=>s+r.price, 0);
+  const p = allProjects.find(x=>x.code===code);
+  return p ? projectPricedItems(p).reduce((s,r)=>s+r.price, 0) : 0;
 }
 
 function renderNaplativostDonut(){
   const colorMap = { "Naplaćeno":"#4C8A55", "Fakturisano":"var(--gold)", "Neplaćeno":"var(--coral)" };
   const sums = { "Naplaćeno":0, "Fakturisano":0, "Neplaćeno":0 };
-  Object.values(projectPricing).forEach(rows=>rows.forEach(r=>{ sums[r.status] = (sums[r.status]||0) + r.price; }));
+  allPricedItems().forEach(r=>{ sums[r.status] = (sums[r.status]||0) + r.price; });
   const total = Object.values(sums).reduce((a,b)=>a+b,0);
   const cats = Object.keys(sums).filter(c=>sums[c]>0);
   let acc = 0;
@@ -7422,44 +7412,52 @@ document.getElementById('newTxBtn').addEventListener('click', ()=>{
   document.getElementById('txSubmit').textContent = "Dodaj transakciju";
   document.getElementById('txDelete').style.display = 'none';
   ['txDescInput','txAmountInput','txCategoryInput'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('txDateInput').value = "2026-08-04";
+  document.getElementById('txDateInput').value = toISO(TODAY);
   txModalOverlay.classList.add('open');
 });
 document.getElementById('txCancel').addEventListener('click', closeTxModal);
 wireOverlayClose(txModalOverlay, closeTxModal);
-document.getElementById('txDelete').addEventListener('click', ()=>{
+document.getElementById('txDelete').addEventListener('click', async ()=>{
   if(!editingTxId) return;
   if(!confirm('Obrisati ovu transakciju?')) return;
+  const tx = allTransactions.find(t=>t._id===editingTxId);
+  if(tx && tx.dbId){
+    const { error } = await sb.from('transactions').delete().eq('id', tx.dbId);
+    if(error) return;
+  }
   const idx = allTransactions.findIndex(t=>t._id===editingTxId);
   if(idx>-1) allTransactions.splice(idx,1);
   closeTxModal();
   refreshFinAfterTxChange();
-  persist();
 });
-document.getElementById('txSubmit').addEventListener('click', ()=>{
+document.getElementById('txSubmit').addEventListener('click', async ()=>{
   const amount = parseFloat(document.getElementById('txAmountInput').value);
   const desc = document.getElementById('txDescInput').value.trim();
   if(!amount || !desc) return;
-  const date = document.getElementById('txDateInput').value || "2026-08-04";
+  const date = document.getElementById('txDateInput').value || toISO(TODAY);
   const type = document.getElementById('txTypeInput').value;
   const category = document.getElementById('txCategoryInput').value.trim() || "Ostalo";
   const method = document.getElementById('txMethodInput').value;
 
   if(editingTxId){
     const tx = allTransactions.find(t=>t._id===editingTxId);
-    if(tx) Object.assign(tx, {date, type, category, desc, method, amount});
+    if(!tx) return;
+    const { error } = await sb.from('transactions').update({ date, type, category, description:desc, method, amount }).eq('id', tx.dbId);
+    if(error) return;
+    Object.assign(tx, {date, type, category, desc, method, amount});
   } else {
-    allTransactions.unshift({ _id:nextId(), date, type, category, desc, method, amount });
+    const { data, error } = await sb.from('transactions').insert({ date, type, category, description:desc, method, amount }).select().single();
+    if(error) return;
+    allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:null, kadarDbId:null });
   }
   closeTxModal();
   refreshFinAfterTxChange();
-  persist();
 });
 
 let activePriceProject = null;
 const priceState = { search:"", client:"Svi klijenti" };
 function buildPriceClientMenu(){
-  const clients = uniqueSorted(allProjects.filter(p=>projectPricing[p.code]).map(p=>p.client));
+  const clients = uniqueSorted(allProjects.map(p=>p.client));
   document.getElementById('filterPriceKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
     clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
   bindCalFilter('filterPriceKlijent', (val)=>{ priceState.client = val; renderPricingList(); });
@@ -7470,21 +7468,27 @@ function renderPriceClientSummary(){
   wrap.style.display = 'flex';
   wrap.innerHTML = clientSummaryHtml(priceState.client);
 }
+/* Cenovnik now lists every project's real kadrovi (base_price/price_status
+   live on the kadar itself) plus that project's extra_charges — no more
+   freely-typed "kadar name" line items disconnected from real work. Each
+   kadar row also shows how many of its billable rounds go past the 4
+   included in the base price, purely as a nudge (see rounds.billable) —
+   nothing here auto-generates or reconciles against extra_charges. */
 function renderPricingList(){
   renderPriceClientSummary();
   const q = priceState.search.trim().toLowerCase();
-  const list = allProjects.filter(p=> projectPricing[p.code] &&
+  const list = allProjects.filter(p=>
     (priceState.client==="Svi klijenti" || p.client===priceState.client) &&
     (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q)));
   document.getElementById('priceProjectList').innerHTML = list.map(p=>{
-    const kadrovi = projectPricing[p.code] || [];
-    const total = kadrovi.reduce((s,k)=>s+k.price,0);
+    const charges = extraCharges.filter(c=>c.projectDbId===p.dbId);
+    const total = projectPricedItems(p).reduce((s,r)=>s+r.price,0);
     return `
-    <div class="price-project" data-code="${p.code}">
-      <div class="price-project-head" data-code="${p.code}">
+    <div class="price-project" data-pid="${p._id}">
+      <div class="price-project-head" data-pid="${p._id}">
         <div>
           <div class="price-project-name">${p.name}</div>
-          <div class="price-project-meta">${p.code} · ${p.client} · ${kadrovi.length} kadrova</div>
+          <div class="price-project-meta">${p.code} · ${p.client} · ${p.kadrovi.length} kadrova</div>
         </div>
         <div class="price-project-right">
           <div class="price-project-total">${fmtRSD(total)}</div>
@@ -7492,12 +7496,27 @@ function renderPricingList(){
         </div>
       </div>
       <div class="price-kadar-list">
-        ${kadrovi.map(k=>`
-          <div class="price-kadar-row" data-code="${p.code}" data-id="${k._id}" style="cursor:pointer;">
-            <div class="price-kadar-name">${escapeHtml(k.name)}</div>
-            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(k.price)}</span><span class="tag ${k.status==='Naplaćeno'?'tag-final':(k.status==='Fakturisano'?'tag-wip':'tag-review')}">${k.status}</span></div>
+        ${p.kadrovi.map(k=>{
+          const billable = k.rounds.filter(r=>r.billable).length;
+          const extra = Math.max(0, billable-4);
+          const priced = k.basePrice != null;
+          return `
+          <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
+            <div class="price-kadar-name">${escapeHtml(k.name)}${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
+            <div class="price-kadar-right">${priced
+              ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Naplaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
+              : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      <div class="price-charges-list">
+        ${charges.length ? `<div class="price-charges-label">Dodatna naplata</div>` : ''}
+        ${charges.map(c=>`
+          <div class="price-kadar-row price-charge-row" data-pid="${p._id}" data-cid="${c._id}" style="cursor:pointer;">
+            <div class="price-kadar-name">${escapeHtml(c.description)}</div>
+            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Naplaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
           </div>`).join('')}
-        <div class="price-add-row"><button class="price-add-btn" data-code="${p.code}">+ Dodaj kadar</button></div>
+        <div class="price-add-row"><button class="price-add-btn" data-pid="${p._id}">+ Dodatna naplata</button></div>
       </div>
     </div>`;
   }).join('');
@@ -7510,65 +7529,141 @@ function renderPricingList(){
   document.querySelectorAll('.price-add-btn').forEach(btn=>{
     btn.addEventListener('click', (ev)=>{
       ev.stopPropagation();
-      openKadarModal(btn.dataset.code, null);
+      const project = allProjects.find(p=>p._id===Number(btn.dataset.pid));
+      if(project) openExtraChargeModal(project, null);
     });
   });
-  document.querySelectorAll('.price-kadar-row').forEach(row=>{
+  document.querySelectorAll('.price-kadar-row:not(.price-charge-row)').forEach(row=>{
     row.addEventListener('click', (ev)=>{
       ev.stopPropagation();
-      const rows = projectPricing[row.dataset.code] || [];
-      const kadar = rows.find(k=>k._id===Number(row.dataset.id));
-      if(kadar) openKadarModal(row.dataset.code, kadar);
+      const project = allProjects.find(p=>p._id===Number(row.dataset.pid));
+      const kadar = project && project.kadrovi.find(k=>k._id===Number(row.dataset.kid));
+      if(kadar) openKadarModal(kadar, project);
+    });
+  });
+  document.querySelectorAll('.price-charge-row').forEach(row=>{
+    row.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      const project = allProjects.find(p=>p._id===Number(row.dataset.pid));
+      const charge = extraCharges.find(c=>c._id===Number(row.dataset.cid));
+      if(project && charge) openExtraChargeModal(project, charge);
     });
   });
 }
 document.getElementById('priceSearchInput').addEventListener('input', e=>{ priceState.search = e.target.value; renderPricingList(); });
 
 const kadarModalOverlay = document.getElementById('kadarModalOverlay');
-let editingKadarId = null;
+let activeKadar = null;
 function closeKadarModal(){
   kadarModalOverlay.classList.remove('open');
   activePriceProject = null;
-  editingKadarId = null;
+  activeKadar = null;
 }
-function openKadarModal(code, kadar){
-  activePriceProject = code;
-  editingKadarId = kadar ? kadar._id : null;
-  document.getElementById('kadarTitle').textContent = kadar ? "Izmeni kadar" : "Novi kadar";
-  document.getElementById('kadarSubmit').textContent = kadar ? "Sačuvaj" : "Dodaj kadar";
-  document.getElementById('kadarDelete').style.display = kadar ? 'block' : 'none';
-  document.getElementById('kadarNameInput').value = kadar ? kadar.name : '';
-  document.getElementById('kadarAmountInput').value = kadar ? kadar.price : '';
-  document.getElementById('kadarStatusInput').value = kadar ? kadar.status : 'Naplaćeno';
+function openKadarModal(kadar, project){
+  activePriceProject = project;
+  activeKadar = kadar;
+  const billable = kadar.rounds.filter(r=>r.billable).length;
+  const extra = Math.max(0, billable-4);
+  document.getElementById('kadarTitle').textContent = kadar.name;
+  document.getElementById('kadarMeta').textContent = `${project.code} · ${kadar.type} · ${billable} ${billable===1?'runda':'rundi'} ukupno (${extra>0 ? extra+' preko osnovne cene' : 'u okviru osnovne cene (4)'})`;
+  document.getElementById('kadarSubmit').textContent = "Sačuvaj";
+  document.getElementById('kadarDelete').style.display = kadar.basePrice!=null ? 'block' : 'none';
+  document.getElementById('kadarAmountInput').value = kadar.basePrice != null ? kadar.basePrice : '';
+  document.getElementById('kadarStatusInput').value = kadar.priceStatus || 'Neplaćeno';
   kadarModalOverlay.classList.add('open');
 }
 document.getElementById('kadarCancel').addEventListener('click', closeKadarModal);
 wireOverlayClose(kadarModalOverlay, closeKadarModal);
-document.getElementById('kadarDelete').addEventListener('click', ()=>{
-  if(!editingKadarId || !activePriceProject) return;
-  if(!confirm('Obrisati ovaj kadar?')) return;
-  const rows = projectPricing[activePriceProject];
-  const idx = rows.findIndex(k=>k._id===editingKadarId);
-  if(idx>-1) rows.splice(idx,1);
+document.getElementById('kadarDelete').addEventListener('click', async ()=>{
+  if(!activeKadar) return;
+  if(!confirm('Ukloniti cenu za ovaj kadar?')) return;
+  const { error } = await sb.from('kadrovi').update({ base_price:null, price_status:null }).eq('id', activeKadar.dbId);
+  if(error) return;
+  activeKadar.basePrice = null; activeKadar.priceStatus = null;
   closeKadarModal();
   renderPricingList();
-  persist();
 });
-document.getElementById('kadarSubmit').addEventListener('click', ()=>{
-  const name = document.getElementById('kadarNameInput').value.trim();
+document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
+  if(!activeKadar || !activePriceProject) return;
   const price = parseFloat(document.getElementById('kadarAmountInput').value);
-  if(!name || !price || !activePriceProject) return;
+  if(!price) return;
   const status = document.getElementById('kadarStatusInput').value;
+  const wasNaplaceno = activeKadar.priceStatus === 'Naplaćeno';
 
-  if(editingKadarId){
-    const kadar = projectPricing[activePriceProject].find(k=>k._id===editingKadarId);
-    if(kadar) Object.assign(kadar, {name, price, status});
-  } else {
-    projectPricing[activePriceProject].push({ _id:nextId(), name, price, status });
+  const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status }).eq('id', activeKadar.dbId);
+  if(error) return;
+  activeKadar.basePrice = price; activeKadar.priceStatus = status;
+  if(status==='Naplaćeno' && !wasNaplaceno){
+    await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:toISO(TODAY), kadarDbId:activeKadar.dbId });
+    refreshFinAfterTxChange();
   }
   closeKadarModal();
   renderPricingList();
-  persist();
+});
+
+const extraChargeModalOverlay = document.getElementById('extraChargeModalOverlay');
+let editingChargeId = null, activeChargeProject = null;
+function closeExtraChargeModal(){
+  extraChargeModalOverlay.classList.remove('open');
+  editingChargeId = null; activeChargeProject = null;
+}
+function openExtraChargeModal(project, charge){
+  activeChargeProject = project;
+  editingChargeId = charge ? charge._id : null;
+  document.getElementById('extraChargeTitle').textContent = charge ? "Izmeni naplatu" : `Dodatna naplata — ${project.name}`;
+  document.getElementById('extraChargeSubmit').textContent = charge ? "Sačuvaj" : "Dodaj";
+  document.getElementById('extraChargeDelete').style.display = charge ? 'block' : 'none';
+  document.getElementById('extraChargeDescInput').value = charge ? charge.description : '';
+  document.getElementById('extraChargeAmountInput').value = charge ? charge.amount : '';
+  document.getElementById('extraChargeDateInput').value = charge ? charge.date : toISO(TODAY);
+  document.getElementById('extraChargeStatusInput').value = charge ? charge.status : 'Neplaćeno';
+  extraChargeModalOverlay.classList.add('open');
+}
+document.getElementById('extraChargeCancel').addEventListener('click', closeExtraChargeModal);
+wireOverlayClose(extraChargeModalOverlay, closeExtraChargeModal);
+document.getElementById('extraChargeDelete').addEventListener('click', async ()=>{
+  if(!editingChargeId) return;
+  if(!confirm('Obrisati ovu naplatu?')) return;
+  const charge = extraCharges.find(c=>c._id===editingChargeId);
+  if(charge){
+    const { error } = await sb.from('extra_charges').delete().eq('id', charge.dbId);
+    if(error) return;
+    extraCharges.splice(extraCharges.indexOf(charge),1);
+  }
+  closeExtraChargeModal();
+  renderPricingList();
+});
+document.getElementById('extraChargeSubmit').addEventListener('click', async ()=>{
+  if(!activeChargeProject) return;
+  const description = document.getElementById('extraChargeDescInput').value.trim();
+  const amount = parseFloat(document.getElementById('extraChargeAmountInput').value);
+  const date = document.getElementById('extraChargeDateInput').value || toISO(TODAY);
+  const status = document.getElementById('extraChargeStatusInput').value;
+  if(!description || !amount) return;
+
+  if(editingChargeId){
+    const charge = extraCharges.find(c=>c._id===editingChargeId);
+    if(!charge) return;
+    const wasNaplaceno = charge.status === 'Naplaćeno';
+    const { error } = await sb.from('extra_charges').update({ description, amount, date, status }).eq('id', charge.dbId);
+    if(error) return;
+    Object.assign(charge, { description, amount, date, status });
+    if(status==='Naplaćeno' && !wasNaplaceno){
+      await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:charge.dbId });
+      refreshFinAfterTxChange();
+    }
+  } else {
+    const { data, error } = await sb.from('extra_charges').insert({ project_id:activeChargeProject.dbId, description, amount, date, status }).select().single();
+    if(error) return;
+    const newCharge = { _id:nextId(), dbId:data.id, projectDbId:data.project_id, description:data.description, amount:data.amount, date:data.date, status:data.status };
+    extraCharges.unshift(newCharge);
+    if(status==='Naplaćeno'){
+      await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:newCharge.dbId });
+      refreshFinAfterTxChange();
+    }
+  }
+  closeExtraChargeModal();
+  renderPricingList();
 });
 
 let salBreakdownMonth = TODAY.m - 1;
@@ -9040,6 +9135,8 @@ async function loadProjectsFromSupabase(){
           name: k.name,
           employee: k.employee_id ? (teamNameById[k.employee_id] || '') : '',
           status: k.status,
+          basePrice: k.base_price,
+          priceStatus: k.price_status,
           rounds: (k.rounds || []).map(r=>({
             _id: nextId(),
             dbId: r.id,
@@ -9091,6 +9188,65 @@ function findKadarByDbId(kadarDbId){
   return null;
 }
 
+/* Phase 5: real pricing/billing. extraCharges mirrors the time_entries
+   loader shape (dbId + resolved display fields); allTransactions keeps its
+   original local-mock shape ({_id,date,type,category,desc,method,amount})
+   so every existing reader (renderFinKpis, renderFinFlowChart, txList, ...)
+   keeps working unchanged — only where the rows come from changed. */
+let extraCharges = [];
+async function loadExtraChargesFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('extra_charges').select('*').order('date', { ascending:false });
+    if(error || !data) return false;
+    extraCharges.length = 0;
+    data.forEach(row=>{
+      extraCharges.push({
+        _id: nextId(), dbId: row.id, projectDbId: row.project_id,
+        description: row.description, amount: row.amount, date: row.date, status: row.status
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
+let allTransactions = [];
+async function loadTransactionsFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('transactions').select('*').order('date', { ascending:false });
+    if(error || !data) return false;
+    allTransactions.length = 0;
+    data.forEach(row=>{
+      allTransactions.push({
+        _id: nextId(), dbId: row.id, date: row.date, type: row.type, category: row.category,
+        desc: row.description, method: row.method, amount: row.amount,
+        extraChargeDbId: row.extra_charge_id, kadarDbId: row.kadar_id
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
+/* Auto-logs a ledger transaction when a price/charge flips to "naplaćeno" —
+   called from kadarSubmit/extraChargeSubmit, never on its own. Takes the
+   already-updated Supabase row's ids so the transaction links back to it. */
+async function txAutoLogPayment({ desc, amount, date, kadarDbId, extraChargeDbId }){
+  const row = { date: date || toISO(TODAY), type:'Priliv', category:'Uplata klijenta', description:desc, method:'Račun', amount, kadar_id:kadarDbId||null, extra_charge_id:extraChargeDbId||null };
+  const { data, error } = await sb.from('transactions').insert(row).select().single();
+  if(error || !data) return;
+  allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:data.extra_charge_id, kadarDbId:data.kadar_id });
+}
+/* Combines a project's real per-kadar base prices with its extra_charges
+   rows into one flat {price,status} list — the single place every finance
+   KPI/donut/client-summary reads "how much was this project billed" from,
+   so pricing (kadar) and extra charges never need to be summed separately
+   at each call site. */
+function projectPricedItems(p){
+  const items = p.kadrovi.filter(k=>k.basePrice!=null).map(k=>({price:k.basePrice, status:k.priceStatus||'Neplaćeno'}));
+  extraCharges.filter(c=>c.projectDbId===p.dbId).forEach(c=>items.push({price:c.amount, status:c.status}));
+  return items;
+}
+function allPricedItems(){ return allProjects.flatMap(projectPricedItems); }
+
 let _resolvedSessionUserId = null;
 let _resolvingSessionPromise = null;
 async function resolveSessionLogin(session){
@@ -9101,6 +9257,8 @@ async function resolveSessionLogin(session){
     await loadClientsFromSupabase();
     await loadProjectsFromSupabase();
     await loadTimeEntriesFromSupabase();
+    await loadExtraChargesFromSupabase();
+    await loadTransactionsFromSupabase();
     generateEventsFromKadrovi();
     buildCalFilterMenus();
     renderCalendar();
