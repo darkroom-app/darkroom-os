@@ -810,10 +810,10 @@ select.native-select-hidden{ display:none; }
 .fw-cloud::before{ width:14px; height:14px; top:-7px; left:3px; }
 .fw-cloud::after{ width:10px; height:10px; top:-5px; left:13px; }
 .fw-cloud.dim{ background:#DCD7C8; }
-.fw-cloud.drift1{ top:16px; left:5px; animation:fwDrift 6s ease-in-out infinite; }
-.fw-cloud.drift2{ top:26px; left:16px; animation:fwDrift 7s ease-in-out infinite 0.6s; }
-.fw-cloud.solo{ top:20px; left:12px; animation:fwDrift 6s ease-in-out infinite; }
-@keyframes fwDrift{ 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(4px); } }
+.fw-cloud.drift1{ top:16px; left:2px; animation:fwDrift 4s ease-in-out infinite; }
+.fw-cloud.drift2{ top:26px; left:14px; animation:fwDrift 4.6s ease-in-out infinite 0.4s; }
+.fw-cloud.solo{ top:20px; left:9px; animation:fwDrift 4s ease-in-out infinite; }
+@keyframes fwDrift{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(11px,-2px); } }
 
 .fw-drop{ position:absolute; width:2px; height:8px; border-radius:2px; background:var(--sky); opacity:0; animation:fwFall 1.1s linear infinite; }
 @keyframes fwFall{ 0%{ transform:translateY(0); opacity:0; } 15%{ opacity:0.85; } 90%{ opacity:0.3; } 100%{ transform:translateY(20px); opacity:0; } }
