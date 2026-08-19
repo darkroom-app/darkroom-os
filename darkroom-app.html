@@ -3481,23 +3481,36 @@ calWeeks.addEventListener('click', (e)=>{
 
 /* Zamenjuje mock "zadatak" stavke (koje su ostale od pre Supabase migracije i
    ne odgovaraju stvarnim projektima) stvarnim rasporedom generisanim iz
-   trenutno aktivnih kadrova — svaki aktivan/na-čekanju kadar sa dodeljenim
-   zaposlenim dobija trotodnevnu stavku od danas, da kalendar odmah bude
-   povezan sa stvarnim podacima. Grubo je namerno (privremeno rešenje, može
-   se kasnije zameniti preciznijim rasporedom). */
+   trenutno aktivnih kadrova. Da kalendar/dashboard ostanu pregledni, svaki
+   zaposleni dobija samo nasumično 2-3 zadatka za tekuću nedelju (ne svaki
+   njegov aktivan kadar) — grubo i privremeno, lako zamenljivo preciznijim
+   rasporedom kasnije. */
 function generateEventsFromKadrovi(){
   for(let i=events.length-1; i>=0; i--){ if(events[i].kind==='zadatak') events.splice(i,1); }
-  const start = {y:TODAY.y, m:TODAY.m, d:TODAY.d};
-  const end = addDays(start, 2);
+  const byPerson = {};
   allProjects.forEach(p=>{
     p.kadrovi.forEach(k=>{
       if(!k.employee || (k.status!=='aktivan' && k.status!=='na čekanju')) return;
+      (byPerson[k.employee] = byPerson[k.employee] || []).push({project:p, kadar:k});
+    });
+  });
+  const monday = mondayOf(TODAY);
+  Object.keys(byPerson).forEach(person=>{
+    const pool = byPerson[person];
+    const count = Math.min(pool.length, 2 + Math.floor(Math.random()*2));
+    const picks = [...pool].sort(()=>Math.random()-0.5).slice(0, count);
+    const dayOffsets = [0,1,2,3,4].sort(()=>Math.random()-0.5).slice(0, count);
+    picks.forEach((item, idx)=>{
+      const dayOffset = dayOffsets[idx];
+      const start = addDays(monday, dayOffset);
+      const span = Math.min(Math.random() < 0.5 ? 0 : 1, 4 - dayOffset);
+      const end = addDays(monday, dayOffset + span);
       events.push({
-        _id:nextId(), kind:'zadatak', person:k.employee,
-        initials: artistInitials[k.employee] || k.employee.slice(0,2).toUpperCase(),
-        color: personColorMap[k.employee] || 'gold',
-        projectCode:p.code, taskName:k.name, urgency:'srednja',
-        start:{...start}, end:{...end}
+        _id:nextId(), kind:'zadatak', person,
+        initials: artistInitials[person] || person.slice(0,2).toUpperCase(),
+        color: personColorMap[person] || 'gold',
+        projectCode:item.project.code, taskName:item.kadar.name, urgency:'srednja',
+        start, end
       });
     });
   });
