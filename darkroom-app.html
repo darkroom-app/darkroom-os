@@ -3532,6 +3532,7 @@ calWeeks.addEventListener('click', async (e)=>{
     const evObj = events.find(x=>x._id===Number(delBtn.dataset.id));
     if(!evObj || !canEditCalendarFor(evObj.person)) return;
     if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
+    await deleteTimeEntriesForEvent(evObj);
     const idx = events.findIndex(x=>x._id===evObj._id);
     if(idx>-1) events.splice(idx,1);
     buildCalFilterMenus();
@@ -3942,6 +3943,8 @@ wireOverlayClose(eventModalOverlay, closeEventModal);
 document.getElementById('evDelete').addEventListener('click', async ()=>{
   if(!editingEventId) return;
   if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
+  const evObj = events.find(e=>e._id===editingEventId);
+  await deleteTimeEntriesForEvent(evObj);
   const idx = events.findIndex(e=>e._id===editingEventId);
   if(idx>-1) events.splice(idx,1);
   closeEventModal();
@@ -4043,6 +4046,32 @@ function renderEvzHours(ev){
   field.dataset.kadarDbId = kadar.dbId;
   field.dataset.employeeId = emp.authId;
   field.style.display = '';
+}
+/* time_entries are keyed on (employee, kadar, date) and logged inside the
+   zadatak event's edit modal, but they're a fully separate Supabase table
+   from `events` (which is local-only) — deleting the calendar block was
+   only ever removing the scheduling entry, silently leaving the hours
+   already logged for that kadar/employee/date range in place (and still
+   counted toward the weekly goal). Call this before splicing a zadatak
+   event out of `events` so the hours actually go away with it. */
+async function deleteTimeEntriesForEvent(evObj){
+  if(!evObj || evObj.kind !== 'zadatak' || !sb) return;
+  const proj = allProjects.find(p=>p.code===evObj.projectCode);
+  const kadar = proj && proj.kadrovi.find(k=>k.name===evObj.taskName);
+  const emp = teamMembers.find(t=>t.name===evObj.person);
+  if(!kadar || !kadar.dbId || !emp || !emp.authId) return;
+  const startISO = toISO(evObj.start), endISO = toISO(evObj.end);
+  const { error } = await sb.from('time_entries')
+    .delete()
+    .eq('employee_id', emp.authId).eq('kadar_id', kadar.dbId)
+    .gte('date', startISO).lte('date', endISO);
+  if(error){ await customAlert('Brisanje unetih sati nije uspelo: ' + error.message); return; }
+  for(let i = timeEntries.length - 1; i >= 0; i--){
+    const t = timeEntries[i];
+    if(t.employeeId===emp.authId && t.kadarDbId===kadar.dbId && t.date>=startISO && t.date<=endISO) timeEntries.splice(i,1);
+  }
+  renderWeeklyGoal();
+  renderOvertimeStat();
 }
 async function saveOneHoursCell(dbId, employeeId, employeeName, kadarDbId, dateVal, hours, overtime){
   if(hours > 0){
