@@ -3479,6 +3479,30 @@ calWeeks.addEventListener('click', (e)=>{
   }
 });
 
+/* Zamenjuje mock "zadatak" stavke (koje su ostale od pre Supabase migracije i
+   ne odgovaraju stvarnim projektima) stvarnim rasporedom generisanim iz
+   trenutno aktivnih kadrova — svaki aktivan/na-čekanju kadar sa dodeljenim
+   zaposlenim dobija trotodnevnu stavku od danas, da kalendar odmah bude
+   povezan sa stvarnim podacima. Grubo je namerno (privremeno rešenje, može
+   se kasnije zameniti preciznijim rasporedom). */
+function generateEventsFromKadrovi(){
+  events = events.filter(e=>e.kind!=='zadatak');
+  const start = {y:TODAY.y, m:TODAY.m, d:TODAY.d};
+  const end = addDays(start, 2);
+  allProjects.forEach(p=>{
+    p.kadrovi.forEach(k=>{
+      if(!k.employee || (k.status!=='aktivan' && k.status!=='na čekanju')) return;
+      events.push({
+        _id:nextId(), kind:'zadatak', person:k.employee,
+        initials: artistInitials[k.employee] || k.employee.slice(0,2).toUpperCase(),
+        color: personColorMap[k.employee] || 'gold',
+        projectCode:p.code, taskName:k.name, urgency:'srednja',
+        start:{...start}, end:{...end}
+      });
+    });
+  });
+}
+
 function buildCalFilterMenus(){
   const codes = uniqueSorted(events.filter(e=>e.kind==='zadatak').map(e=>e.projectCode));
   const people = uniqueSorted(events.filter(e=>e.person).map(e=>e.person));
@@ -8551,6 +8575,10 @@ async function resolveSessionLogin(session){
     await loadClientsFromSupabase();
     await loadProjectsFromSupabase();
     await loadTimeEntriesFromSupabase();
+    generateEventsFromKadrovi();
+    buildCalFilterMenus();
+    renderCalendar();
+    renderWeekWidget();
     buildFilterMenus();
     const match = teamMembers.find(t=>t.authId===session.user.id);
     _resolvingSessionPromise = null;
