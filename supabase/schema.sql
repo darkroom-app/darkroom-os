@@ -578,3 +578,16 @@ create index extra_charges_project_idx on public.extra_charges (project_id);
 -- touched (acceptable: that list is a nudge, not a ledger of record).
 
 alter table public.kadrovi add column if not exists price_updated_at timestamptz;
+
+
+-- ==== Phase 5c: index the kadrovi/rounds foreign keys (run as a sixteenth query) ====
+-- Postgres does NOT automatically index foreign key columns (only the
+-- primary key gets one) — kadrovi.project_id and rounds.kadar_id have never
+-- had an index since Phase 3b created these tables. Harmless while the
+-- table was small, but loadProjectsFromSupabase()'s single nested query
+-- (`projects -> kadrovi -> rounds`, now 334/3510/14757 rows after tonight's
+-- historical backfill) measured at ~5.9s / 4.7MB without these — every
+-- page load waits on this before the UI shows anything.
+
+create index if not exists kadrovi_project_id_idx on public.kadrovi (project_id);
+create index if not exists rounds_kadar_id_idx on public.rounds (kadar_id);
