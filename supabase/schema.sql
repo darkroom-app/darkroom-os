@@ -591,3 +591,93 @@ alter table public.kadrovi add column if not exists price_updated_at timestamptz
 
 create index if not exists kadrovi_project_id_idx on public.kadrovi (project_id);
 create index if not exists rounds_kadar_id_idx on public.rounds (kadar_id);
+
+
+-- ==== Phase 6: denormalize round stats onto kadrovi (run as a seventeenth query) ====
+-- loadProjectsFromSupabase() eagerly nests every round under every kadar on
+-- every login (`kadrovi(*, rounds(*))`) — even after Phase 5c's indexes this
+-- still ships all 14,757 round rows (images/labels included) before the UI
+-- shows anything, and only grows from here as the studio uses the app daily.
+-- Most of the ~19 places in the app that read a kadar's `.rounds` only ever
+-- derive a scalar from it (a count, a boolean, a date) — this caches those
+-- scalars directly on kadrovi so the app can stop shipping full round rows
+-- for anything except the one project a user actually has open. See the
+-- "Denormalize round stats on kadrovi" plan for the full call-site
+-- inventory and client-side rewrite.
+
+alter table public.kadrovi add column if not exists billable_rounds_count int not null default 0;
+alter table public.kadrovi add column if not exists total_rounds_count int not null default 0;
+alter table public.kadrovi add column if not exists has_image boolean not null default false;
+alter table public.kadrovi add column if not exists last_round_image_url text;
+alter table public.kadrovi add column if not exists first_round_date date;
+alter table public.kadrovi add column if not exists last_round_date date;
+
+-- One-time backfill from today's existing rounds. Kadrovi with zero rounds
+-- are simply absent from the aggregate and keep the column defaults above.
+update public.kadrovi k set
+  billable_rounds_count = agg.billable_count,
+  total_rounds_count = agg.total_count,
+  has_image = agg.has_image,
+  last_round_image_url = agg.last_image_url,
+  first_round_date = agg.first_date,
+  last_round_date = agg.last_date
+from (
+  select
+    r.kadar_id,
+    count(*) as total_count,
+    count(*) filter (where r.billable) as billable_count,
+    coalesce(bool_or(r.image is not null), false) as has_image,
+    (array_agg(r.image order by r.date desc nulls last, r.created_at desc)
+      filter (where r.image is not null))[1] as last_image_url,
+    min(r.date) as first_date,
+    max(r.date) as last_date
+  from public.rounds r
+  group by r.kadar_id
+) agg
+where k.id = agg.kadar_id;
+
+-- Keeps the 6 columns above in sync on every future round insert/update/
+-- delete, scoped to the affected kadar only. `coalesce(NEW.kadar_id,
+-- OLD.kadar_id)` covers delete (NEW is null then). The `bool_or(...)`
+-- coalesce matters: a correlated aggregate over zero remaining rounds
+-- returns one row with bool_or = NULL, not false, so deleting a kadar's
+-- last image without the coalesce would leave has_image stuck at NULL
+-- instead of flipping back to false.
+create or replace function public.sync_kadar_round_stats()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  target_kadar_id uuid := coalesce(NEW.kadar_id, OLD.kadar_id);
+begin
+  update public.kadrovi k set
+    billable_rounds_count = agg.billable_count,
+    total_rounds_count = agg.total_count,
+    has_image = agg.has_image,
+    last_round_image_url = agg.last_image_url,
+    first_round_date = agg.first_date,
+    last_round_date = agg.last_date
+  from (
+    select
+      coalesce(count(*), 0) as total_count,
+      coalesce(count(*) filter (where r.billable), 0) as billable_count,
+      coalesce(bool_or(r.image is not null), false) as has_image,
+      (array_agg(r.image order by r.date desc nulls last, r.created_at desc)
+        filter (where r.image is not null))[1] as last_image_url,
+      min(r.date) as first_date,
+      max(r.date) as last_date
+    from public.rounds r
+    where r.kadar_id = target_kadar_id
+  ) agg
+  where k.id = target_kadar_id;
+  -- No-ops harmlessly (0 rows updated) if the kadar itself was just deleted
+  -- and this fired from the FK's own cascade-delete of its rounds.
+  return NEW;
+end;
+$$;
+
+create trigger rounds_sync_kadar_stats
+  after insert or update or delete on public.rounds
+  for each row execute function public.sync_kadar_round_stats();
