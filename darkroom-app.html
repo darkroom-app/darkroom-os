@@ -412,6 +412,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 /* ==== FINANSIJE VIEW ==== */
 .fin-flow-chart{ display:flex; align-items:flex-end; gap:8px; height:126px; }
+#finFlowChart{ height:88px; }
 .fin-flow-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; height:100%; }
 .fin-flow-track{ flex:1; display:flex; align-items:flex-end; gap:2px; width:100%; justify-content:center; }
 .fin-flow-bar{ width:100%; max-width:11px; border-radius:5px 5px 2px 2px; transition:height 1s cubic-bezier(.34,1.2,.4,1); }
@@ -444,8 +445,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-mini-stat-val{ font-family:var(--font-display); font-weight:700; font-size:22px; }
 .fin-mini-stat-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; }
 
-.rounds-mini-chart{ display:flex; align-items:flex-end; gap:20px; height:96px; padding:0 10px; }
-.rounds-mini-sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); margin-top:10px; text-align:center; }
 
 .tx-head{ display:grid; grid-template-columns:0.8fr 0.7fr 1fr 1.6fr 1fr 1fr; gap:10px; padding:12px 18px; border-bottom:1px solid var(--border); }
 .tx-head span{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; }
@@ -2136,8 +2135,24 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <!-- TAB 1: PREGLED -->
       <div class="stat-tab-panel active" id="finTabPregled">
         <div class="kpi-row" id="finKpiRow" style="grid-template-columns:repeat(3,1fr);"></div>
+
+        <div class="stat-panel" id="finProjPanel">
+          <div class="stat-panel-head">
+            <div class="stat-panel-title">🎯 Projekcija — sledeći mesec i kvartal</div>
+            <div style="display:flex; align-items:center; gap:6px; font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint);">
+              Ciljna profitna marža
+              <input type="number" id="finMarginInput" value="20" min="0" max="200" step="1" style="width:46px; font-family:var(--font-mono); font-size:11px; border:1px solid var(--border); background:var(--card-soft); border-radius:7px; padding:4px 6px; color:var(--ink); text-align:right;">%
+            </div>
+          </div>
+          <div class="kpi-row" id="finProjRow" style="grid-template-columns:repeat(4,1fr); margin-bottom:12px;"></div>
+          <div class="sal-progress-row" style="display:flex; align-items:center; gap:10px;">
+            <div class="sal-progress-track" id="finProjPendingFillWrap"><div class="sal-progress-fill" id="finProjPendingFill" style="width:0%;"></div></div>
+          </div>
+          <div class="stat-panel-sub" id="finProjPendingText" style="margin-top:6px;"></div>
+        </div>
+
         <div class="stat-grid-2">
-          <div class="stat-panel">
+          <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head"><div class="stat-panel-title">📈 Priliv vs. odliv po mesecima</div></div>
             <div class="fin-flow-legend">
               <div class="fin-flow-legend-item"><span class="fin-flow-legend-dot" style="background:#4C8A55"></span>Priliv</div>
@@ -2145,7 +2160,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             </div>
             <div class="fin-flow-chart" id="finFlowChart"></div>
           </div>
-          <div class="stat-panel">
+          <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head"><div class="stat-panel-title">🧾 Odlivi po kategoriji</div></div>
             <div class="donut-row">
               <div class="donut-wrap" id="finDonutWrap">
@@ -2158,16 +2173,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         </div>
         <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
           <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title">💰 Naplativost cenovnika</div></div>
-            <div class="donut-row">
-              <div class="donut-wrap" id="naplDonutWrap">
-                <div class="donut-circle" id="naplDonutCircle"></div>
-                <div class="donut-hole"><div class="donut-hole-val" id="naplDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
-              </div>
-              <div class="donut-legend" id="naplDonutLegend"></div>
-            </div>
-          </div>
-          <div class="stat-panel">
             <div class="stat-panel-head"><div class="stat-panel-title">📁 Vrednost projekata po statusu</div></div>
             <div class="fin-mini-stat"><span class="fin-mini-stat-val" id="finActiveProjCount">0</span><span class="fin-mini-stat-label">aktivnih projekata</span></div>
             <div class="donut-row">
@@ -2177,6 +2182,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
               </div>
               <div class="donut-legend" id="statusDonutLegend"></div>
             </div>
+          </div>
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title">🏗️ Najvredniji aktivni projekti</div></div>
+            <div class="lb-list" id="topValueProjectsList"></div>
           </div>
         </div>
         <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
@@ -2188,11 +2197,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="stat-panel-head"><div class="stat-panel-title">📉 Top 5 troškova ovog meseca</div></div>
             <div class="lb-list" id="topExpensesList"></div>
           </div>
-        </div>
-        <div class="stat-panel" style="margin-bottom:16px;">
-          <div class="stat-panel-head"><div class="stat-panel-title">🔁 Naplativo vs. interne ispravke (Rev Remark) — ovog meseca</div></div>
-          <div class="rounds-mini-chart" id="roundsMiniChart"></div>
-          <div class="rounds-mini-sub" id="roundsMiniSub"></div>
         </div>
         <div class="stat-panel">
           <div class="stat-panel-head"><div class="stat-panel-title">🕓 Poslednje transakcije</div></div>
@@ -3020,7 +3024,8 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teamMembers,
-      salaryEntries, sideHustleEntries, events, todoItems, salConfirmedMonths, notifications
+      salaryEntries, sideHustleEntries, events, todoItems, salConfirmedMonths, notifications,
+      finProjectionMarginPct
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
       // identity fields. projCodeCounter removed — codes are now assigned
@@ -7155,6 +7160,25 @@ const salaryBase = {};
    istinski fiksan i opciono prijavljen svaki mesec, pa ostaje konstanta. */
 const ZDRAVSTVENO_DEFAULT = 3500; // ~30 EUR
 const FITNES_AMOUNT = 4000;
+/* Obracun poreza i doprinosa za Srbiju, 2026. Stope: porez na zaradu 10% (na
+   deo bruto 1 iznad neoporezivog iznosa), doprinosi na teret zaposlenog
+   19,90% (PIO 14 + zdravstvo 5,15 + nezaposlenost 0,75) — oba vec sadrzana u
+   "Osnovica" polju kao neto — i doprinosi na teret poslodavca 15,15% (PIO 10
+   + zdravstvo 5,15), koji se dodaju na vrh. Racuna se unazad: iz neto iznosa
+   (osnovica+bonus+prekovremeno) izvodi se bruto 1, pa bruto 2 (ukupan trosak
+   poslodavca), a "Porez i doprinosi" polje je razlika bruto2 - neto. */
+const NEOPOREZIVI_IZNOS = 34221; // RSD mesecno, 2026.
+const STOPA_POREZ = 0.10;
+const STOPA_DOPRINOSI_ZAPOSLENI = 0.199; // 14 + 5.15 + 0.75
+const STOPA_DOPRINOSI_POSLODAVAC = 0.1515; // 10 + 5.15
+function calcPorezIDoprinosi(neto){
+  neto = parseFloat(neto) || 0;
+  if(neto <= 0) return 0;
+  let bruto1 = (neto - STOPA_POREZ*NEOPOREZIVI_IZNOS) / (1 - STOPA_DOPRINOSI_ZAPOSLENI - STOPA_POREZ);
+  if(bruto1 < NEOPOREZIVI_IZNOS) bruto1 = neto / (1 - STOPA_DOPRINOSI_ZAPOSLENI); // ispod praga, nema poreza na zaradu
+  const bruto2 = bruto1 * (1 + STOPA_DOPRINOSI_POSLODAVAC);
+  return Math.round(bruto2 - neto);
+}
 let salaryEntries = [];
 (function seedSalaryEntries(){
   const keys = Object.keys(salaryBaseByEmp);
@@ -7166,7 +7190,7 @@ let salaryEntries = [];
       const prekovremeno = ((i+m)%4===0) ? 3000 + (i*250)%5000 : 0;
       const dedukcije = (i===9 && m===2) ? 8000 : (i===14 && m===5) ? 12000 : 0;
       const bruto = osn + bonus + prekovremeno;
-      const porez = Math.round(bruto * 0.345);
+      const porez = calcPorezIDoprinosi(bruto);
       salaryEntries.push({ _id:nextId(), employee:key, month:m, osnovica:osn, bonus, prekovremeno, dedukcije, porez, zdravstveno:ZDRAVSTVENO_DEFAULT, fitnes:false, status: m<7 ? 'Isplaćeno' : 'Na čekanju' });
     }
     salaryBase[key] = osn;
@@ -7293,27 +7317,31 @@ function projectValueByCode(code){
   return p ? projectPricedItems(p).reduce((s,r)=>s+r.price, 0) : 0;
 }
 
-function renderNaplativostDonut(){
-  const colorMap = { "Naplaćeno":"#4C8A55", "Fakturisano":"var(--gold)", "Neplaćeno":"var(--coral)" };
-  const sums = { "Naplaćeno":0, "Fakturisano":0, "Neplaćeno":0 };
-  allPricedItems().forEach(r=>{ sums[r.status] = (sums[r.status]||0) + r.price; });
-  const total = Object.values(sums).reduce((a,b)=>a+b,0);
-  const cats = Object.keys(sums).filter(c=>sums[c]>0);
-  let acc = 0;
-  const stops = cats.map(c=>{
-    const pct = (sums[c]/total)*100;
-    const seg = `${colorMap[c]} ${acc}% ${acc+pct}%`;
-    acc += pct;
-    return seg;
-  }).join(', ');
-  document.getElementById('naplDonutCircle').style.background = `conic-gradient(${stops})`;
-  document.getElementById('naplDonutLegend').innerHTML = cats.sort((a,b)=>sums[b]-sums[a]).map(c=>`
-    <div class="donut-legend-item">
-      <span class="donut-legend-left"><span class="donut-dot" style="background:${colorMap[c]}"></span>${c}</span>
-      <b>${fmtK(sums[c])}k</b>
-    </div>`).join('');
-  animateCountUp(document.getElementById('naplDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
-  setTimeout(()=>{ document.getElementById('naplDonutWrap').classList.add('shown'); }, 100);
+function topValueProjects(){
+  return allProjects
+    .filter(p=>p.status==='U toku' || p.status==='Revizija')
+    .map(p=>({ code:p.code, name:p.name, value: projectValueByCode(p.code) }))
+    .filter(p=>p.value>0)
+    .sort((a,b)=>b.value-a.value)
+    .slice(0,5);
+}
+function renderTopValueProjects(){
+  const data = topValueProjects();
+  const max = Math.max(...data.map(p=>p.value), 1);
+  document.getElementById('topValueProjectsList').innerHTML = data.length ? data.map((p,i)=>`
+    <div class="lb-row">
+      <div class="lb-rank">#${i+1}</div>
+      <div class="lb-info">
+        <div class="lb-name">${escapeHtml(p.code)} — ${escapeHtml(p.name)}</div>
+        <div class="lb-track"><div class="lb-fill" data-w="${(p.value/max)*100}" style="width:0%"></div></div>
+      </div>
+      <div class="lb-value">${fmtK(p.value)} RSD</div>
+    </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema određenih cena za aktivne projekte.</div>';
+  setTimeout(()=>{
+    document.querySelectorAll('#topValueProjectsList .lb-fill').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
+    });
+  }, 150);
 }
 
 function renderProjectValueDonut(){
@@ -7389,38 +7417,59 @@ function renderTopExpenses(){
   }, 150);
 }
 
-function monthlyRoundsStats(){
-  const currM = TODAY.m - 1;
-  let billable = 0, internal = 0;
-  roundsSummary.forEach(r=>{
-    if(!r.date) return;
-    const parts = r.date.split('-');
-    if(parseInt(parts[0],10)===TODAY.y && (parseInt(parts[1],10)-1)===currM){
-      if(r.billable) billable++; else internal++;
-    }
+/* Projekcija: trosak se izvodi iz stvarnih poslednja 3 zavrsena meseca
+   (plate + odliv transakcije), a "cilj prihoda" dodaje na to podesivu
+   ciljnu profitnu marzu — namerno editabilnu (finProjectionMarginPct), jer
+   stvarna istorijska profitna marza nije pouzdan signal dok se prihodi jos
+   ne belaze dosledno kroz ledger (transactions je tek nedavno migriran). */
+let finProjectionMarginPct = (_persistedRaw && typeof _persistedRaw.finProjectionMarginPct === 'number') ? _persistedRaw.finProjectionMarginPct : 20;
+function finMonthCost(m){
+  return allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m);
+}
+function finProjectionData(){
+  const lastM = TODAY.m - 2; // poslednji zavrseni mesec (0-indeksirano)
+  const trailing = [];
+  for(let i=0;i<3;i++){ const m = lastM-i; if(m>=0) trailing.push(finMonthCost(m)); }
+  const lastMonthCost = lastM>=0 ? finMonthCost(lastM) : 0;
+  const avgMonthlyCost = trailing.length ? trailing.reduce((a,b)=>a+b,0)/trailing.length : 0;
+  const margin = finProjectionMarginPct/100;
+  const monthTarget = avgMonthlyCost*(1+margin);
+  const quarterCost = avgMonthlyCost*3;
+  const quarterTarget = quarterCost*(1+margin);
+  const pending = receivablesTotal();
+  const pendingPct = monthTarget>0 ? Math.min(100, (pending/monthTarget)*100) : 0;
+  return { lastMonthCost, monthCost:avgMonthlyCost, monthTarget, quarterCost, quarterTarget, pending, pendingPct };
+}
+function renderFinProjection(){
+  document.getElementById('finMarginInput').value = finProjectionMarginPct;
+  const d = finProjectionData();
+  const lastMLabel = (TODAY.m-2)>=0 ? monthAbbrRS[TODAY.m-2] : '—';
+  const cards = [
+    { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', label:`Prošli mesec (${lastMLabel}) — trošak`, val:d.lastMonthCost, color:'var(--ink)' },
+    { icon:'<path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/>', label:'Projekcija troška — sledeći mesec', val:d.monthCost, color:'var(--coral)' },
+    { icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>', label:'Cilj prihoda — sledeći mesec', val:d.monthTarget, color:'#4C8A55' },
+    { icon:'<path d="M4 3v18"/><path d="M4 4h13l-3 4 3 4H4"/>', label:'Cilj prihoda — sledeći kvartal', val:d.quarterTarget, color:'var(--gold-deep)' },
+  ];
+  document.getElementById('finProjRow').innerHTML = cards.map(c=>`
+    <div class="kpi-card">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${c.icon}</svg></div>
+      <div class="kpi-val" style="color:${c.color}"><span class="fcu" data-val="${c.val}">0</span></div>
+      <div class="kpi-label">${c.label}</div>
+    </div>`).join('');
+  document.querySelectorAll('#finProjRow .fcu').forEach(el=>{
+    animateCountUp(el, Math.round(parseFloat(el.dataset.val)), {suffix:' RSD'});
   });
-  return { billable, internal };
+  document.getElementById('finProjPendingText').innerHTML =
+    `Trenutno fakturisano/na čekanju naplate: <b>${fmtRSD(d.pending)}</b> — pokriva ${d.pendingPct.toFixed(0)}% cilja za sledeći mesec.`;
+  document.getElementById('finProjPendingFill').style.width = d.pendingPct + '%';
 }
-
-function renderRoundsMiniChart(){
-  const { billable, internal } = monthlyRoundsStats();
-  const max = Math.max(billable, internal, 1);
-  document.getElementById('roundsMiniChart').innerHTML = `
-    <div class="fin-flow-col">
-      <div class="fin-flow-track"><div class="fin-flow-bar in" data-h="${(billable/max)*100}" style="height:0%" title="Naplativo: ${billable}"></div></div>
-      <div class="fin-flow-label">Naplativo (${billable})</div>
-    </div>
-    <div class="fin-flow-col">
-      <div class="fin-flow-track"><div class="fin-flow-bar out" data-h="${(internal/max)*100}" style="height:0%" title="Rev Remark: ${internal}"></div></div>
-      <div class="fin-flow-label">Rev Remark (${internal})</div>
-    </div>`;
-  setTimeout(()=>{
-    document.querySelectorAll('#roundsMiniChart .fin-flow-bar').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.height = el.dataset.h+'%'; }, i*80);
-    });
-  }, 150);
-  document.getElementById('roundsMiniSub').textContent = `${billable} naplativih rundi, ${internal} internih ispravki ovog meseca`;
-}
+document.getElementById('finMarginInput').addEventListener('change', (e)=>{
+  const v = parseFloat(e.target.value);
+  finProjectionMarginPct = (isFinite(v) && v>=0) ? v : 20;
+  e.target.value = finProjectionMarginPct;
+  renderFinProjection();
+  persist();
+});
 
 function renderRecentTx(){
   const sorted = [...allTransactions].sort((a,b)=> b.date.localeCompare(a.date)).slice(0,6);
@@ -7507,6 +7556,7 @@ const txModalOverlay = document.getElementById('txModalOverlay');
 let editingTxId = null;
 function refreshFinAfterTxChange(){
   buildTxCategoryMenu(); buildTxYearMenu(); renderTxList(); renderFinKpis(); renderFinFlowChart(); renderFinDonut(); renderRecentTx();
+  renderFinProjection(); renderTopValueProjects();
 }
 function closeTxModal(){
   txModalOverlay.classList.remove('open');
@@ -8382,6 +8432,16 @@ function updateSalModalLive(){
 
   if(emp) renderSalTrendMini(emp);
 }
+function autoCalcSalPorez(){
+  const osn = parseFloat(document.getElementById('salOsnovicaInput').value) || 0;
+  const bonus = parseFloat(document.getElementById('salBonusInput').value) || 0;
+  const preko = parseFloat(document.getElementById('salPrekoInput').value) || 0;
+  document.getElementById('salPorezInput').value = calcPorezIDoprinosi(osn + bonus + preko);
+}
+['salOsnovicaInput','salBonusInput','salPrekoInput'].forEach(id=>{
+  document.getElementById(id).addEventListener('input', autoCalcSalPorez);
+  document.getElementById(id).addEventListener('change', autoCalcSalPorez);
+});
 ['salEmpInput','salMonthInput','salOsnovicaInput','salBonusInput','salPrekoInput','salDedukcijeInput','salPorezInput','salZdravstvenoInput','salFitnesInput'].forEach(id=>{
   document.getElementById(id).addEventListener('input', updateSalModalLive);
   document.getElementById(id).addEventListener('change', updateSalModalLive);
@@ -8402,7 +8462,7 @@ function openSalModal(emp, month){
   document.getElementById('salBonusInput').value = existing ? existing.bonus : 0;
   document.getElementById('salPrekoInput').value = existing ? existing.prekovremeno : 0;
   document.getElementById('salDedukcijeInput').value = existing ? existing.dedukcije : 0;
-  document.getElementById('salPorezInput').value = existing ? existing.porez : Math.round((salaryBase[emp]||0)*0.345);
+  document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(salaryBase[emp]||0);
   document.getElementById('salZdravstvenoInput').value = existing ? (existing.zdravstveno ?? ZDRAVSTVENO_DEFAULT) : ZDRAVSTVENO_DEFAULT;
   document.getElementById('salFitnesInput').checked = existing ? !!existing.fitnes : false;
   document.getElementById('salStatusInput').value = existing ? existing.status : 'Isplaćeno';
@@ -8524,16 +8584,15 @@ document.getElementById('shSubmit').addEventListener('click', ()=>{
 });
 
 let finansijeInited = false;
-async function initFinansije(){
-  await ensureRoundsSummaryLoaded();
+function initFinansije(){
   renderFinKpis();
+  renderFinProjection();
   renderFinFlowChart();
   renderFinDonut();
-  renderNaplativostDonut();
   renderProjectValueDonut();
+  renderTopValueProjects();
   renderClientRevenueBoard();
   renderTopExpenses();
-  renderRoundsMiniChart();
   renderRecentTx();
   buildTxCategoryMenu();
   buildTxMonthMenu();
