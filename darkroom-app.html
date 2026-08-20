@@ -7286,8 +7286,18 @@ let salaryEntries = [];
 async function loadSalaryEntriesFromSupabase(){
   if(!sb) return false;
   try {
-    const { data, error } = await sb.from('salary_entries').select('*');
-    if(error || !data) return false;
+    // PostgREST caps a single select() at 1000 rows — with 5+ years of real
+    // history across ~20 employees this table is already past that, so a
+    // plain select() silently truncates. Page through it like
+    // ensureRoundsSummaryLoaded() does for rounds.
+    const pageSize = 1000;
+    const data = [];
+    for(let from = 0; ; from += pageSize){
+      const { data: page, error } = await sb.from('salary_entries').select('*').range(from, from + pageSize - 1);
+      if(error) return false;
+      data.push(...page);
+      if(page.length < pageSize) break;
+    }
     salaryEntries.length = 0;
     data.forEach(row=>{
       const emp = teamMembers.find(t=>t.authId===row.employee_id);
