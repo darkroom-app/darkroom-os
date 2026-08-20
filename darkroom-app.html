@@ -4494,7 +4494,12 @@ populateMonthYearSelects();
 syncMonthYearControls();
 
 function mkRound(label, billable, date){ return { _id:nextId(), label, billable, date, image:null }; }
-function mkKadar(type, name, employee, status, rounds){ return { _id:nextId(), type, name, employee, status, rounds: rounds || [] }; }
+function mkKadar(type, name, employee, status, rounds){
+  return {
+    _id:nextId(), type, name, employee, status, rounds: rounds || [],
+    billableRoundsCount:0, totalRoundsCount:0, hasImage:false, lastRoundImageUrl:null, firstRoundDate:null, lastRoundDate:null
+  };
+}
 
 function nextKadarNumber(proj, type){
   if(type === 'model') return '00';
@@ -4822,7 +4827,7 @@ function projectStats(p){
   p.kadrovi.forEach(k=>{ byType[k.type] = (byType[k.type]||0) + 1; });
   const typeBreakdown = Object.keys(byType).map(t=>`${byType[t]} ${t}`).join(', ');
   const approved = p.kadrovi.filter(k=>k.status==='odobren').length;
-  const rounds = p.kadrovi.reduce((sum,k)=>sum + k.rounds.filter(r=>r.billable).length, 0);
+  const rounds = p.kadrovi.reduce((sum,k)=>sum + (k.billableRoundsCount||0), 0);
   return { total: p.kadrovi.length, typeBreakdown, approved, rounds };
 }
 function projectEditBtn(p){
@@ -5123,7 +5128,7 @@ function renderProjectDetailStats(){
   const proj = allProjects.find(p=>p._id===activeProjectDetailId);
   if(!proj) return;
   const s = projectStats(proj);
-  const totalRoundsAll = proj.kadrovi.reduce((sum,k)=>sum + k.rounds.length, 0);
+  const totalRoundsAll = proj.kadrovi.reduce((sum,k)=>sum + (k.totalRoundsCount||0), 0);
   document.getElementById('pdStatBar').innerHTML = `
     <div class="pd-stat-metrics">
       <div class="pd-stat-item">Datum početka <b>${formatIsoDateHuman(proj.startDate) || proj.startDate}</b></div>
@@ -5142,16 +5147,21 @@ function renderProjectDetailStats(){
       <span class="tag ${statusTag[proj.status]}">${proj.status}</span>
     </div>`;
 }
-function openProjectDetail(proj){
+async function openProjectDetail(proj){
   activeProjectDetailId = proj._id;
   const heroStyle = proj.thumbnail ? `background-image:url('${proj.thumbnail}');background-size:cover;background-position:center;` : thumbStyle(proj.seed, 900);
   document.getElementById('pdHero').setAttribute('style', `height:220px;border-radius:var(--r-lg);position:relative;overflow:hidden;margin-bottom:16px;${heroStyle}`);
   document.getElementById('pdName').textContent = `${proj.code} — ${proj.name}`;
   document.getElementById('pdClientLabel').textContent = proj.client;
-  renderProjectDetailStats();
-  renderProjectDetailKadrovi();
   showView('projekat-detalji');
   setActiveNav('projekti');
+  if(!proj._roundsLoaded){
+    document.getElementById('pdTaskList').innerHTML = '<div class="agenda-empty">Učitavanje…</div>';
+    await loadKadarRoundsForProject(proj);
+  }
+  if(activeProjectDetailId !== proj._id) return; // navigated elsewhere while rounds were loading
+  renderProjectDetailStats();
+  renderProjectDetailKadrovi();
 }
 function renderProjectDetailKadrovi(){
   const proj = allProjects.find(p=>p._id===activeProjectDetailId);
@@ -5299,6 +5309,8 @@ document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   }
   const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
   if(idx>-1) kadar.rounds.splice(idx,1);
+  recomputeKadarRoundStats(kadar);
+  syncRoundsSummaryEntry(kadar, round, 'remove');
   closeRoundView();
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
@@ -5443,7 +5455,10 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
         .insert({ project_id:proj.dbId, type, name, employee_id:employeeId, status })
         .select().single();
       if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
-      proj.kadrovi.push({ _id: nextId(), dbId: data.id, type: data.type, name: data.name, employee: pendingTaskEmployee, status: data.status, rounds: [] });
+      proj.kadrovi.push({
+        _id: nextId(), dbId: data.id, type: data.type, name: data.name, employee: pendingTaskEmployee, status: data.status, rounds: [],
+        billableRoundsCount:0, totalRoundsCount:0, hasImage:false, lastRoundImageUrl:null, firstRoundDate:null, lastRoundDate:null
+      });
     } else {
       proj.kadrovi.push(mkKadar(type, name, pendingTaskEmployee, status, []));
     }
@@ -5469,8 +5484,7 @@ let pendingRoundImage = null;
 let roundChoice = 'round';
 
 function nextRoundLabel(kadar){
-  const billableCount = kadar.rounds.filter(r=>r.billable).length;
-  return `Round ${String(billableCount+1).padStart(2,'0')}`;
+  return `Round ${String((kadar.billableRoundsCount||0)+1).padStart(2,'0')}`;
 }
 function openRoundModal(projectId, taskId){
   activeRoundProjectId = projectId;
@@ -5482,7 +5496,7 @@ function openRoundModal(projectId, taskId){
   const proj = allProjects.find(p=>p._id===projectId);
   const kadar = proj && proj.kadrovi.find(k=>k._id===taskId);
   if(!kadar) return;
-  const hasRounds = kadar.rounds.length > 0;
+  const hasRounds = (kadar.totalRoundsCount||0) > 0;
   roundChoice = 'round';
   document.getElementById('roundChoiceField').style.display = hasRounds ? '' : 'none';
   document.getElementById('roundChoiceRound').textContent = nextRoundLabel(kadar);
@@ -5522,7 +5536,7 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
   const kadar = proj && proj.kadrovi.find(k=>k._id===activeRoundTaskId);
   if(!kadar) return;
   const date = document.getElementById('roundDate').value || toISO(TODAY);
-  const hasRounds = kadar.rounds.length > 0;
+  const hasRounds = (kadar.totalRoundsCount||0) > 0;
   let label, billable;
   if(!hasRounds){
     label = "Round 01"; billable = true;
@@ -5542,6 +5556,8 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
     kadar.rounds.push(mkRound(label, billable, date));
     if(image) kadar.rounds[kadar.rounds.length-1].image = image;
   }
+  recomputeKadarRoundStats(kadar);
+  syncRoundsSummaryEntry(kadar, kadar.rounds[kadar.rounds.length-1], 'add');
   pushNotification(notifRecipientId(proj.managerName), 'round', `Nova ${billable ? 'runda' : 'revizija'} (${label}) dodata za kadar "${kadar.name}" (${kadar.employee}) u projektu ${proj.name}`, proj._id);
   closeRoundModal();
   renderProjectsPage();
@@ -5901,11 +5917,10 @@ const kadarTypeColorVar = {
    no uploaded image yet just isn't shown until someone uploads one. */
 function portfolioEntries(){
   return allProjects.flatMap(p=>p.kadrovi.map(k=>{
-    const lastImg = k.rounds && [...k.rounds].reverse().find(r=>r.image);
-    if(!lastImg) return null;
+    if(!k.hasImage || !k.lastRoundImageUrl) return null;
     return {
       _id: k._id, title: k.name, project: p.name, code: p.code, client: p.client,
-      artist: k.employee, year: p.year, type: k.type, status: k.status, image: lastImg.image
+      artist: k.employee, year: p.year, type: k.type, status: k.status, image: k.lastRoundImageUrl
     };
   }).filter(Boolean));
 }
@@ -6227,8 +6242,61 @@ const monthNamesShort = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg","Sep","
 function allKadrovi(){
   return allProjects.flatMap(p=>p.kadrovi.map(k=>({...k, projectCode:p.code, projectName:p.name, client:p.client, projectStartDate:p.startDate})));
 }
+/* Statistika/Finansije need date+billable across every round in the whole
+   dataset (for month-by-month breakdowns), not just one project's — the one
+   case denormalized kadar-level scalars can't satisfy. Rather than nesting
+   all 14,757 rounds under every kadar on every login (the thing Phase 6
+   exists to stop), this fetches a lightweight {id,kadar_id,date,billable}
+   summary exactly once, lazily, whichever of initStatistika()/
+   initFinansije()/openPersonStats() runs first — the other two reuse the
+   cache. roundSubmit/roundViewDelete keep it in sync in-session via
+   syncRoundsSummaryEntry() so a round added/removed after this has already
+   loaded doesn't show stale until a full reload. */
+let roundsSummary = [];
+let roundsSummaryLoaded = false;
+let roundsSummaryLoadingPromise = null;
+async function ensureRoundsSummaryLoaded(){
+  if(roundsSummaryLoaded) return true;
+  if(roundsSummaryLoadingPromise) return roundsSummaryLoadingPromise;
+  roundsSummaryLoadingPromise = (async()=>{
+    if(!sb) return false;
+    try {
+      // PostgREST caps a single response at 1000 rows by default — with
+      // 14,757+ rounds this silently truncated the summary until paginated.
+      const pageSize = 1000;
+      const all = [];
+      for(let from=0; ; from+=pageSize){
+        const { data, error } = await sb.from('rounds').select('id,kadar_id,date,billable').range(from, from+pageSize-1);
+        if(error) return false;
+        if(!data || !data.length) break;
+        all.push(...data);
+        if(data.length < pageSize) break;
+      }
+      roundsSummary = all;
+      roundsSummaryLoaded = true;
+      return true;
+    } catch(e){ return false; }
+  })();
+  const result = await roundsSummaryLoadingPromise;
+  roundsSummaryLoadingPromise = null;
+  return result;
+}
+function syncRoundsSummaryEntry(kadar, round, action){
+  if(!roundsSummaryLoaded) return;
+  if(action==='add'){
+    roundsSummary.push({ id: round.dbId, kadar_id: kadar.dbId, date: round.date, billable: round.billable });
+  } else {
+    const idx = roundsSummary.findIndex(r=>r.id===round.dbId);
+    if(idx>-1) roundsSummary.splice(idx,1);
+  }
+}
 function allRounds(){
-  return allKadrovi().flatMap(k=>k.rounds.map(r=>({...r, kadarType:k.type, employee:k.employee, projectCode:k.projectCode, client:k.client})));
+  const kadarById = {};
+  allKadrovi().forEach(k=>{ if(k.dbId) kadarById[k.dbId] = k; });
+  return roundsSummary.map(r=>{
+    const k = kadarById[r.kadar_id];
+    return { date:r.date, billable:r.billable, kadarType: k && k.type, employee: k && k.employee, projectCode: k && k.projectCode, client: k && k.client };
+  });
 }
 function kadarTypeCounts(list){
   const counts = {};
@@ -6246,13 +6314,13 @@ function monthlyOutput(list){
   return arr;
 }
 function avgRoundsPerKadar(list){
-  const withRounds = (list||allKadrovi()).filter(k=>k.rounds.length>0);
-  return withRounds.length ? withRounds.reduce((s,k)=>s+k.rounds.length,0)/withRounds.length : 0;
+  const withRounds = (list||allKadrovi()).filter(k=>(k.totalRoundsCount||0)>0);
+  return withRounds.length ? withRounds.reduce((s,k)=>s+(k.totalRoundsCount||0),0)/withRounds.length : 0;
 }
 function avgRoundsByType(){
   return Object.keys(kadarTypeColorVar).map(t=>{
-    const list = allKadrovi().filter(k=>k.type===t && k.rounds.length>0);
-    return { type:t, avg: list.length ? list.reduce((s,k)=>s+k.rounds.length,0)/list.length : 0, count:list.length };
+    const list = allKadrovi().filter(k=>k.type===t && (k.totalRoundsCount||0)>0);
+    return { type:t, avg: list.length ? list.reduce((s,k)=>s+(k.totalRoundsCount||0),0)/list.length : 0, count:list.length };
   }).filter(x=>x.count>0);
 }
 function revRemarkRate(){
@@ -6264,26 +6332,24 @@ function approvalRate(list){
   return decided.length ? (decided.filter(k=>k.status==='odobren').length/decided.length)*100 : 0;
 }
 function avgReviewCycleDays(){
-  const approved = allKadrovi().filter(k=>k.status==='odobren' && k.rounds.length>0);
+  const approved = allKadrovi().filter(k=>k.status==='odobren' && k.firstRoundDate && k.lastRoundDate);
   if(!approved.length) return 0;
-  const total = approved.reduce((sum,k)=>{
-    const dates = k.rounds.map(r=>r.date).sort();
-    return sum + Math.max(0, daysBetween(fromISO(dates[0]), fromISO(dates[dates.length-1])));
-  }, 0);
+  const total = approved.reduce((sum,k)=>
+    sum + Math.max(0, daysBetween(fromISO(k.firstRoundDate), fromISO(k.lastRoundDate))), 0);
   return Math.round(total/approved.length);
 }
 function avgProjectDuration(){
-  const withRounds = allProjects.filter(p=>p.kadrovi.some(k=>k.rounds.length>0));
+  const withRounds = allProjects.filter(p=>p.kadrovi.some(k=>k.lastRoundDate));
   if(!withRounds.length) return 0;
   const total = withRounds.reduce((sum,p)=>{
-    const dates = p.kadrovi.flatMap(k=>k.rounds.map(r=>r.date)).sort();
+    const dates = p.kadrovi.map(k=>k.lastRoundDate).filter(Boolean).sort();
     if(!dates.length) return sum;
     return sum + Math.max(0, daysBetween(fromISO(p.startDate), fromISO(dates[dates.length-1])));
   }, 0);
   return Math.round(total/withRounds.length);
 }
 function computeKadarStats(mine){
-  const rounds = mine.flatMap(k=>k.rounds);
+  const totalRounds = mine.reduce((s,k)=>s+(k.totalRoundsCount||0),0);
   const approved = mine.filter(k=>k.status==='odobren').length;
   const decided = mine.filter(k=>k.status==='odobren'||k.status==='otkazan').length;
   const byType = {};
@@ -6292,12 +6358,12 @@ function computeKadarStats(mine){
   const clientCounts = {};
   mine.forEach(k=>{ clientCounts[k.client] = (clientCounts[k.client]||0)+1; });
   const topClient = Object.keys(clientCounts).sort((a,b)=>clientCounts[b]-clientCounts[a])[0] || "—";
-  const withRounds = mine.filter(k=>k.rounds.length>0);
+  const withRounds = mine.filter(k=>(k.totalRoundsCount||0)>0);
   return {
     total: mine.length, approved, decided,
     approvalRate: decided ? Math.round((approved/decided)*100) : null,
-    totalRounds: rounds.length,
-    avgRounds: withRounds.length ? +(rounds.length/withRounds.length).toFixed(1) : 0,
+    totalRounds,
+    avgRounds: withRounds.length ? +(totalRounds/withRounds.length).toFixed(1) : 0,
     byType, activeProjects, topClient
   };
 }
@@ -6656,7 +6722,8 @@ function renderEmpLeaderboard(){
   }, 150);
 }
 
-function initStatistika(){
+async function initStatistika(){
+  await ensureRoundsSummaryLoaded();
   renderKpiRow();
   renderMonthChart();
   renderDonut();
@@ -7286,13 +7353,13 @@ function renderTopExpenses(){
 function monthlyRoundsStats(){
   const currM = TODAY.m - 1;
   let billable = 0, internal = 0;
-  allProjects.forEach(p=>p.kadrovi.forEach(k=>k.rounds.forEach(r=>{
+  roundsSummary.forEach(r=>{
     if(!r.date) return;
     const parts = r.date.split('-');
     if(parseInt(parts[0],10)===TODAY.y && (parseInt(parts[1],10)-1)===currM){
       if(r.billable) billable++; else internal++;
     }
-  })));
+  });
   return { billable, internal };
 }
 
@@ -7591,7 +7658,7 @@ function renderPricingList(){
       </div>
       <div class="price-kadar-list">
         ${p.kadrovi.map(k=>{
-          const billable = k.rounds.filter(r=>r.billable).length;
+          const billable = k.billableRoundsCount||0;
           const extra = Math.max(0, billable-4);
           const priced = k.basePrice != null;
           return `
@@ -7656,7 +7723,7 @@ function closeKadarModal(){
 function openKadarModal(kadar, project){
   activePriceProject = project;
   activeKadar = kadar;
-  const billable = kadar.rounds.filter(r=>r.billable).length;
+  const billable = kadar.billableRoundsCount||0;
   const extra = Math.max(0, billable-4);
   document.getElementById('kadarTitle').textContent = kadar.name;
   document.getElementById('kadarMeta').textContent = `${project.code} · ${kadar.type} · ${billable} ${billable===1?'runda':'rundi'} ukupno (${extra>0 ? extra+' preko osnovne cene' : 'u okviru osnovne cene (4)'})`;
@@ -8294,7 +8361,8 @@ document.getElementById('salSubmit').addEventListener('click', ()=>{
 });
 
 let finansijeInited = false;
-function initFinansije(){
+async function initFinansije(){
+  await ensureRoundsSummaryLoaded();
   renderFinKpis();
   renderFinFlowChart();
   renderFinDonut();
@@ -8549,8 +8617,9 @@ function openPlaybookArticle(a){
   renderPlaybookNav(); renderPlaybookContent();
   showView('playbook'); setActiveNav('playbook'); toggleChat(false);
 }
-function openPersonStats(name){
-  if(!statistikaInited){ statistikaInited = true; initStatistika(); }
+async function openPersonStats(name){
+  if(!statistikaInited){ statistikaInited = true; await initStatistika(); }
+  else { await ensureRoundsSummaryLoaded(); }
   peopleSelection = [name];
   renderPeopleChips(); renderPeopleKpis(); renderPeopleProductionCards(); renderLineChart();
   document.querySelectorAll('#view-statistika .stat-tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab==='tim'));
@@ -8917,7 +8986,7 @@ function renderMyStats(){
 
   const recentEl = document.getElementById('mystatRecent');
   const recent = myKadrovi.map(k=>({
-    ...k, lastDate: k.rounds.length ? k.rounds[k.rounds.length-1].date : k.projectStartDate
+    ...k, lastDate: k.lastRoundDate || k.projectStartDate
   })).sort((a,b)=> (b.lastDate||'').localeCompare(a.lastDate||'')).slice(0,3);
   recentEl.innerHTML = recent.length ? recent.map(k=>`
     <div class="task-row">
@@ -9199,11 +9268,19 @@ async function loadClientsFromSupabase(){
    uuids, so nothing else needs to change. Like clients, an empty result set
    is a valid successful load (real dataset starts populated via bulk import,
    then grows through normal use — never falls back to the old local mock). */
+/* Phase 6: rounds are no longer nested here — kadrovi carry precomputed
+   round stats (billable_rounds_count etc., kept in sync by a Postgres
+   trigger, see schema.sql) instead of shipping all 14,757 round rows on
+   every login. `kadar.rounds` starts as `null` (sentinel: "not fetched
+   yet", distinct from `[]` meaning "genuinely has none") and only gets
+   populated for whichever single project is open, via
+   loadKadarRoundsForProject(). `proj._roundsLoaded` tracks that per
+   project so re-opening one already viewed this session is free. */
 async function loadProjectsFromSupabase(){
   if(!sb) return false;
   try {
     const { data, error } = await sb.from('projects')
-      .select('*, kadrovi(*, rounds(*))')
+      .select('*, kadrovi(*)')
       .order('created_at', { ascending:true });
     if(error || !data) return false;
     const clientById = {}; allClients.forEach(c=>{ if(c.dbId) clientById[c.dbId]=c.name; });
@@ -9223,6 +9300,7 @@ async function loadProjectsFromSupabase(){
         thumbnail: row.thumbnail,
         seed: row.seed,
         discordWebhookUrl: row.discord_webhook_url,
+        _roundsLoaded: false,
         kadrovi: (row.kadrovi || []).map(k=>({
           _id: nextId(),
           dbId: k.id,
@@ -9233,19 +9311,59 @@ async function loadProjectsFromSupabase(){
           basePrice: k.base_price,
           priceStatus: k.price_status,
           priceUpdatedAt: k.price_updated_at,
-          rounds: (k.rounds || []).map(r=>({
-            _id: nextId(),
-            dbId: r.id,
-            label: r.label,
-            billable: r.billable,
-            date: r.date,
-            image: r.image
-          }))
+          billableRoundsCount: k.billable_rounds_count || 0,
+          totalRoundsCount: k.total_rounds_count || 0,
+          hasImage: !!k.has_image,
+          lastRoundImageUrl: k.last_round_image_url,
+          firstRoundDate: k.first_round_date,
+          lastRoundDate: k.last_round_date,
+          rounds: null
         }))
       });
     });
     return true;
   } catch(e){ return false; }
+}
+/* Fetches the full round rows (with images/labels) for every kadar in one
+   project, in a single query — used only when a project detail page is
+   actually opened. Skips the query entirely for a project with zero
+   kadrovi (an empty `.in()` list isn't something to rely on postgrest-js
+   handling gracefully). */
+async function loadKadarRoundsForProject(project){
+  if(!sb) return false;
+  if(!project.kadrovi.length){ project._roundsLoaded = true; return true; }
+  try {
+    const kadarIds = project.kadrovi.map(k=>k.dbId);
+    const { data, error } = await sb.from('rounds').select('*').in('kadar_id', kadarIds);
+    if(error || !data) return false;
+    const byKadar = {};
+    data.forEach(r=>{ (byKadar[r.kadar_id] = byKadar[r.kadar_id] || []).push(r); });
+    project.kadrovi.forEach(k=>{
+      k.rounds = (byKadar[k.dbId] || []).map(r=>({
+        _id: nextId(), dbId: r.id, label: r.label, billable: r.billable, date: r.date, image: r.image
+      }));
+    });
+    project._roundsLoaded = true;
+    return true;
+  } catch(e){ return false; }
+}
+/* Recomputes a kadar's 6 denormalized round-stat fields from its (already
+   loaded, authoritative) `.rounds` array — called after roundSubmit/
+   roundViewDelete's push/splice so the UI (Cenovnik's "extra rounds" hint,
+   Portfolio, etc.) reflects the change immediately without a reload. Mirrors
+   the Postgres trigger's logic exactly (same date-desc "most recent image"
+   rule) rather than incrementing/decrementing, since "most recent image"
+   isn't a simple counter. */
+function recomputeKadarRoundStats(kadar){
+  const rounds = kadar.rounds || [];
+  kadar.totalRoundsCount = rounds.length;
+  kadar.billableRoundsCount = rounds.filter(r=>r.billable).length;
+  const withImage = rounds.filter(r=>r.image).slice().sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  kadar.hasImage = withImage.length > 0;
+  kadar.lastRoundImageUrl = withImage.length ? withImage[0].image : null;
+  const dates = rounds.map(r=>r.date).filter(Boolean).sort();
+  kadar.firstRoundDate = dates.length ? dates[0] : null;
+  kadar.lastRoundDate = dates.length ? dates[dates.length-1] : null;
 }
 /* Phase 4: daily worked-hours logging. Each row only carries employee_id/
    kadar_id (uuids) — employee resolves to a name the same way projects/
