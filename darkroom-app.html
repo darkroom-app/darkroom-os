@@ -7805,7 +7805,7 @@ document.getElementById('txDelete').addEventListener('click', async ()=>{
   const tx = allTransactions.find(t=>t._id===editingTxId);
   if(tx && tx.dbId){
     const { error } = await sb.from('transactions').delete().eq('id', tx.dbId);
-    if(error) return;
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
   }
   const idx = allTransactions.findIndex(t=>t._id===editingTxId);
   if(idx>-1) allTransactions.splice(idx,1);
@@ -7815,7 +7815,8 @@ document.getElementById('txDelete').addEventListener('click', async ()=>{
 document.getElementById('txSubmit').addEventListener('click', async ()=>{
   const amount = parseFloat(document.getElementById('txAmountInput').value);
   const desc = document.getElementById('txDescInput').value.trim();
-  if(!amount || !desc) return;
+  if(!desc){ await customAlert('Unesi opis transakcije.'); return; }
+  if(!amount){ await customAlert('Unesi iznos transakcije (mora biti veći od nule).'); return; }
   const date = document.getElementById('txDateInput').value || toISO(TODAY);
   const type = document.getElementById('txTypeInput').value;
   const category = document.getElementById('txCategoryInput').value.trim() || "Ostalo";
@@ -7825,11 +7826,11 @@ document.getElementById('txSubmit').addEventListener('click', async ()=>{
     const tx = allTransactions.find(t=>t._id===editingTxId);
     if(!tx) return;
     const { error } = await sb.from('transactions').update({ date, type, category, description:desc, method, amount }).eq('id', tx.dbId);
-    if(error) return;
+    if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
     Object.assign(tx, {date, type, category, desc, method, amount});
   } else {
     const { data, error } = await sb.from('transactions').insert({ date, type, category, description:desc, method, amount }).select().single();
-    if(error) return;
+    if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
     allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:null, kadarDbId:null });
   }
   closeTxModal();
