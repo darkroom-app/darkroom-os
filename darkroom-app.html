@@ -3065,7 +3065,7 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teamMembers,
-      salaryEntries, sideHustleEntries, events, todoItems, salConfirmedMonths, notifications,
+      sideHustleEntries, events, todoItems, salConfirmedMonths, notifications,
       finProjectionMarginPct
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
@@ -3076,6 +3076,8 @@ function persist(){
       // allTransactions/projectPricing removed (Phase 5) — the ledger and
       // per-kadar pricing are now Supabase-backed the same way; kadrovi's
       // base_price/price_status ride along with loadProjectsFromSupabase().
+      // salaryEntries removed (Phase 7) — real payroll now lives in Supabase's
+      // salary_entries table, loaded via loadSalaryEntriesFromSupabase().
     }));
   } catch(e){}
 }
@@ -7239,17 +7241,14 @@ const monthAbbrRS = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg"];
 const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55" };
 const openingBalance = 850000;
 
-const salaryBaseByEmp = {
-  "Dušan Stević":240000, "Stefana Ristić":190000, "Radoslav Milanović":190000, "Dalibor Mitić":145000,
-  "Katarina Đorđević":160000, "Aleksandra Vukašinović":135000, "Mihajlo Nagradić":150000, "Nikola Jovanović":130000,
-  "Anđela Pešić":120000, "Marija Todorović":140000, "Ana Krstić":125000, "Miljana Cvetković":145000,
-  "Miloš Tasić":155000, "Ivana Sazdov":160000, "Lazar Pešić":110000, "Damjan Mitrović":115000,
-  "Aleksandar Jovanović":130000, "Marija Milenković":120000,
-};
-const salaryRaises = {
-  "Dušan Stević":{5:260000}, "Katarina Đorđević":{6:185000}, "Miloš Tasić":{3:170000}, "Ana Krstić":{7:140000},
-};
-const salaryBase = {};
+/* Poslednja poznata osnovica za nekoga — koristi se samo da predlozi
+   default kad se otvara unos za NOV mesec (nastavak prosle), izvedena
+   direktno iz salaryEntries umesto da se drzi kao posebno mutabilno stanje
+   koje bi moglo da se raziđe od stvarnih unosa. */
+function lastKnownOsnovica(emp){
+  const entries = salaryEntries.filter(s=>s.employee===emp).sort((a,b)=> (b.year-a.year) || (b.month-a.month));
+  return entries.length ? entries[0].osnovica : 0;
+}
 /* Benefiti: zdravstveno je fiksno po dogovoru ali varira malo od osobe do
    osobe u praksi (~30€), pa je ZDRAVSTVENO_DEFAULT samo predlog koji ostaje
    editabilan po unosu — ne globalna konstanta primenjena svuda. Fitnes je
@@ -7275,24 +7274,34 @@ function calcPorezIDoprinosi(neto){
   const bruto2 = bruto1 * (1 + STOPA_DOPRINOSI_POSLODAVAC);
   return Math.round(bruto2 - neto);
 }
+/* Phase 7: real payroll. Zameni lokalni mock — salary_entries u Supabase je
+   sad jedini izvor istine, isti pristup kao Phase 5 za cenovnik/transakcije.
+   Napomena o godini: kolona `year` postoji i cuva se, ali salaryFor/
+   monthlyPayrollTotal/yearPayrollTotal namerno ne filtriraju po njoj jos —
+   trenutno postoji samo 2026. godina, pa bi filtriranje bilo mrtav kod bez
+   ikakvog vidljivog efekta. Kad se doda druga godina realnih podataka, ove
+   funkcije ce morati da prime godinu kao parametar (danas je implicitno
+   "sve sto postoji" = 2026). */
 let salaryEntries = [];
-(function seedSalaryEntries(){
-  const keys = Object.keys(salaryBaseByEmp);
-  keys.forEach((key, i)=>{
-    let osn = salaryBaseByEmp[key];
-    for(let m=0; m<8; m++){
-      if(salaryRaises[key] && salaryRaises[key][m] != null) osn = salaryRaises[key][m];
-      const bonus = (i%5===2 && m===7) ? 20000 : (i%6===1 && m===3) ? 15000 : 0;
-      const prekovremeno = ((i+m)%4===0) ? 3000 + (i*250)%5000 : 0;
-      const dedukcije = (i===9 && m===2) ? 8000 : (i===14 && m===5) ? 12000 : 0;
-      const bruto = osn + bonus + prekovremeno;
-      const porez = calcPorezIDoprinosi(bruto);
-      salaryEntries.push({ _id:nextId(), employee:key, month:m, osnovica:osn, bonus, prekovremeno, dedukcije, porez, zdravstveno:ZDRAVSTVENO_DEFAULT, fitnes:false, status: m<7 ? 'Isplaćeno' : 'Na čekanju' });
-    }
-    salaryBase[key] = osn;
-  });
-})();
-fromPersisted('salaryEntries', salaryEntries);
+async function loadSalaryEntriesFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('salary_entries').select('*');
+    if(error || !data) return false;
+    salaryEntries.length = 0;
+    data.forEach(row=>{
+      const emp = teamMembers.find(t=>t.authId===row.employee_id);
+      salaryEntries.push({
+        _id: nextId(), dbId: row.id, employeeId: row.employee_id,
+        employee: emp ? emp.name : '', year: row.year, month: row.month,
+        osnovica: row.osnovica, bonus: row.bonus, prekovremeno: row.prekovremeno,
+        dedukcije: row.dedukcije, porez: row.porez, zdravstveno: row.zdravstveno,
+        fitnes: row.fitnes, status: row.status
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
 /* Side hustle: dodatni zadaci van redovnog radnog vremena, vezani za
    konkretan kadar/projekat (ne nužno onaj koji je toj osobi inače
    dodeljen — poenta je da neko preuzme višak posla), sa svojom cenom po
@@ -8633,11 +8642,12 @@ function openSalModal(emp, month){
   document.getElementById('salEmpInput').disabled = true;
   document.getElementById('salMonthInput').value = String(month);
   document.getElementById('salMonthInput').disabled = true;
-  document.getElementById('salOsnovicaInput').value = existing ? existing.osnovica : (salaryBase[emp] || '');
+  const lastOsn = lastKnownOsnovica(emp);
+  document.getElementById('salOsnovicaInput').value = existing ? existing.osnovica : (lastOsn || '');
   document.getElementById('salBonusInput').value = existing ? existing.bonus : 0;
   document.getElementById('salPrekoInput').value = existing ? existing.prekovremeno : 0;
   document.getElementById('salDedukcijeInput').value = existing ? existing.dedukcije : 0;
-  document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(salaryBase[emp]||0);
+  document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(lastOsn||0);
   document.getElementById('salZdravstvenoInput').value = existing ? (existing.zdravstveno ?? ZDRAVSTVENO_DEFAULT) : ZDRAVSTVENO_DEFAULT;
   document.getElementById('salFitnesInput').checked = existing ? !!existing.fitnes : false;
   document.getElementById('salStatusInput').value = existing ? existing.status : 'Isplaćeno';
@@ -8647,17 +8657,21 @@ function openSalModal(emp, month){
 }
 document.getElementById('salCancel').addEventListener('click', closeSalModal);
 wireOverlayClose(salModalOverlay, closeSalModal);
-document.getElementById('salDelete').addEventListener('click', ()=>{
+document.getElementById('salDelete').addEventListener('click', async ()=>{
   const emp = document.getElementById('salEmpInput').value;
   const month = parseInt(document.getElementById('salMonthInput').value);
   if(!confirm('Obrisati ovaj unos plate?')) return;
+  const entry = salaryFor(emp, month);
+  if(entry && entry.dbId){
+    const { error } = await sb.from('salary_entries').delete().eq('id', entry.dbId);
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+  }
   const idx = salaryEntries.findIndex(s=>s.employee===emp && s.month===month);
   if(idx>-1) salaryEntries.splice(idx,1);
   closeSalModal();
   refreshAfterSalChange();
-  persist();
 });
-document.getElementById('salSubmit').addEventListener('click', ()=>{
+document.getElementById('salSubmit').addEventListener('click', async ()=>{
   const emp = document.getElementById('salEmpInput').value;
   const month = parseInt(document.getElementById('salMonthInput').value);
   const osnovica = parseFloat(document.getElementById('salOsnovicaInput').value);
@@ -8669,13 +8683,21 @@ document.getElementById('salSubmit').addEventListener('click', ()=>{
   const fitnes = document.getElementById('salFitnesInput').checked;
   const status = document.getElementById('salStatusInput').value;
   if(!osnovica) return;
+  const empRow = teamMembers.find(t=>t.name===emp);
+  if(!empRow || !empRow.authId) return;
   const existing = salaryFor(emp, month);
-  if(existing){ Object.assign(existing, {osnovica, bonus, prekovremeno, dedukcije, porez, zdravstveno, fitnes, status}); }
-  else { salaryEntries.push({_id:nextId(), employee:emp, month, osnovica, bonus, prekovremeno, dedukcije, porez, zdravstveno, fitnes, status}); }
-  salaryBase[emp] = osnovica;
+  const payload = { employee_id:empRow.authId, year:salBreakdownYear, month, osnovica, bonus, prekovremeno, dedukcije, porez, zdravstveno, fitnes, status };
+  if(existing && existing.dbId){
+    const { data, error } = await sb.from('salary_entries').update(payload).eq('id', existing.dbId).select().single();
+    if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
+    Object.assign(existing, { year:data.year, osnovica:data.osnovica, bonus:data.bonus, prekovremeno:data.prekovremeno, dedukcije:data.dedukcije, porez:data.porez, zdravstveno:data.zdravstveno, fitnes:data.fitnes, status:data.status });
+  } else {
+    const { data, error } = await sb.from('salary_entries').insert(payload).select().single();
+    if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
+    salaryEntries.push({ _id:nextId(), dbId:data.id, employeeId:data.employee_id, employee:emp, year:data.year, month:data.month, osnovica:data.osnovica, bonus:data.bonus, prekovremeno:data.prekovremeno, dedukcije:data.dedukcije, porez:data.porez, zdravstveno:data.zdravstveno, fitnes:data.fitnes, status:data.status });
+  }
   closeSalModal();
   refreshAfterSalChange();
-  persist();
 });
 
 let editingSideHustleId = null;
@@ -9870,6 +9892,7 @@ async function resolveSessionLogin(session){
     await loadTimeEntriesFromSupabase();
     await loadExtraChargesFromSupabase();
     await loadTransactionsFromSupabase();
+    await loadSalaryEntriesFromSupabase();
     generateEventsFromKadrovi();
     buildCalFilterMenus();
     renderCalendar();

@@ -681,3 +681,57 @@ $$;
 create trigger rounds_sync_kadar_stats
   after insert or update or delete on public.rounds
   for each row execute function public.sync_kadar_round_stats();
+
+
+-- ==== Phase 7: real payroll (salary_entries) ====
+-- (run as an eighteenth query)
+--
+-- Replaces the local-only mock `salaryEntries` array (and its hardcoded
+-- `salaryBaseByEmp`/`salaryRaises` seed data) with a real table, same
+-- pattern as Phase 5's pricing/transactions migration. One row per
+-- (employee, year, month) — the app's Plate tab has always shown one salary
+-- entry per person per month, never more.
+--
+-- Unlike kadrovi/rounds/transactions (Phase 5's rationale: "no access
+-- gating existed on financial data, so don't invent one"), payroll is
+-- compensation data for named individuals, and the client already has a
+-- real, enforced gate in front of it — canAccessFinance() redirects
+-- anyone who isn't superadmin away from the whole Finansije view, and only
+-- that code path ever reads or writes salary_entries. So this table's RLS
+-- matches that existing boundary instead of Phase 5's fully-open shape.
+create table public.salary_entries (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.team_members(id) on delete cascade,
+  year int not null,
+  month int not null,               -- 0-indexed (0=Jan .. 11=Dec), matching the app's existing month convention
+  osnovica numeric not null,
+  bonus numeric not null default 0,
+  prekovremeno numeric not null default 0,
+  dedukcije numeric not null default 0,
+  porez numeric not null default 0,          -- porez i doprinosi — auto-computed client-side from osnovica, stored here as the value actually saved
+  zdravstveno numeric not null default 0,
+  fitnes boolean not null default false,
+  status text not null default 'Na čekanju', -- 'Isplaćeno' | 'Na čekanju'
+  created_at timestamptz not null default now(),
+  unique (employee_id, year, month)
+);
+alter table public.salary_entries enable row level security;
+
+create policy "superadmin can read salary_entries"
+  on public.salary_entries for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can insert salary_entries"
+  on public.salary_entries for insert to authenticated
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can update salary_entries"
+  on public.salary_entries for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can delete salary_entries"
+  on public.salary_entries for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create index salary_entries_employee_idx on public.salary_entries (employee_id);
