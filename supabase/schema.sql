@@ -563,3 +563,18 @@ create policy "authenticated can delete transactions" on public.transactions for
 
 create index transactions_date_idx on public.transactions (date desc);
 create index extra_charges_project_idx on public.extra_charges (project_id);
+
+
+-- ==== Phase 5b: Cenovnik overview — "waiting longest" tracking ====
+-- (run as a fifteenth query)
+--
+-- Needed for the new "šta dugo čeka na naplatu" panel: extra_charges already
+-- has a user-supplied `date` to sort by, but kadrovi.base_price/price_status
+-- had no timestamp at all, so there was no way to tell how long a kadar has
+-- sat in its current price status. Set client-side (txAutoLogPayment's
+-- caller, kadarSubmit) every time a kadar's price/status is saved — never
+-- backfilled for existing rows, so a kadar priced before this column existed
+-- just won't appear in the "waiting longest" list until its price is next
+-- touched (acceptable: that list is a nudge, not a ledger of record).
+
+alter table public.kadrovi add column if not exists price_updated_at timestamptz;

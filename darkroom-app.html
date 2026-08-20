@@ -479,6 +479,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .price-charges-list{ border-top:1px dashed var(--border); padding:10px 18px 12px; }
 .price-charges-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
 .kadar-price-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); margin:-6px 0 14px; }
+.price-wait-badge{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); background:var(--card-soft); border-radius:6px; padding:3px 7px; }
+.price-wait-badge-urgent{ color:var(--coral); background:var(--coral-soft); }
 
 .sal-table2{ overflow-x:auto; }
 .sal-head2, .sal-row2{ display:grid; grid-template-columns:1.5fr repeat(7, 0.72fr) 0.85fr 0.9fr; gap:6px; align-items:center; min-width:820px; }
@@ -2247,7 +2249,18 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
               <div class="cal-filter-btn"><span id="filterPriceKlijentLabel">Svi klijenti</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div>
               <div class="cal-filter-menu" id="filterPriceKlijentMenu"></div>
             </div>
+            <div class="view-toggle">
+              <button class="vt-btn" data-sortdir="asc" title="Od prvog broja"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h4M3 12h7M3 16h10"/><path d="m17 5 4 4-4 4M21 9H10"/></svg></button>
+              <button class="vt-btn active" data-sortdir="desc" title="Od poslednjeg broja"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 8h10M3 12h7M3 16h4"/><path d="m17 19-4-4 4-4M21 15H10"/></svg></button>
+            </div>
           </div>
+        </div>
+        <div class="kpi-row" id="priceKpiRow" style="margin-bottom:16px;"></div>
+        <div class="stat-panel" id="priceWaitPanel" style="margin-bottom:16px;">
+          <div class="stat-panel-head">
+            <div class="stat-panel-title">⏳ Čeka najduže na naplatu</div>
+          </div>
+          <div id="priceWaitList"></div>
         </div>
         <div class="proj-client-summary" id="priceClientSummary" style="display:none;"></div>
         <div id="priceProjectList"></div>
@@ -7455,18 +7468,96 @@ document.getElementById('txSubmit').addEventListener('click', async ()=>{
 });
 
 let activePriceProject = null;
-const priceState = { search:"", client:"Svi klijenti" };
+const priceState = { search:"", client:"Svi klijenti", sortDir:"desc" };
 function buildPriceClientMenu(){
   const clients = uniqueSorted(allProjects.map(p=>p.client));
   document.getElementById('filterPriceKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
     clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
   bindCalFilter('filterPriceKlijent', (val)=>{ priceState.client = val; renderPricingList(); });
 }
+document.querySelectorAll('#finTabProjekti .vt-btn[data-sortdir]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#finTabProjekti .vt-btn[data-sortdir]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    priceState.sortDir = btn.dataset.sortdir;
+    renderPricingList();
+  });
+});
 function renderPriceClientSummary(){
   const wrap = document.getElementById('priceClientSummary');
   if(priceState.client === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   wrap.innerHTML = clientSummaryHtml(priceState.client);
+}
+/* Overview above the project list: coverage (how much of the studio's real
+   work even has a price yet), how much is sitting Neplaćeno vs Fakturisano
+   (both "not yet collected", shown split since they call for different
+   action — one needs an invoice, the other needs a follow-up), and a
+   "waiting longest" list combining priced kadrovi (by price_updated_at) and
+   extra_charges (by their own `date`) so nothing quietly sits for months. */
+function daysSince(dateStr){
+  if(!dateStr) return null;
+  const then = new Date(dateStr).getTime();
+  if(Number.isNaN(then)) return null;
+  return Math.max(0, Math.floor((Date.now()-then) / 86400000));
+}
+function renderPriceOverview(){
+  let pricedCount=0, totalKadarCount=0;
+  let neplaceno=0, neplacenoCount=0, fakturisano=0, fakturisanoCount=0, naplaceno=0;
+  const waiting = [];
+  allProjects.forEach(p=>{
+    totalKadarCount += p.kadrovi.length;
+    p.kadrovi.forEach(k=>{
+      if(k.basePrice==null) return;
+      pricedCount++;
+      const st = k.priceStatus || 'Neplaćeno';
+      if(st==='Neplaćeno'){ neplaceno += k.basePrice; neplacenoCount++; }
+      else if(st==='Fakturisano'){ fakturisano += k.basePrice; fakturisanoCount++; }
+      else if(st==='Naplaćeno'){ naplaceno += k.basePrice; }
+      if(st!=='Naplaćeno') waiting.push({ project:p, label:k.name, amount:k.basePrice, status:st, date:k.priceUpdatedAt });
+    });
+    extraCharges.filter(c=>c.projectDbId===p.dbId).forEach(c=>{
+      if(c.status==='Neplaćeno'){ neplaceno += c.amount; neplacenoCount++; }
+      else if(c.status==='Fakturisano'){ fakturisano += c.amount; fakturisanoCount++; }
+      else if(c.status==='Naplaćeno'){ naplaceno += c.amount; }
+      if(c.status!=='Naplaćeno') waiting.push({ project:p, label:c.description, amount:c.amount, status:c.status, date:c.date });
+    });
+  });
+  const kpis = [
+    { icon:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.6 2.7h17.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/>', val:neplaceno, label:`Neplaćeno (${neplacenoCount})`, color:"var(--coral)" },
+    { icon:'<path d="M17 9V7a5 5 0 0 0-10 0v2"/><rect x="4" y="9" width="16" height="12" rx="2"/>', val:fakturisano, label:`Fakturisano — čeka uplatu (${fakturisanoCount})`, color:"var(--gold-deep)" },
+    { icon:'<path d="M20 6 9 17l-5-5"/>', val:naplaceno, label:"Naplaćeno ukupno", color:"#4C8A55" },
+    { icon:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>', val: totalKadarCount ? (pricedCount/totalKadarCount)*100 : 0, decimals:1, suffix:'%', label:`Cenjeno (${pricedCount}/${totalKadarCount} kadrova)`, color:"var(--ink)" },
+  ];
+  document.getElementById('priceKpiRow').innerHTML = kpis.map(k=>`
+    <div class="kpi-card">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${k.icon}</svg></div>
+      <div class="kpi-val" style="color:${k.color}"><span class="fcu">0</span></div>
+      <div class="kpi-label">${k.label}</div>
+    </div>`).join('');
+  const els = document.querySelectorAll('#priceKpiRow .fcu');
+  kpis.forEach((k,i)=>{ if(els[i]) animateCountUp(els[i], k.val, k.suffix==='%' ? {suffix:'%', decimals:1} : {suffix:' RSD'}); });
+
+  waiting.sort((a,b)=> (daysSince(b.date)||0) - (daysSince(a.date)||0));
+  const top = waiting.slice(0,8);
+  const waitPanel = document.getElementById('priceWaitPanel');
+  if(!top.length){
+    waitPanel.style.display = 'none';
+  } else {
+    waitPanel.style.display = '';
+    document.getElementById('priceWaitList').innerHTML = top.map(w=>{
+      const days = daysSince(w.date);
+      return `
+      <div class="price-kadar-row">
+        <div class="price-kadar-name">${escapeHtml(w.label)} <span class="price-extra-hint" style="color:var(--ink-faint);">· ${w.project.code} · ${escapeHtml(w.project.name)}</span></div>
+        <div class="price-kadar-right">
+          ${days!=null ? `<span class="price-wait-badge${days>=30?' price-wait-badge-urgent':''}">${days} ${days===1?'dan':'dana'}</span>` : ''}
+          <span class="price-kadar-amt">${fmtRSD(w.amount)}</span>
+          <span class="tag ${w.status==='Fakturisano'?'tag-wip':'tag-review'}">${w.status}</span>
+        </div>
+      </div>`;
+    }).join('');
+  }
 }
 /* Cenovnik now lists every project's real kadrovi (base_price/price_status
    live on the kadar itself) plus that project's extra_charges — no more
@@ -7476,11 +7567,13 @@ function renderPriceClientSummary(){
    nothing here auto-generates or reconciles against extra_charges. */
 function renderPricingList(){
   renderPriceClientSummary();
+  renderPriceOverview();
   const q = priceState.search.trim().toLowerCase();
+  const dir = priceState.sortDir === 'asc' ? 1 : -1;
   const list = allProjects.filter(p=>
     (priceState.client==="Svi klijenti" || p.client===priceState.client) &&
     (!q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q) || p.client.toLowerCase().includes(q))
-  ).sort((a,b)=> (parseInt((a.code||'').replace(/\D/g,''),10)||0) - (parseInt((b.code||'').replace(/\D/g,''),10)||0));
+  ).sort((a,b)=> dir * ((parseInt((a.code||'').replace(/\D/g,''),10)||0) - (parseInt((b.code||'').replace(/\D/g,''),10)||0)));
   document.getElementById('priceProjectList').innerHTML = list.map(p=>{
     const charges = extraCharges.filter(c=>c.projectDbId===p.dbId);
     const total = projectPricedItems(p).reduce((s,r)=>s+r.price,0);
@@ -7578,9 +7671,9 @@ wireOverlayClose(kadarModalOverlay, closeKadarModal);
 document.getElementById('kadarDelete').addEventListener('click', async ()=>{
   if(!activeKadar) return;
   if(!confirm('Ukloniti cenu za ovaj kadar?')) return;
-  const { error } = await sb.from('kadrovi').update({ base_price:null, price_status:null }).eq('id', activeKadar.dbId);
+  const { error } = await sb.from('kadrovi').update({ base_price:null, price_status:null, price_updated_at:null }).eq('id', activeKadar.dbId);
   if(error) return;
-  activeKadar.basePrice = null; activeKadar.priceStatus = null;
+  activeKadar.basePrice = null; activeKadar.priceStatus = null; activeKadar.priceUpdatedAt = null;
   closeKadarModal();
   renderPricingList();
 });
@@ -7590,10 +7683,11 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
   if(!price) return;
   const status = document.getElementById('kadarStatusInput').value;
   const wasNaplaceno = activeKadar.priceStatus === 'Naplaćeno';
+  const now = new Date().toISOString();
 
-  const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status }).eq('id', activeKadar.dbId);
+  const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status, price_updated_at:now }).eq('id', activeKadar.dbId);
   if(error) return;
-  activeKadar.basePrice = price; activeKadar.priceStatus = status;
+  activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = now;
   if(status==='Naplaćeno' && !wasNaplaceno){
     await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:toISO(TODAY), kadarDbId:activeKadar.dbId });
     refreshFinAfterTxChange();
@@ -9138,6 +9232,7 @@ async function loadProjectsFromSupabase(){
           status: k.status,
           basePrice: k.base_price,
           priceStatus: k.price_status,
+          priceUpdatedAt: k.price_updated_at,
           rounds: (k.rounds || []).map(r=>({
             _id: nextId(),
             dbId: r.id,
