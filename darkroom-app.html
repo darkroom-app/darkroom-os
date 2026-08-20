@@ -509,13 +509,15 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .sal-change{ font-size:7.5px; margin-left:2px; }
 .sal-change.up{ color:#4C8A55; }
 .sal-change.down{ color:var(--coral); }
-.sal-payrun-row{ display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid var(--border); }
+.sal-payrun-row{ display:flex; align-items:center; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--border); }
+#salPayrunDonutWrap{ width:88px; height:88px; }
+#salPayrunDonutWrap .donut-hole{ inset:11px; }
 .sal-payrun-row:last-child{ border-bottom:none; }
 .sal-payrun-row span{ color:var(--ink-faint); font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.03em; }
 .sal-payrun-row b{ font-family:var(--font-display); font-weight:700; font-size:12.5px; }
 .sal-payrun-row b.pending{ color:var(--coral); }
 .sal-history-total{ font-family:var(--font-display); font-weight:700; font-size:21px; }
-.sal-unit-chart{ height:200px; padding-top:8px; }
+.sal-unit-chart{ height:120px; padding-top:6px; }
 .sal-unit-col{ position:relative; }
 .sal-unit-bar{ display:flex; flex-direction:column-reverse; align-items:center; gap:2.5px; }
 .sal-unit-sq{ width:20px; height:7px; border-radius:2.5px; transform:scale(0.3); opacity:0; transition:transform .45s cubic-bezier(.34,1.6,.4,1), opacity .3s ease; }
@@ -2287,10 +2289,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="kpi-row" id="salBreakdownRow" style="grid-template-columns:repeat(6,1fr);"></div>
 
         <div class="stat-grid-2" style="grid-template-columns:1fr 1.6fr;">
-          <div class="stat-panel">
+          <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head"><div class="stat-panel-title">🗓 Isplatni krug</div></div>
             <div id="salPayrunInfo"></div>
-            <div class="donut-row" style="margin-top:14px;">
+            <div class="donut-row" style="margin-top:10px;">
               <div class="donut-wrap" id="salPayrunDonutWrap">
                 <div class="donut-circle" id="salPayrunDonutCircle"></div>
                 <div class="donut-hole"><div class="donut-hole-val" id="salPayrunDonutTotal" style="font-size:12px;">0</div><div class="donut-hole-label">RSD</div></div>
@@ -2298,7 +2300,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
               <div class="donut-legend" id="salPayrunDonutLegend"></div>
             </div>
           </div>
-          <div class="stat-panel">
+          <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head">
               <div>
                 <div class="sal-history-total" id="salHistoryTotal">0 RSD</div>
@@ -2311,46 +2313,48 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
         </div>
 
-        <div class="stat-panel">
-          <div class="stat-panel-head">
-            <div class="stat-panel-title">👥 Plate zaposlenih — <span id="salTableMonthLabel">—</span></div>
-            <div style="display:flex; gap:10px; align-items:center;">
-              <div class="client-search" style="width:200px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
-                <input type="text" id="salEmpSearchInput" placeholder="Pretraži zaposlenog...">
+        <div class="stat-grid-2" style="grid-template-columns:1.8fr 1fr;">
+          <div class="stat-panel">
+            <div class="stat-panel-head">
+              <div class="stat-panel-title">👥 Plate zaposlenih — <span id="salTableMonthLabel">—</span></div>
+              <div style="display:flex; gap:10px; align-items:center;">
+                <div class="client-search" style="width:200px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                  <input type="text" id="salEmpSearchInput" placeholder="Pretraži zaposlenog...">
+                </div>
+                <div class="view-toggle">
+                  <button class="vt-btn active" data-smode="grid" title="Grid prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+                  <button class="vt-btn" data-smode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+                </div>
               </div>
-              <div class="view-toggle">
-                <button class="vt-btn active" data-smode="grid" title="Grid prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
-                <button class="vt-btn" data-smode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
-              </div>
+            </div>
+
+            <div class="sal-progress-row" id="salProgressRow"></div>
+
+            <div class="sal-emp-grid" id="salEmpGrid"></div>
+            <div class="sal-table2" id="salTableWrap" style="display:none;">
+              <div class="sal-head2"><span>Zaposleni</span><span>Osnovica</span><span>Bonus</span><span>Prekovr.</span><span>Dedukcije</span><span>Porez</span><span>Benefiti</span><span>Neto</span><span>Ukupno</span><span>Status</span><span></span></div>
+              <div id="salTable"></div>
+            </div>
+
+            <div class="sal-confirm-bar">
+              <div class="sal-confirm-bar-text" id="salConfirmBarText"></div>
+              <button class="btn-primary" id="salConfirmAllBtn">✓ Potvrdi sve plate</button>
             </div>
           </div>
 
-          <div class="sal-progress-row" id="salProgressRow"></div>
-
-          <div class="sal-emp-grid" id="salEmpGrid"></div>
-          <div class="sal-table2" id="salTableWrap" style="display:none;">
-            <div class="sal-head2"><span>Zaposleni</span><span>Osnovica</span><span>Bonus</span><span>Prekovr.</span><span>Dedukcije</span><span>Porez</span><span>Benefiti</span><span>Neto</span><span>Ukupno</span><span>Status</span><span></span></div>
-            <div id="salTable"></div>
-          </div>
-
-          <div class="sal-confirm-bar">
-            <div class="sal-confirm-bar-text" id="salConfirmBarText"></div>
-            <button class="btn-primary" id="salConfirmAllBtn">✓ Potvrdi sve plate</button>
-          </div>
-        </div>
-
-        <div class="stat-panel" style="margin-top:16px;">
-          <div class="stat-panel-head">
-            <div>
-              <div class="stat-panel-title">📈 Istorija povećanja</div>
-              <div class="stat-panel-sub" id="raiseHistorySince"></div>
+          <div class="stat-panel">
+            <div class="stat-panel-head">
+              <div>
+                <div class="stat-panel-title">📈 Istorija povećanja</div>
+                <div class="stat-panel-sub" id="raiseHistorySince"></div>
+              </div>
+              <select id="raiseHistoryEmpSelect" style="font-family:var(--font-body); font-size:11.5px; font-weight:600; border:1px solid var(--border); background:var(--card-soft); border-radius:9px; padding:7px 11px; color:var(--ink); cursor:pointer;"></select>
             </div>
-            <select id="raiseHistoryEmpSelect" style="font-family:var(--font-body); font-size:11.5px; font-weight:600; border:1px solid var(--border); background:var(--card-soft); border-radius:9px; padding:7px 11px; color:var(--ink); cursor:pointer;"></select>
+            <div class="line-svg-wrap" id="raiseHistorySvgWrap"></div>
+            <div class="line-month-labels" id="raiseHistoryMonthLabels" style="margin-bottom:16px;"></div>
+            <div class="lb-list" id="raiseHistoryList"></div>
           </div>
-          <div class="line-svg-wrap" id="raiseHistorySvgWrap"></div>
-          <div class="line-month-labels" id="raiseHistoryMonthLabels" style="margin-bottom:16px;"></div>
-          <div class="lb-list" id="raiseHistoryList"></div>
         </div>
       </div>
 
@@ -8014,7 +8018,7 @@ function renderSalChart(){
     <div class="fin-flow-legend-item"><span class="fin-flow-legend-dot" style="background:${salCatColors[c]}"></span>${salCatLabels[c]}</div>`).join('');
 
   const maxTotal = Math.max(...monthTotals, 1);
-  const targetMaxSquares = 16;
+  const targetMaxSquares = 9;
   const unitValue = maxTotal / targetMaxSquares;
 
   document.getElementById('salChart').innerHTML = salMonthAbbr.map((label,i)=>{
@@ -8096,7 +8100,7 @@ function renderSalEmpGrid(){
     const entry = salaryFor(e.key, month);
     const av = avatarBgInner(e.key);
     if(!entry){
-      return `<div class="sal-emp-card">
+      return `<div class="sal-emp-card" data-emp="${e.key}" style="cursor:pointer;">
         <div class="sal-emp-card-top">
           <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
           <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
@@ -8106,7 +8110,7 @@ function renderSalEmpGrid(){
       </div>`;
     }
     const paid = entry.status !== 'Na čekanju';
-    return `<div class="sal-emp-card entered">
+    return `<div class="sal-emp-card entered" data-emp="${e.key}" style="cursor:pointer;">
       <div class="sal-emp-card-top">
         <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
         <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
@@ -8118,7 +8122,10 @@ function renderSalEmpGrid(){
     </div>`;
   }).join('');
   document.querySelectorAll('#salEmpGrid .sal-emp-card-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> openSalModal(btn.dataset.emp, month));
+    btn.addEventListener('click', (ev)=>{ ev.stopPropagation(); openSalModal(btn.dataset.emp, month); });
+  });
+  document.querySelectorAll('#salEmpGrid .sal-emp-card').forEach(card=>{
+    card.addEventListener('click', ()=> openRaiseHistoryFor(card.dataset.emp));
   });
 }
 
@@ -8130,7 +8137,7 @@ function renderSalTable(){
     const prevEntry = salaryFor(e.key, month-1);
     const av = avatarBgInner(e.key);
     if(!entry){
-      return `<div class="sal-row2">
+      return `<div class="sal-row2" data-emp="${e.key}" style="cursor:pointer;">
         <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
         <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
         <div><span class="sal-status-badge missing">Nije uneto</span></div>
@@ -8141,7 +8148,7 @@ function renderSalTable(){
     const up = changed && entry.osnovica > prevEntry.osnovica;
     const arrow = changed ? `<span class="sal-change ${up?'up':'down'}">${up?'▲':'▼'}</span>` : '';
     const paid = entry.status !== 'Na čekanju';
-    return `<div class="sal-row2 entered" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
+    return `<div class="sal-row2 entered" data-emp="${e.key}" style="cursor:pointer;" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
       <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
       <div class="sal-cell2">${fmtK(entry.osnovica)}${arrow}</div>
       <div class="sal-cell2">${entry.bonus ? fmtK(entry.bonus) : '—'}</div>
@@ -8157,7 +8164,10 @@ function renderSalTable(){
   }).join('');
 
   document.querySelectorAll('#salTable .sal-row-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> openSalModal(btn.dataset.emp, month));
+    btn.addEventListener('click', (ev)=>{ ev.stopPropagation(); openSalModal(btn.dataset.emp, month); });
+  });
+  document.querySelectorAll('#salTable .sal-row2').forEach(row=>{
+    row.addEventListener('click', ()=> openRaiseHistoryFor(row.dataset.emp));
   });
 }
 document.getElementById('salEmpSearchInput').addEventListener('input', (e)=>{
@@ -8290,6 +8300,13 @@ function populateRaiseHistorySelect(){
   const cu = currentUser();
   sel.value = (cu && names.includes(cu.name)) ? cu.name : names[0];
   sel.addEventListener('change', renderRaiseHistory);
+}
+function openRaiseHistoryFor(emp){
+  const sel = document.getElementById('raiseHistoryEmpSelect');
+  if(!sel || sel.value === emp) return;
+  sel.value = emp;
+  renderRaiseHistory();
+  document.getElementById('raiseHistorySvgWrap').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
 
 const salConfirmModalOverlay = document.getElementById('salConfirmModalOverlay');
