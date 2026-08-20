@@ -424,7 +424,22 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-trend-chart svg{ display:block; overflow:visible; }
 .fin-trend-chart circle{ opacity:0; transition:opacity .4s ease .9s; }
 .fin-trend-chart.shown circle{ opacity:1; }
+.fin-trend-chart .fin-highlight-glow, .fin-trend-chart .fin-highlight-dot, .fin-trend-chart .fin-highlight-line{ opacity:0; transition:opacity .5s ease 1.1s; }
+.fin-trend-chart.shown .fin-highlight-glow, .fin-trend-chart.shown .fin-highlight-dot, .fin-trend-chart.shown .fin-highlight-line{ opacity:1; }
 .fin-flow-xlabels{ display:flex; justify-content:space-between; margin-top:6px; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); padding:0 2px; }
+.fin-highlight-badge-row{ position:relative; height:26px; }
+.fin-highlight-badge{ position:absolute; top:0; transform:translateX(-50%); background:var(--ink); color:#fff; font-family:var(--font-mono); font-size:10px; font-weight:600; padding:5px 12px; border-radius:20px; white-space:nowrap; box-shadow:0 4px 10px rgba(35,31,24,.18); opacity:0; transition:opacity .4s ease 1.2s, transform .4s ease 1.2s; }
+.fin-trend-chart.shown .fin-highlight-badge{ opacity:1; }
+
+/* Modern donut — thick rounded, gapped segments with floating % badges,
+   instead of a flat conic-gradient circle. Ring sits inside the existing
+   .donut-wrap/.donut-hole structure, only the ring rendering changes. */
+.donut-wrap.modern{ width:148px; height:148px; }
+.modern-donut-ring{ width:100%; height:100%; }
+.modern-donut-svg{ display:block; overflow:visible; }
+.modern-donut-seg{ transition:none; }
+.modern-donut-badge{ opacity:0; }
+.modern-donut-badge.shown{ opacity:1; transition:opacity .4s ease; }
 
 /* Hero balance panel */
 .fin-hero{ padding:20px 26px; }
@@ -2189,8 +2204,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head"><div class="stat-panel-title">🧾 Struktura troška</div></div>
             <div class="donut-row">
-              <div class="donut-wrap" id="finDonutWrap">
-                <div class="donut-circle" id="finDonutCircle"></div>
+              <div class="donut-wrap modern" id="finDonutWrap">
+                <div class="modern-donut-ring" id="finDonutRing"></div>
                 <div class="donut-hole"><div class="donut-hole-val" id="finDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
               </div>
               <div class="donut-legend" id="finDonutLegend"></div>
@@ -2202,8 +2217,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="stat-panel-head"><div class="stat-panel-title">📁 Vrednost projekata po statusu</div></div>
             <div class="fin-mini-stat"><span class="fin-mini-stat-val" id="finActiveProjCount">0</span><span class="fin-mini-stat-label">aktivnih projekata</span></div>
             <div class="donut-row">
-              <div class="donut-wrap" id="statusDonutWrap">
-                <div class="donut-circle" id="statusDonutCircle"></div>
+              <div class="donut-wrap modern" id="statusDonutWrap">
+                <div class="modern-donut-ring" id="statusDonutRing"></div>
                 <div class="donut-hole"><div class="donut-hole-val" id="statusDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
               </div>
               <div class="donut-legend" id="statusDonutLegend"></div>
@@ -7302,14 +7317,16 @@ function renderFinFlowChart(){
   const wrap = document.getElementById('finFlowChart');
   wrap.classList.remove('shown');
   const n = monthAbbrRS.length;
-  const W = 640, H = 96, padT = 10, padB = 6;
+  const W = 640, H = 96, padT = 14, padB = 6;
   const max = Math.max(...monthIn, ...monthOut, 1);
   const xFor = i => (i/(n-1)) * W;
   const yFor = v => padT + (1-(v/max)) * (H-padT-padB);
   const lineFor = arr => arr.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' ');
   const areaFor = arr => `${xFor(0)},${H} ` + lineFor(arr) + ` ${xFor(n-1)},${H}`;
   const dotsFor = (arr,color,label) => arr.map((v,i)=>`<circle cx="${xFor(i)}" cy="${yFor(v)}" r="2.8" fill="${color}" stroke="var(--card)" stroke-width="1.2"><title>${label} ${monthAbbrRS[i]}: ${fmtRSD(v)}</title></circle>`).join('');
+  const lastIdx = n-1, lastX = xFor(lastIdx), lastY = yFor(monthOut[lastIdx]);
   wrap.innerHTML = `
+    <div class="fin-highlight-badge-row"><div class="fin-highlight-badge" style="left:${(lastX/W)*100}%;">${monthAbbrRS[lastIdx]} odliv: ${fmtRSD(monthOut[lastIdx])}</div></div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
       <defs>
         <linearGradient id="finGradOut" x1="0" y1="0" x2="0" y2="1">
@@ -7321,12 +7338,15 @@ function renderFinFlowChart(){
           <stop offset="100%" stop-color="#4C8A55" stop-opacity="0"/>
         </linearGradient>
       </defs>
+      <line x1="${lastX}" y1="0" x2="${lastX}" y2="${H}" stroke="var(--ink-faint)" stroke-width="1" stroke-dasharray="3 3" class="fin-highlight-line"/>
       <polygon points="${areaFor(monthOut)}" fill="url(#finGradOut)"/>
       <polygon points="${areaFor(monthIn)}" fill="url(#finGradIn)"/>
       <polyline points="${lineFor(monthOut)}" fill="none" stroke="var(--coral)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="fin-line-out"/>
       <polyline points="${lineFor(monthIn)}" fill="none" stroke="#4C8A55" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="fin-line-in"/>
       ${dotsFor(monthOut,'var(--coral)','Odliv')}
       ${dotsFor(monthIn,'#4C8A55','Priliv')}
+      <circle cx="${lastX}" cy="${lastY}" r="7" fill="var(--coral)" opacity="0.18" class="fin-highlight-glow"/>
+      <circle cx="${lastX}" cy="${lastY}" r="4" fill="var(--coral)" stroke="var(--card)" stroke-width="1.5" class="fin-highlight-dot"/>
     </svg>
     <div class="fin-flow-xlabels">${monthAbbrRS.map(l=>`<span>${l}</span>`).join('')}</div>`;
   requestAnimationFrame(()=>{
@@ -7364,22 +7384,51 @@ function finCostComponents(){
   });
   return items.sort((a,b)=>b.value-a.value);
 }
-function renderFinDonut(){
-  const items = finCostComponents();
+/* Moderan donut: debeo prsten sa zaobljenim, razmaknutim segmentima i
+   procentima kao plutajuce oznake direktno na prstenu — zamena za stari
+   flat conic-gradient krug. Koristi se za svaki donut na Pregled stranici;
+   legenda i centar (.donut-hole) ostaju netaknuti, menja se samo prsten. */
+function renderModernDonut(ringId, legendId, items){
   const total = items.reduce((s,i)=>s+i.value,0);
-  let acc = 0;
-  const stops = items.map(i=>{
-    const pct = total>0 ? (i.value/total)*100 : 0;
-    const seg = `${i.color} ${acc}% ${acc+pct}%`;
-    acc += pct;
-    return seg;
-  }).join(', ');
-  document.getElementById('finDonutCircle').style.background = `conic-gradient(${stops})`;
-  document.getElementById('finDonutLegend').innerHTML = items.map(i=>`
+  const R = 74, CX = 100, CY = 100, SW = 22, GAP = 7;
+  const circumference = 2*Math.PI*R;
+  let cursor = -90, svgInner = '';
+  items.forEach(it=>{
+    const pct = total>0 ? (it.value/total)*100 : 0;
+    const segDeg = (pct/100)*360;
+    const drawDeg = segDeg>0 ? Math.max(segDeg-GAP, Math.min(segDeg,2)) : 0;
+    const arcLen = (drawDeg/360)*circumference;
+    svgInner += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${it.color}" stroke-width="${SW}" stroke-linecap="round"
+      stroke-dasharray="${arcLen.toFixed(1)} ${(circumference-arcLen).toFixed(1)}" stroke-dashoffset="${arcLen.toFixed(1)}"
+      transform="rotate(${cursor} ${CX} ${CY})" class="modern-donut-seg"><title>${escapeHtml(it.label)}: ${fmtRSD(it.value)}</title></circle>`;
+    if(pct >= 5){
+      const midRad = (cursor+segDeg/2)*Math.PI/180;
+      const bx = (CX+R*Math.cos(midRad)).toFixed(1), by = (CY+R*Math.sin(midRad)).toFixed(1);
+      svgInner += `<g class="modern-donut-badge"><circle cx="${bx}" cy="${by}" r="15" fill="var(--ink)" stroke="var(--card)" stroke-width="2.5"/><text x="${bx}" y="${(+by+3.4).toFixed(1)}" text-anchor="middle" font-family="var(--font-mono)" font-weight="700" font-size="9.5" fill="#fff">${pct.toFixed(0)}%</text></g>`;
+    }
+    cursor += segDeg;
+  });
+  const ring = document.getElementById(ringId);
+  ring.innerHTML = `<svg viewBox="0 0 200 200" width="100%" height="100%" class="modern-donut-svg">${svgInner}</svg>`;
+  document.getElementById(legendId).innerHTML = items.map(i=>`
     <div class="donut-legend-item">
       <span class="donut-legend-left"><span class="donut-dot" style="background:${i.color}"></span>${escapeHtml(i.label)}</span>
       <b>${fmtK(i.value)}</b>
     </div>`).join('');
+  requestAnimationFrame(()=>{
+    ring.querySelectorAll('.modern-donut-seg').forEach((seg,i)=>{
+      seg.style.transition = `stroke-dashoffset .9s cubic-bezier(.34,1,.4,1) ${i*0.1}s`;
+      requestAnimationFrame(()=>{ seg.style.strokeDashoffset = 0; });
+    });
+    ring.querySelectorAll('.modern-donut-badge').forEach((b,i)=>{
+      setTimeout(()=>{ b.classList.add('shown'); }, 700+i*80);
+    });
+  });
+  return total;
+}
+function renderFinDonut(){
+  const items = finCostComponents();
+  const total = renderModernDonut('finDonutRing', 'finDonutLegend', items);
   animateCountUp(document.getElementById('finDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('finDonutWrap').classList.add('shown'); }, 100);
 }
@@ -7420,21 +7469,10 @@ function renderProjectValueDonut(){
   const colorMap = { "U toku":"var(--gold)", "Revizija":"var(--coral)", "Na čekanju":"var(--ink-faint)", "Završeno":"#4C8A55" };
   const sums = {};
   allProjects.forEach(p=>{ sums[p.status] = (sums[p.status]||0) + projectValueByCode(p.code); });
-  const total = Object.values(sums).reduce((a,b)=>a+b,0);
-  const cats = Object.keys(sums).filter(c=>sums[c]>0);
-  let acc = 0;
-  const stops = cats.map(c=>{
-    const pct = (sums[c]/total)*100;
-    const seg = `${colorMap[c]||'var(--ink-faint)'} ${acc}% ${acc+pct}%`;
-    acc += pct;
-    return seg;
-  }).join(', ');
-  document.getElementById('statusDonutCircle').style.background = `conic-gradient(${stops})`;
-  document.getElementById('statusDonutLegend').innerHTML = cats.sort((a,b)=>sums[b]-sums[a]).map(c=>`
-    <div class="donut-legend-item">
-      <span class="donut-legend-left"><span class="donut-dot" style="background:${colorMap[c]||'var(--ink-faint)'}"></span>${c}</span>
-      <b>${fmtK(sums[c])}</b>
-    </div>`).join('');
+  const items = Object.keys(sums).filter(c=>sums[c]>0)
+    .map(c=>({ label:c, value:sums[c], color:colorMap[c]||'var(--ink-faint)' }))
+    .sort((a,b)=>b.value-a.value);
+  const total = renderModernDonut('statusDonutRing', 'statusDonutLegend', items);
   animateCountUp(document.getElementById('statusDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('statusDonutWrap').classList.add('shown'); }, 100);
   const activeCount = allProjects.filter(p=>p.status==='U toku' || p.status==='Revizija').length;
