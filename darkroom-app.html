@@ -3899,7 +3899,7 @@ function updateRangeLabel(labelId, startISO, endISO){
   const el = document.getElementById(labelId);
   el.textContent = (startISO && endISO) ? `${formatDateHuman(fromISO(startISO))} – ${formatDateHuman(fromISO(endISO))}` : 'Izaberi period';
 }
-function wireDateRangeTrigger(triggerId, labelId, startId, endId){
+function wireDateRangeTrigger(triggerId, labelId, startId, endId, onChange){
   document.getElementById(triggerId).addEventListener('click', (e)=>{
     e.stopPropagation();
     if(document.getElementById(startId).disabled) return;
@@ -3909,10 +3909,11 @@ function wireDateRangeTrigger(triggerId, labelId, startId, endId){
       document.getElementById(startId).value = s;
       document.getElementById(endId).value = en;
       updateRangeLabel(labelId, s, en);
+      if(onChange) onChange();
     });
   });
 }
-wireDateRangeTrigger('evzRangeTrigger','evzRangeLabel','evzStart','evzEnd');
+wireDateRangeTrigger('evzRangeTrigger','evzRangeLabel','evzStart','evzEnd', ()=> renderEvzHours(currentEvzFormState()));
 wireDateRangeTrigger('evoRangeTrigger','evoRangeLabel','evoStart','evoEnd');
 wireDateRangeTrigger('evpRangeTrigger','evpRangeLabel','evpStart','evpEnd');
 
@@ -3973,8 +3974,9 @@ function refreshZadatakTasks(selected){
     : `<option value="">Nema kadrova</option>`;
   if(selected) el.value = selected;
 }
-document.getElementById('evzEmployee').addEventListener('change', ()=>{ refreshZadatakProjects(); refreshZadatakTasks(); });
-document.getElementById('evzProject').addEventListener('change', ()=>{ refreshZadatakTasks(); });
+document.getElementById('evzEmployee').addEventListener('change', ()=>{ refreshZadatakProjects(); refreshZadatakTasks(); renderEvzHours(currentEvzFormState()); });
+document.getElementById('evzProject').addEventListener('change', ()=>{ refreshZadatakTasks(); renderEvzHours(currentEvzFormState()); });
+document.getElementById('evzTask').addEventListener('change', ()=>{ renderEvzHours(currentEvzFormState()); });
 
 function openEventModal(ev, prefillDateISO, prefillPerson){
   const kind = ev ? ev.kind : 'zadatak';
@@ -4150,9 +4152,13 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     newEvent = { kind, person:null, initials:'', color:'holiday', holidayName, start, end };
   }
 
+  let oldZadatakSnapshot = null;
   if(editingEventId){
     const ev = events.find(e=>e._id===editingEventId);
     if(ev){
+      if(ev.kind==='zadatak'){
+        oldZadatakSnapshot = { kind:'zadatak', person:ev.person, projectCode:ev.projectCode, taskName:ev.taskName, start:ev.start, end:ev.end };
+      }
       Object.keys(ev).forEach(k=>{ if(!['_id'].includes(k)) delete ev[k]; });
       Object.assign(ev, newEvent);
     }
@@ -4160,6 +4166,7 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     events.push({ _id:nextId(), ...newEvent });
   }
   if(kind==='zadatak'){
+    if(oldZadatakSnapshot) await pruneStaleTimeEntries(oldZadatakSnapshot, newEvent);
     const savedHours = await saveEvzHours();
     if(savedHours) spawnHourCoins(document.getElementById('evSubmit'));
   }
@@ -4181,6 +4188,20 @@ function evzHoursDays(start, end){
   let cur = start;
   while(daysBetween(cur, end) >= 0){ days.push(cur); cur = addDays(cur, 1); }
   return days;
+}
+/* Trenutno stanje zadatak-forme (jos nesacuvano) — koristi se da se lista
+   radnih sati uzivo osvezava dok korisnik menja zaposlenog/projekat/kadar/
+   period, pre nego sto uopste klikne Sačuvaj. */
+function currentEvzFormState(){
+  const person = document.getElementById('evzEmployee').value;
+  const projectCode = document.getElementById('evzProject').value;
+  const taskName = document.getElementById('evzTask').value;
+  const startVal = document.getElementById('evzStart').value;
+  const endVal = document.getElementById('evzEnd').value;
+  if(!person || !projectCode || !taskName || !startVal || !endVal) return null;
+  let start = fromISO(startVal), end = fromISO(endVal);
+  if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
+  return { kind:'zadatak', person, projectCode, taskName, start, end };
 }
 function renderEvzHours(ev){
   const field = document.getElementById('evzHoursField');
@@ -4231,6 +4252,40 @@ async function deleteTimeEntriesForEvent(evObj){
   }
   renderWeeklyGoal();
   renderOvertimeStat();
+}
+/* Poredi staro (sacuvano) stanje zadatka sa novim submit-ovanim stanjem pri
+   izmeni postojeceg zadatka i brise time_entries za (zaposleni,kadar,dan)
+   kombinacije koje vise nisu pokrivene — bilo zato sto je period skracen
+   (npr. pon-pet -> pon-sre), bilo zato sto je sam zadatak (zaposleni/
+   projekat/kadar) promenjen tokom izmene. Bez ovoga bi uneseni sati za
+   uklonjene dane ostajali "zaboravljeni" u bazi zauvek. */
+async function pruneStaleTimeEntries(oldEv, newEvent){
+  if(!oldEv || !sb) return;
+  const oldProj = allProjects.find(p=>p.code===oldEv.projectCode);
+  const oldKadar = oldProj && oldProj.kadrovi.find(k=>k.name===oldEv.taskName);
+  const oldEmp = teamMembers.find(t=>t.name===oldEv.person);
+  if(!oldKadar || !oldKadar.dbId || !oldEmp || !oldEmp.authId) return;
+
+  const sameAssignment = newEvent.person===oldEv.person && newEvent.projectCode===oldEv.projectCode && newEvent.taskName===oldEv.taskName;
+  const newStartISO = toISO(newEvent.start), newEndISO = toISO(newEvent.end);
+
+  const staleDates = [];
+  let cur = oldEv.start;
+  while(daysBetween(cur, oldEv.end) >= 0){
+    const iso = toISO(cur);
+    if(!sameAssignment || iso < newStartISO || iso > newEndISO) staleDates.push(iso);
+    cur = addDays(cur, 1);
+  }
+  if(!staleDates.length) return;
+  const { error } = await sb.from('time_entries')
+    .delete()
+    .eq('employee_id', oldEmp.authId).eq('kadar_id', oldKadar.dbId)
+    .in('date', staleDates);
+  if(error){ await customAlert('Brisanje sati za promenjeni period nije uspelo: ' + error.message); return; }
+  for(let i = timeEntries.length - 1; i >= 0; i--){
+    const t = timeEntries[i];
+    if(t.employeeId===oldEmp.authId && t.kadarDbId===oldKadar.dbId && staleDates.includes(t.date)) timeEntries.splice(i,1);
+  }
 }
 async function saveOneHoursCell(dbId, employeeId, employeeName, kadarDbId, dateVal, hours, overtime){
   if(hours > 0){
