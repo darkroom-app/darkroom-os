@@ -7924,20 +7924,22 @@ function renderSalBreakdown(){
 
 function renderSalPayrun(){
   const month = salBreakdownMonth;
-  const entries = salaryEntries.filter(s=>s.month===month);
+  const activeNames = new Set(activeTeamMembers().map(t=>t.key));
+  const entries = salaryEntries.filter(s=>s.month===month && activeNames.has(s.employee));
   const headcount = entries.length;
   const grossPay = entries.reduce((s,e)=>s+salNeto(e),0);
   const taxes = entries.reduce((s,e)=>s+e.porez,0);
   const total = grossPay + taxes;
   const confirmed = salConfirmedMonths.includes(month);
   const lastDay = new Date(salBreakdownYear, month+1, 0).getDate();
+  const activeCount = activeTeamMembers().length;
   let statusLabel, statusPending;
   if(confirmed){ statusLabel = '✓ Odobreno'; statusPending = false; }
-  else if(headcount < teamMembers.length){ statusLabel = 'Nepotpuno'; statusPending = true; }
+  else if(headcount < activeCount){ statusLabel = 'Nepotpuno'; statusPending = true; }
   else { statusLabel = 'Čeka potvrdu'; statusPending = true; }
   document.getElementById('salPayrunInfo').innerHTML = `
     <div class="sal-payrun-row"><span>Period isplate</span><b>1–${lastDay}. ${monthNamesFull[month].toLowerCase()} ${salBreakdownYear}.</b></div>
-    <div class="sal-payrun-row"><span>Broj zaposlenih</span><b>${headcount} / ${teamMembers.length}</b></div>
+    <div class="sal-payrun-row"><span>Broj zaposlenih</span><b>${headcount} / ${activeCount}</b></div>
     <div class="sal-payrun-row"><span>Status</span><b class="${statusPending?'pending':''}">${statusLabel}</b></div>`;
   const pct = total>0 ? (grossPay/total)*100 : 0;
   document.getElementById('salPayrunDonutCircle').style.background = `conic-gradient(var(--gold-deep) 0% ${pct}%, var(--plum) ${pct}% 100%)`;
@@ -8000,15 +8002,19 @@ function renderSalChart(){
   badge.textContent = `${trend>=0?'▲':'▼'} ${Math.abs(trend).toFixed(0)}% vs prošli mesec`;
 }
 
+function activeTeamMembers(){
+  return teamMembers.filter(t=>t.status==='Aktivan');
+}
 function salFilteredEmployees(){
   const q = salEmpSearch.trim().toLowerCase();
-  return teamMembers.filter(t=> t.name.toLowerCase().includes(q));
+  return activeTeamMembers().filter(t=> t.name.toLowerCase().includes(q));
 }
 
 function renderSalProgress(){
   const month = salBreakdownMonth;
-  const total = teamMembers.length;
-  const entered = teamMembers.filter(t=>salaryFor(t.key, month)).length;
+  const active = activeTeamMembers();
+  const total = active.length;
+  const entered = active.filter(t=>salaryFor(t.key, month)).length;
   const complete = entered === total;
   const confirmed = salConfirmedMonths.includes(month);
   document.getElementById('salProgressRow').innerHTML = `
