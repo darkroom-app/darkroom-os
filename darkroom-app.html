@@ -8199,8 +8199,8 @@ function trendBadgeHtml(curr, prev){
 
 function renderSalBreakdown(){
   const month = salBreakdownMonth, prevMonth = month - 1;
-  const entries = salaryEntries.filter(s=>s.month===month);
-  const prevEntries = salaryEntries.filter(s=>s.month===prevMonth);
+  const entries = salaryEntries.filter(s=>s.month===month && s.year===salBreakdownYear);
+  const prevEntries = salaryEntries.filter(s=>s.month===prevMonth && s.year===salBreakdownYear);
   const sum = (arr, field) => arr.reduce((s,e)=>s+e[field],0);
   const sumBruto = arr => arr.reduce((s,e)=>s+salUkupno(e),0);
   const sumNeto = arr => arr.reduce((s,e)=>s+salNeto(e),0);
@@ -8228,12 +8228,12 @@ function renderSalBreakdown(){
 function renderSalPayrun(){
   const month = salBreakdownMonth;
   const activeNames = new Set(activeTeamMembers().map(t=>t.key));
-  const entries = salaryEntries.filter(s=>s.month===month && activeNames.has(s.employee));
+  const entries = salaryEntries.filter(s=>s.month===month && s.year===salBreakdownYear && activeNames.has(s.employee));
   const headcount = entries.length;
   const grossPay = entries.reduce((s,e)=>s+salNeto(e),0);
   const taxes = entries.reduce((s,e)=>s+e.porez,0);
   const total = grossPay + taxes;
-  const confirmed = salConfirmedMonths.includes(month);
+  const confirmed = salConfirmedMonths.includes(`${salBreakdownYear}-${month}`);
   const activeCount = activeTeamMembers().length;
   const missing = activeTeamMembers().filter(t=>!salaryFor(t.key, month));
 
@@ -8330,7 +8330,7 @@ function renderSalProgress(){
   const total = active.length;
   const entered = active.filter(t=>salaryFor(t.key, month)).length;
   const complete = entered === total;
-  const confirmed = salConfirmedMonths.includes(month);
+  const confirmed = salConfirmedMonths.includes(`${salBreakdownYear}-${month}`);
   document.getElementById('salProgressRow').innerHTML = `
     <div class="sal-progress-label">${entered} / ${total} uneto</div>
     <div class="sal-progress-track"><div class="sal-progress-fill ${complete?'complete':''}" data-w="${(entered/total)*100}" style="width:0%;"></div></div>
@@ -8602,11 +8602,18 @@ function openSalConfirmModal(){
 document.getElementById('salConfirmAllBtn').addEventListener('click', openSalConfirmModal);
 document.getElementById('salConfirmCancel').addEventListener('click', ()=> salConfirmModalOverlay.classList.remove('open'));
 wireOverlayClose(salConfirmModalOverlay, ()=> salConfirmModalOverlay.classList.remove('open'));
-document.getElementById('salConfirmSubmit').addEventListener('click', ()=>{
+document.getElementById('salConfirmSubmit').addEventListener('click', async ()=>{
   if(document.getElementById('salConfirmSubmit').disabled) return;
-  const month = salBreakdownMonth;
-  salaryEntries.filter(s=>s.month===month).forEach(e=>{ e.status = 'Isplaćeno'; });
-  if(!salConfirmedMonths.includes(month)) salConfirmedMonths.push(month);
+  const month = salBreakdownMonth, year = salBreakdownYear;
+  const toConfirm = salaryEntries.filter(s=>s.month===month && s.year===year);
+  const dbIds = toConfirm.filter(e=>e.dbId).map(e=>e.dbId);
+  if(dbIds.length){
+    const { error } = await sb.from('salary_entries').update({ status:'Isplaćeno' }).in('id', dbIds);
+    if(error){ await customAlert('Potvrda nije uspela: ' + error.message); return; }
+  }
+  toConfirm.forEach(e=>{ e.status = 'Isplaćeno'; });
+  const key = `${year}-${month}`;
+  if(!salConfirmedMonths.includes(key)) salConfirmedMonths.push(key);
   salConfirmModalOverlay.classList.remove('open');
   if(month < 11) salBreakdownMonth = month + 1;
   refreshSalMonthView();
