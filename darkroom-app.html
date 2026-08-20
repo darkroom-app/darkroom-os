@@ -412,30 +412,51 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 /* ==== FINANSIJE VIEW ==== */
 .fin-flow-chart{ display:flex; align-items:flex-end; gap:8px; height:126px; }
-#finFlowChart{ height:88px; }
 .fin-flow-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:8px; height:100%; }
 .fin-flow-track{ flex:1; display:flex; align-items:flex-end; gap:2px; width:100%; justify-content:center; }
-.fin-flow-bar{ width:100%; max-width:11px; border-radius:5px 5px 2px 2px; transition:height 1s cubic-bezier(.34,1.2,.4,1); }
-.fin-flow-bar.in{ background:linear-gradient(180deg,#6BAE76,#4C8A55); }
-.fin-flow-bar.out{ background:linear-gradient(180deg,#E39274,var(--coral)); }
-.fin-flow-bar.salary{ background:linear-gradient(180deg,#F3C05C,var(--gold-deep)); }
 .fin-flow-label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); }
 .fin-flow-legend{ display:flex; gap:16px; margin-bottom:14px; }
 .fin-flow-legend-item{ display:flex; align-items:center; gap:6px; font-size:11px; color:var(--ink-dim); }
 .fin-flow-legend-dot{ width:8px; height:8px; border-radius:3px; }
 
-.recent-tx-list{ display:flex; flex-direction:column; gap:2px; }
-.recent-tx-item{ display:flex; align-items:center; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
-.recent-tx-item:last-child{ border-bottom:none; padding-bottom:0; }
-.recent-tx-icon{ width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px; }
-.recent-tx-icon.in{ background:#DCEEDC; }
-.recent-tx-icon.out{ background:var(--coral-soft); }
-.recent-tx-text{ min-width:0; flex:1; }
-.recent-tx-title{ font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.recent-tx-sub{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); }
-.recent-tx-amt{ font-family:var(--font-mono); font-size:11px; font-weight:600; flex-shrink:0; }
-.recent-tx-amt.in{ color:#4C8A55; }
-.recent-tx-amt.out{ color:var(--coral); }
+/* Trend chart — hand-rolled gradient area/line (replaces the old bar chart) */
+.fin-trend-chart{ height:96px; }
+.fin-trend-chart svg{ display:block; overflow:visible; }
+.fin-trend-chart circle{ opacity:0; transition:opacity .4s ease .9s; }
+.fin-trend-chart.shown circle{ opacity:1; }
+.fin-flow-xlabels{ display:flex; justify-content:space-between; margin-top:6px; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); padding:0 2px; }
+
+/* Hero balance panel */
+.fin-hero{ padding:20px 26px; }
+.fin-hero-grid{ display:grid; grid-template-columns:1.7fr 1fr; gap:24px; align-items:center; }
+.fin-hero-label{ font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:6px; }
+.fin-hero-val{ font-family:var(--font-display); font-weight:700; font-size:38px; line-height:1; margin-bottom:14px; }
+.fin-hero-val.pos{ color:#4C8A55; }
+.fin-hero-val.neg{ color:var(--coral); }
+.fin-hero-flow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
+.fin-hero-chip{ font-family:var(--font-mono); font-size:11px; padding:6px 12px; border-radius:10px; background:var(--card-soft); color:var(--ink-dim); display:inline-flex; gap:6px; align-items:center; white-space:nowrap; }
+.fin-hero-chip b{ color:var(--ink); font-weight:700; }
+.fin-hero-chip.in{ background:#E7F2E8; }
+.fin-hero-chip.in b{ color:#4C8A55; }
+.fin-hero-chip.out{ background:var(--coral-soft); }
+.fin-hero-chip.out b{ color:var(--coral); }
+.fin-hero-op{ font-family:var(--font-mono); font-size:13px; color:var(--ink-faint); }
+.fin-hero-trend{ font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); }
+.fin-hero-trend b{ font-weight:700; }
+.fin-hero-trend.up b{ color:var(--coral); }
+.fin-hero-trend.down b{ color:#4C8A55; }
+.fin-hero-side{ display:flex; flex-direction:column; gap:16px; border-left:1px solid var(--border); padding-left:24px; }
+.fin-hero-mini-val{ font-family:var(--font-display); font-weight:700; font-size:20px; color:var(--gold-deep); }
+.fin-hero-mini-label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; margin-top:2px; }
+
+/* Projekcija — connected flow layout */
+.fin-proj-flow{ display:flex; align-items:stretch; margin-bottom:12px; gap:2px; }
+.fin-proj-step{ flex:1; background:var(--card-soft); border-radius:16px; padding:14px 16px; min-width:0; }
+.fin-proj-arrow{ display:flex; align-items:center; justify-content:center; width:26px; flex-shrink:0; color:var(--ink-faint); }
+.fin-proj-arrow svg{ width:16px; height:16px; }
+.fin-proj-step.capstone{ background:linear-gradient(135deg, var(--gold-soft), var(--card-soft)); border:1px dashed var(--gold-deep); margin-left:16px; }
+
+.recent-tx-list{ overflow-x:auto; }
 
 .kpi-trend{ font-family:var(--font-mono); font-size:8.5px; margin-top:5px; display:flex; align-items:center; gap:3px; }
 .kpi-trend.up{ color:#4C8A55; }
@@ -2134,7 +2155,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
       <!-- TAB 1: PREGLED -->
       <div class="stat-tab-panel active" id="finTabPregled">
-        <div class="kpi-row" id="finKpiRow" style="grid-template-columns:repeat(3,1fr);"></div>
+        <div class="stat-panel fin-hero">
+          <div class="fin-hero-grid">
+            <div id="finHeroMain"></div>
+            <div class="fin-hero-side" id="finHeroSide"></div>
+          </div>
+        </div>
 
         <div class="stat-panel" id="finProjPanel">
           <div class="stat-panel-head">
@@ -2144,7 +2170,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
               <input type="number" id="finMarginInput" value="20" min="0" max="200" step="1" style="width:46px; font-family:var(--font-mono); font-size:11px; border:1px solid var(--border); background:var(--card-soft); border-radius:7px; padding:4px 6px; color:var(--ink); text-align:right;">%
             </div>
           </div>
-          <div class="kpi-row" id="finProjRow" style="grid-template-columns:repeat(4,1fr); margin-bottom:12px;"></div>
+          <div class="fin-proj-flow" id="finProjRow"></div>
           <div class="sal-progress-row" style="display:flex; align-items:center; gap:10px;">
             <div class="sal-progress-track" id="finProjPendingFillWrap"><div class="sal-progress-fill" id="finProjPendingFill" style="width:0%;"></div></div>
           </div>
@@ -2158,10 +2184,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
               <div class="fin-flow-legend-item"><span class="fin-flow-legend-dot" style="background:#4C8A55"></span>Priliv</div>
               <div class="fin-flow-legend-item"><span class="fin-flow-legend-dot" style="background:var(--coral)"></span>Odliv</div>
             </div>
-            <div class="fin-flow-chart" id="finFlowChart"></div>
+            <div class="fin-trend-chart" id="finFlowChart"></div>
           </div>
           <div class="stat-panel" style="padding:14px 18px 16px;">
-            <div class="stat-panel-head"><div class="stat-panel-title">🧾 Odlivi po kategoriji</div></div>
+            <div class="stat-panel-head"><div class="stat-panel-title">🧾 Struktura troška</div></div>
             <div class="donut-row">
               <div class="donut-wrap" id="finDonutWrap">
                 <div class="donut-circle" id="finDonutCircle"></div>
@@ -7219,7 +7245,11 @@ function receivablesTotal(){
   return allPricedItems().filter(r=>r.status==='Fakturisano' || r.status==='Neplaćeno').reduce((s,r)=>s+r.price,0);
 }
 
-function renderFinKpis(){
+/* Hero: jedan istaknut broj (Trenutno stanje, obojen po predznaku) + kompaktan
+   "tok" (Priliv - Odliv = Neto) kao chipovi umesto tri odvojene kartice koje
+   su pre ponavljale istu pricu; Potrazivanja/Plate% ostaju kao manji prateci
+   brojevi da ne konkurisu glavnoj cifri. */
+function renderFinHero(){
   const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
   const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
   const totalSalary = yearPayrollTotal();
@@ -7230,83 +7260,125 @@ function renderFinKpis(){
   const payrollPct = totalIn > 0 ? (totalSalary/totalIn)*100 : 0;
 
   const currM = TODAY.m - 1, prevM = currM - 1;
-  const inFor = m => allTransactions.filter(t=>t.type==='Priliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0);
   const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m);
-  const inCurr = inFor(currM), inPrev = prevM>=0 ? inFor(prevM) : 0;
   const outCurr = outFor(currM), outPrev = prevM>=0 ? outFor(prevM) : 0;
-  const inTrend = inPrev>0 ? ((inCurr-inPrev)/inPrev)*100 : null;
   const outTrend = outPrev>0 ? ((outCurr-outPrev)/outPrev)*100 : null;
 
-  const kpis = [
-    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalIn, label:"Ukupan priliv (2026)", color:"#4C8A55", trend:inTrend },
-    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalOut, label:"Ukupan odliv (2026)", color:"var(--coral)", trend:outTrend, invertTrend:true },
-    { icon:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>', val:net, label:"Neto rezultat (2026)", color: net>=0 ? "#4C8A55" : "var(--coral)" },
-    { icon:'<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/>', val:balance, label:"Trenutno stanje", color:"var(--ink)" },
-    { icon:'<path d="M17 9V7a5 5 0 0 0-10 0v2"/><rect x="4" y="9" width="16" height="12" rx="2"/>', val:receivables, label:"Potraživanja", color:"var(--gold-deep)" },
-    { icon:'<path d="M17 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>', val:payrollPct, decimals:1, suffix:'%', label:"Plate kao % prihoda", color:"var(--plum)" },
-  ];
-  document.getElementById('finKpiRow').innerHTML = kpis.map(k=>{
-    let trendHtml = '';
-    if(k.trend != null){
-      const up = k.invertTrend ? k.trend < 0 : k.trend >= 0;
-      trendHtml = `<div class="kpi-trend ${up?'up':'down'}">${k.trend>=0?'▲':'▼'} ${Math.abs(k.trend).toFixed(0)}% vs prošli mesec</div>`;
-    }
-    return `
-    <div class="kpi-card">
-      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${k.icon}</svg></div>
-      <div class="kpi-val" style="color:${k.color}"><span class="fcu">0</span></div>
-      ${trendHtml}
-      <div class="kpi-label">${k.label}</div>
+  document.getElementById('finHeroMain').innerHTML = `
+    <div class="fin-hero-label">Trenutno stanje</div>
+    <div class="fin-hero-val ${balance>=0?'pos':'neg'}"><span class="fcu" data-val="${balance}">0</span></div>
+    <div class="fin-hero-flow">
+      <span class="fin-hero-chip in">Priliv <b>${fmtK(totalIn)}</b></span>
+      <span class="fin-hero-op">−</span>
+      <span class="fin-hero-chip out">Odliv <b>${fmtK(totalOut)}</b></span>
+      <span class="fin-hero-op">=</span>
+      <span class="fin-hero-chip ${net>=0?'in':'out'}">Neto <b>${fmtK(net)}</b></span>
+    </div>
+    ${outTrend!=null ? `<div class="fin-hero-trend ${outTrend>=0?'up':'down'}">Trošak ovog meseca ${outTrend>=0?'▲':'▼'} <b>${Math.abs(outTrend).toFixed(0)}%</b> vs prošli mesec</div>` : ''}`;
+  animateCountUp(document.querySelector('#finHeroMain .fcu'), balance, {suffix:' RSD'});
+
+  document.getElementById('finHeroSide').innerHTML = `
+    <div class="fin-hero-mini">
+      <div class="fin-hero-mini-val"><span class="fcu" data-val="${receivables}">0</span></div>
+      <div class="fin-hero-mini-label">Potraživanja</div>
+    </div>
+    <div class="fin-hero-mini">
+      <div class="fin-hero-mini-val"><span class="fcu" data-val="${payrollPct}">0</span>%</div>
+      <div class="fin-hero-mini-label">Plate kao % prihoda</div>
     </div>`;
-  }).join('');
-  const els = document.querySelectorAll('#finKpiRow .fcu');
-  const vals = [totalIn, totalOut, net, balance, receivables, payrollPct];
-  vals.forEach((v,i)=>{
-    if(els[i]) animateCountUp(els[i], v, i===5 ? {suffix:'%', decimals:1} : {suffix:' RSD'});
-  });
+  const mvals = document.querySelectorAll('#finHeroSide .fcu');
+  animateCountUp(mvals[0], receivables, {suffix:' RSD'});
+  animateCountUp(mvals[1], payrollPct, {decimals:1});
 }
 
+/* Zamenjuje stare flat stubice hand-rolled SVG gradient area/line grafikom —
+   ista logika podataka, samo modernija vizuelizacija (bez biblioteka). */
 function renderFinFlowChart(){
   const monthIn = [], monthOut = [];
   for(let m=0;m<8;m++){
     monthIn.push(allTransactions.filter(t=>t.type==='Priliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0));
     monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m));
   }
-  const max = Math.max(...monthIn, ...monthOut);
   const wrap = document.getElementById('finFlowChart');
-  wrap.innerHTML = monthAbbrRS.map((label,i)=>`
-    <div class="fin-flow-col">
-      <div class="fin-flow-track">
-        <div class="fin-flow-bar in" data-h="${(monthIn[i]/max)*100}" style="height:0%" title="Priliv ${label}: ${fmtRSD(monthIn[i])}"></div>
-        <div class="fin-flow-bar out" data-h="${(monthOut[i]/max)*100}" style="height:0%" title="Odliv ${label}: ${fmtRSD(monthOut[i])}"></div>
-      </div>
-      <div class="fin-flow-label">${label}</div>
-    </div>`).join('');
-  setTimeout(()=>{
-    document.querySelectorAll('#finFlowChart .fin-flow-bar').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.height = el.dataset.h + '%'; }, i*40);
+  wrap.classList.remove('shown');
+  const n = monthAbbrRS.length;
+  const W = 640, H = 96, padT = 10, padB = 6;
+  const max = Math.max(...monthIn, ...monthOut, 1);
+  const xFor = i => (i/(n-1)) * W;
+  const yFor = v => padT + (1-(v/max)) * (H-padT-padB);
+  const lineFor = arr => arr.map((v,i)=>`${xFor(i)},${yFor(v)}`).join(' ');
+  const areaFor = arr => `${xFor(0)},${H} ` + lineFor(arr) + ` ${xFor(n-1)},${H}`;
+  const dotsFor = (arr,color,label) => arr.map((v,i)=>`<circle cx="${xFor(i)}" cy="${yFor(v)}" r="2.8" fill="${color}" stroke="var(--card)" stroke-width="1.2"><title>${label} ${monthAbbrRS[i]}: ${fmtRSD(v)}</title></circle>`).join('');
+  wrap.innerHTML = `
+    <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="finGradOut" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="var(--coral)" stop-opacity="0.32"/>
+          <stop offset="100%" stop-color="var(--coral)" stop-opacity="0"/>
+        </linearGradient>
+        <linearGradient id="finGradIn" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#4C8A55" stop-opacity="0.32"/>
+          <stop offset="100%" stop-color="#4C8A55" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+      <polygon points="${areaFor(monthOut)}" fill="url(#finGradOut)"/>
+      <polygon points="${areaFor(monthIn)}" fill="url(#finGradIn)"/>
+      <polyline points="${lineFor(monthOut)}" fill="none" stroke="var(--coral)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="fin-line-out"/>
+      <polyline points="${lineFor(monthIn)}" fill="none" stroke="#4C8A55" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="fin-line-in"/>
+      ${dotsFor(monthOut,'var(--coral)','Odliv')}
+      ${dotsFor(monthIn,'#4C8A55','Priliv')}
+    </svg>
+    <div class="fin-flow-xlabels">${monthAbbrRS.map(l=>`<span>${l}</span>`).join('')}</div>`;
+  requestAnimationFrame(()=>{
+    ['fin-line-out','fin-line-in'].forEach((cls,idx)=>{
+      const path = wrap.querySelector('.'+cls);
+      if(!path) return;
+      const len = path.getTotalLength();
+      path.style.strokeDasharray = len; path.style.strokeDashoffset = len;
+      path.getBoundingClientRect();
+      path.style.transition = `stroke-dashoffset 1s cubic-bezier(.34,1,.4,1) ${idx*0.12}s`;
+      requestAnimationFrame(()=>{ path.style.strokeDashoffset = 0; });
     });
-  }, 150);
+  });
+  setTimeout(()=>{ wrap.classList.add('shown'); }, 200);
 }
 
+/* Struktura troska: umesto donuta koji je nekad imao samo jednu stvarnu
+   kategoriju ("Plate" kao jedna gomila), plate se rastavljaju na svoje
+   stvarne komponente (osnovica/bonus/prekovremeno/porez/benefiti) i spajaju
+   sa realnim Odliv transakcijama po kategoriji — donut tako ima smisla. */
+function finCostComponents(){
+  const comps = { osnovica:0, bonus:0, prekovremeno:0, porez:0, benefiti:0 };
+  salaryEntries.forEach(e=>{
+    comps.osnovica += e.osnovica;
+    comps.bonus += e.bonus;
+    comps.prekovremeno += e.prekovremeno;
+    comps.porez += e.porez;
+    comps.benefiti += salBenefits(e);
+  });
+  const items = Object.keys(comps).filter(k=>comps[k]>0).map(k=>({ label:salCatLabels[k], value:comps[k], color:salCatColors[k] }));
+  const txCats = {};
+  allTransactions.filter(t=>t.type==='Odliv').forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
+  Object.keys(txCats).forEach(c=>{
+    items.push({ label:c, value:txCats[c], color: categoryColorVar[c] || 'var(--ink-faint)' });
+  });
+  return items.sort((a,b)=>b.value-a.value);
+}
 function renderFinDonut(){
-  const counts = {};
-  allTransactions.filter(t=>t.type==='Odliv').forEach(t=>{ counts[t.category] = (counts[t.category]||0) + t.amount; });
-  counts["Plate"] = yearPayrollTotal();
-  const total = Object.values(counts).reduce((a,b)=>a+b,0);
-  const cats = Object.keys(counts);
+  const items = finCostComponents();
+  const total = items.reduce((s,i)=>s+i.value,0);
   let acc = 0;
-  const stops = cats.map(c=>{
-    const pct = (counts[c]/total)*100;
-    const seg = `${categoryColorVar[c]||'var(--ink-faint)'} ${acc}% ${acc+pct}%`;
+  const stops = items.map(i=>{
+    const pct = total>0 ? (i.value/total)*100 : 0;
+    const seg = `${i.color} ${acc}% ${acc+pct}%`;
     acc += pct;
     return seg;
   }).join(', ');
   document.getElementById('finDonutCircle').style.background = `conic-gradient(${stops})`;
-  document.getElementById('finDonutLegend').innerHTML = cats.sort((a,b)=>counts[b]-counts[a]).map(c=>`
+  document.getElementById('finDonutLegend').innerHTML = items.map(i=>`
     <div class="donut-legend-item">
-      <span class="donut-legend-left"><span class="donut-dot" style="background:${categoryColorVar[c]||'var(--ink-faint)'}"></span>${c}</span>
-      <b>${fmtK(counts[c])}k</b>
+      <span class="donut-legend-left"><span class="donut-dot" style="background:${i.color}"></span>${escapeHtml(i.label)}</span>
+      <b>${fmtK(i.value)}</b>
     </div>`).join('');
   animateCountUp(document.getElementById('finDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('finDonutWrap').classList.add('shown'); }, 100);
@@ -7361,7 +7433,7 @@ function renderProjectValueDonut(){
   document.getElementById('statusDonutLegend').innerHTML = cats.sort((a,b)=>sums[b]-sums[a]).map(c=>`
     <div class="donut-legend-item">
       <span class="donut-legend-left"><span class="donut-dot" style="background:${colorMap[c]||'var(--ink-faint)'}"></span>${c}</span>
-      <b>${fmtK(sums[c])}k</b>
+      <b>${fmtK(sums[c])}</b>
     </div>`).join('');
   animateCountUp(document.getElementById('statusDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('statusDonutWrap').classList.add('shown'); }, 100);
@@ -7440,22 +7512,26 @@ function finProjectionData(){
   const pendingPct = monthTarget>0 ? Math.min(100, (pending/monthTarget)*100) : 0;
   return { lastMonthCost, monthCost:avgMonthlyCost, monthTarget, quarterCost, quarterTarget, pending, pendingPct };
 }
+const finProjArrow = `<div class="fin-proj-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>`;
+function finProjStepHtml(c){
+  return `<div class="fin-proj-step${c.capstone?' capstone':''}">
+      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${c.icon}</svg></div>
+      <div class="kpi-val" style="color:${c.color}"><span class="fcu" data-val="${c.val}">0</span></div>
+      <div class="kpi-label">${c.label}</div>
+    </div>`;
+}
 function renderFinProjection(){
   document.getElementById('finMarginInput').value = finProjectionMarginPct;
   const d = finProjectionData();
   const lastMLabel = (TODAY.m-2)>=0 ? monthAbbrRS[TODAY.m-2] : '—';
-  const cards = [
+  const steps = [
     { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', label:`Prošli mesec (${lastMLabel}) — trošak`, val:d.lastMonthCost, color:'var(--ink)' },
     { icon:'<path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/>', label:'Projekcija troška — sledeći mesec', val:d.monthCost, color:'var(--coral)' },
     { icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>', label:'Cilj prihoda — sledeći mesec', val:d.monthTarget, color:'#4C8A55' },
-    { icon:'<path d="M4 3v18"/><path d="M4 4h13l-3 4 3 4H4"/>', label:'Cilj prihoda — sledeći kvartal', val:d.quarterTarget, color:'var(--gold-deep)' },
   ];
-  document.getElementById('finProjRow').innerHTML = cards.map(c=>`
-    <div class="kpi-card">
-      <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${c.icon}</svg></div>
-      <div class="kpi-val" style="color:${c.color}"><span class="fcu" data-val="${c.val}">0</span></div>
-      <div class="kpi-label">${c.label}</div>
-    </div>`).join('');
+  const capstone = { icon:'<path d="M4 3v18"/><path d="M4 4h13l-3 4 3 4H4"/>', label:'Cilj prihoda — sledeći kvartal', val:d.quarterTarget, color:'var(--gold-deep)', capstone:true };
+  document.getElementById('finProjRow').innerHTML =
+    steps.map(finProjStepHtml).join(finProjArrow) + finProjStepHtml(capstone);
   document.querySelectorAll('#finProjRow .fcu').forEach(el=>{
     animateCountUp(el, Math.round(parseFloat(el.dataset.val)), {suffix:' RSD'});
   });
@@ -7473,12 +7549,18 @@ document.getElementById('finMarginInput').addEventListener('change', (e)=>{
 
 function renderRecentTx(){
   const sorted = [...allTransactions].sort((a,b)=> b.date.localeCompare(a.date)).slice(0,6);
-  document.getElementById('recentTxList').innerHTML = sorted.map(t=>`
-    <div class="recent-tx-item">
-      <div class="recent-tx-icon ${t.type==='Priliv'?'in':'out'}">${t.type==='Priliv'?'↓':'↑'}</div>
-      <div class="recent-tx-text"><div class="recent-tx-title">${escapeHtml(t.desc)}</div><div class="recent-tx-sub">${t.date} · ${escapeHtml(t.category)}</div></div>
-      <div class="recent-tx-amt ${t.type==='Priliv'?'in':'out'}">${t.type==='Priliv'?'+':'−'}${fmtK(t.amount)}k</div>
-    </div>`).join('');
+  document.getElementById('recentTxList').innerHTML = sorted.length ? `
+    <div class="tx-head"><span>Datum</span><span>Tip</span><span>Kategorija</span><span>Opis</span><span>Način</span><span style="text-align:right;">Iznos</span></div>
+    ${sorted.map(t=>`
+      <div class="tx-row">
+        <div class="tx-cell">${t.date}</div>
+        <div><span class="tag ${t.type==='Priliv'?'tag-final':'tag-review'}">${t.type}</span></div>
+        <div class="tx-cell">${escapeHtml(t.category)}</div>
+        <div class="tx-cell">${escapeHtml(t.desc)}</div>
+        <div class="tx-cell">${t.method}</div>
+        <div class="tx-amt ${t.type==='Priliv'?'in':'out'}">${t.type==='Priliv'?'+':'−'}${fmtRSD(t.amount)}</div>
+      </div>`).join('')}`
+    : '<div class="empty-state" style="padding:20px 0;">Još nema evidentiranih transakcija ove godine.</div>';
 }
 
 const txState = { search:"", type:"Sve", category:"Sve kategorije", month: monthNamesFull[TODAY.m-1], year: String(TODAY.y) };
@@ -7555,7 +7637,7 @@ bindCalFilter('filterTxType', (val)=>{ txState.type = val; renderTxList(); });
 const txModalOverlay = document.getElementById('txModalOverlay');
 let editingTxId = null;
 function refreshFinAfterTxChange(){
-  buildTxCategoryMenu(); buildTxYearMenu(); renderTxList(); renderFinKpis(); renderFinFlowChart(); renderFinDonut(); renderRecentTx();
+  buildTxCategoryMenu(); buildTxYearMenu(); renderTxList(); renderFinHero(); renderFinFlowChart(); renderFinDonut(); renderRecentTx();
   renderFinProjection(); renderTopValueProjects();
 }
 function closeTxModal(){
@@ -7924,8 +8006,8 @@ let salViewMode = "grid";
 let salConfirmedMonths = [];
 fromPersisted('salConfirmedMonths', salConfirmedMonths);
 const salAvailableYears = [2026];
-const salCatColors = { osnovica:'var(--gold-deep)', bonus:'var(--sage)', prekovremeno:'var(--sky)', porez:'var(--plum)' };
-const salCatLabels = { osnovica:'Osnovica', bonus:'Bonus', prekovremeno:'Prekovremeno', porez:'Porez i doprinosi' };
+const salCatColors = { osnovica:'var(--gold-deep)', bonus:'var(--sage)', prekovremeno:'var(--sky)', porez:'var(--plum)', benefiti:'var(--teal)' };
+const salCatLabels = { osnovica:'Osnovica', bonus:'Bonus', prekovremeno:'Prekovremeno', porez:'Porez i doprinosi', benefiti:'Benefiti' };
 
 function refreshSalMonthView(){
   renderSalMonthMenu();
@@ -8270,7 +8352,7 @@ function renderSalTrendMini(emp){
 const salModalOverlay = document.getElementById('salModalOverlay');
 function refreshAfterSalChange(){
   renderSalBreakdown(); renderSalPayrun(); renderSalChart(); renderSalProgress(); renderSalEmpGrid(); renderSalTable();
-  renderFinKpis(); renderFinFlowChart(); renderFinDonut();
+  renderFinHero(); renderFinFlowChart(); renderFinDonut(); renderFinProjection();
   renderRaiseHistory();
 }
 
@@ -8398,7 +8480,7 @@ document.getElementById('salConfirmSubmit').addEventListener('click', ()=>{
   salConfirmModalOverlay.classList.remove('open');
   if(month < 11) salBreakdownMonth = month + 1;
   refreshSalMonthView();
-  renderFinKpis(); renderFinFlowChart(); renderFinDonut();
+  renderFinHero(); renderFinFlowChart(); renderFinDonut(); renderFinProjection();
   persist();
 });
 function closeSalModal(){ salModalOverlay.classList.remove('open'); activeSalEmp = null; activeSalMonth = null; }
@@ -8585,7 +8667,7 @@ document.getElementById('shSubmit').addEventListener('click', ()=>{
 
 let finansijeInited = false;
 function initFinansije(){
-  renderFinKpis();
+  renderFinHero();
   renderFinProjection();
   renderFinFlowChart();
   renderFinDonut();
@@ -9627,7 +9709,7 @@ function findKadarByDbId(kadarDbId){
 /* Phase 5: real pricing/billing. extraCharges mirrors the time_entries
    loader shape (dbId + resolved display fields); allTransactions keeps its
    original local-mock shape ({_id,date,type,category,desc,method,amount})
-   so every existing reader (renderFinKpis, renderFinFlowChart, txList, ...)
+   so every existing reader (renderFinHero, renderFinFlowChart, txList, ...)
    keeps working unchanged — only where the rows come from changed. */
 let extraCharges = [];
 async function loadExtraChargesFromSupabase(){
