@@ -7310,13 +7310,27 @@ let sideHustleEntries = [];
 fromPersisted('sideHustleEntries', sideHustleEntries);
 function sideHustleFor(employee, month){ return sideHustleEntries.filter(s=>s.employee===employee && s.month===month); }
 function sideHustleTotal(employee, month){ return sideHustleFor(employee, month).reduce((s,e)=>s+e.amount,0); }
-function salaryFor(emp, month){ return salaryEntries.find(s=>s.employee===emp && s.month===month) || null; }
+/* year je opciono — podrazumevano trenutno prikazana godina u Plate tabu
+   (salBreakdownYear), tako da postojeci pozivi ostaju netaknuti sad kad
+   salary_entries moze da sadrzi vise od jedne godine. Prosledi year:null
+   eksplicitno tamo gde se namerno gleda kroz sve godine (npr. "otkad je
+   zaposlen/a" grafici/istorija) — te pozive vidi na spisku ispod. */
+function salaryFor(emp, month, year){
+  if(year === undefined) year = salBreakdownYear;
+  return salaryEntries.find(s=>s.employee===emp && s.month===month && (year===null || s.year===year)) || null;
+}
 function salBruto(e){ return e.osnovica + e.bonus + e.prekovremeno; }
 function salBenefits(e){ return (e.zdravstveno||0) + (e.fitnes?FITNES_AMOUNT:0) + sideHustleTotal(e.employee, e.month); }
 function salNeto(e){ return salBruto(e) + salBenefits(e) - e.dedukcije; }
 function salUkupno(e){ return salNeto(e) + e.porez; }
-function monthlyPayrollTotal(month){ return salaryEntries.filter(s=>s.month===month).reduce((s,e)=>s+salUkupno(e),0); }
-function yearPayrollTotal(){ return salaryEntries.reduce((s,e)=>s+salUkupno(e),0); }
+function monthlyPayrollTotal(month, year){
+  if(year === undefined) year = salBreakdownYear;
+  return salaryEntries.filter(s=>s.month===month && (year===null || s.year===year)).reduce((s,e)=>s+salUkupno(e),0);
+}
+function yearPayrollTotal(year){
+  if(year === undefined) year = salBreakdownYear;
+  return salaryEntries.filter(s=> year===null || s.year===year).reduce((s,e)=>s+salUkupno(e),0);
+}
 
 function txMonth(dateStr){ return parseInt(dateStr.split('-')[1],10) - 1; }
 
@@ -7331,7 +7345,7 @@ function receivablesTotal(){
 function renderFinHero(){
   const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
   const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
-  const totalSalary = yearPayrollTotal();
+  const totalSalary = yearPayrollTotal(TODAY.y);
   const totalOut = totalOutTx + totalSalary;
   const net = totalIn - totalOut;
   const balance = openingBalance + net;
@@ -7339,7 +7353,7 @@ function renderFinHero(){
   const payrollPct = totalIn > 0 ? (totalSalary/totalIn)*100 : 0;
 
   const currM = TODAY.m - 1, prevM = currM - 1;
-  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m);
+  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
   const outCurr = outFor(currM), outPrev = prevM>=0 ? outFor(prevM) : 0;
   const outTrend = outPrev>0 ? ((outCurr-outPrev)/outPrev)*100 : null;
 
@@ -7376,7 +7390,7 @@ function renderFinFlowChart(){
   const monthIn = [], monthOut = [];
   for(let m=0;m<8;m++){
     monthIn.push(allTransactions.filter(t=>t.type==='Priliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0));
-    monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m));
+    monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y));
   }
   const wrap = document.getElementById('finFlowChart');
   wrap.classList.remove('shown');
@@ -7598,7 +7612,7 @@ function renderTopExpenses(){
    ne belaze dosledno kroz ledger (transactions je tek nedavno migriran). */
 let finProjectionMarginPct = (_persistedRaw && typeof _persistedRaw.finProjectionMarginPct === 'number') ? _persistedRaw.finProjectionMarginPct : 20;
 function finMonthCost(m){
-  return allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m);
+  return allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
 }
 function finProjectionData(){
   const lastM = TODAY.m - 2; // poslednji zavrseni mesec (0-indeksirano)
@@ -8107,7 +8121,11 @@ let salEmpSearch = "";
 let salViewMode = "grid";
 let salConfirmedMonths = [];
 fromPersisted('salConfirmedMonths', salConfirmedMonths);
-const salAvailableYears = [2026];
+function salAvailableYears(){
+  const years = new Set(salaryEntries.map(e=>e.year));
+  years.add(TODAY.y);
+  return [...years].sort((a,b)=>b-a);
+}
 const salCatColors = { osnovica:'var(--gold-deep)', bonus:'var(--sage)', prekovremeno:'var(--sky)', porez:'var(--plum)', benefiti:'var(--teal)' };
 const salCatLabels = { osnovica:'Osnovica', bonus:'Bonus', prekovremeno:'Prekovremeno', porez:'Porez i doprinosi', benefiti:'Benefiti' };
 
@@ -8141,7 +8159,7 @@ function renderSalMonthMenu(){
     };
   });
 
-  document.getElementById('filterSalYearMenu').innerHTML = salAvailableYears.map(y=>
+  document.getElementById('filterSalYearMenu').innerHTML = salAvailableYears().map(y=>
     `<div class="cal-filter-item" data-val="${y}">${y}.</div>`).join('');
   document.getElementById('filterSalYearLabel').textContent = `${salBreakdownYear}.`;
   const fy = document.getElementById('filterSalYear');
@@ -8242,7 +8260,7 @@ function renderSalChart(){
   const cats = ['osnovica','bonus','prekovremeno','porez'];
   const monthSegs = [], monthTotals = [];
   for(let m=0;m<12;m++){
-    const entries = salaryEntries.filter(s=>s.month===m);
+    const entries = salaryEntries.filter(s=>s.month===m && s.year===salBreakdownYear);
     const seg = {};
     cats.forEach(c=> seg[c] = entries.reduce((s,e)=>s+e[c],0));
     monthSegs.push(seg);
@@ -9471,10 +9489,9 @@ function renderDashboardFinance(){
   const wrap = document.getElementById('finBlur');
   if(!u || !wrap) return;
   const month = TODAY.m - 1;
-  const entry = salaryFor(u.key, month);
+  const entry = salaryFor(u.key, month, TODAY.y);
   const monthLabel = monthNamesFull[month].toLowerCase();
-  const allEntries = [];
-  for(let m=0;m<12;m++){ const e = salaryFor(u.key, m); if(e) allEntries.push(e); }
+  const allEntries = salaryEntries.filter(e=>e.employee===u.key).sort((a,b)=> (a.year-b.year) || (a.month-b.month));
   const ytdTotal = allEntries.reduce((s,e)=>s+salUkupno(e),0);
   const { events } = raiseHistoryData(u.key);
 
