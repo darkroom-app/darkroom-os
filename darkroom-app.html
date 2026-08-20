@@ -7457,7 +7457,7 @@ function renderFinFlowChart(){
    sa realnim Odliv transakcijama po kategoriji — donut tako ima smisla. */
 function finCostComponents(){
   const comps = { osnovica:0, bonus:0, prekovremeno:0, porez:0, benefiti:0 };
-  salaryEntries.forEach(e=>{
+  salaryEntries.filter(e=>e.year===TODAY.y).forEach(e=>{
     comps.osnovica += e.osnovica;
     comps.bonus += e.bonus;
     comps.prekovremeno += e.prekovremeno;
