@@ -483,7 +483,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .price-wait-badge-urgent{ color:var(--coral); background:var(--coral-soft); }
 
 .sal-table2{ overflow-x:auto; }
-.sal-head2, .sal-row2{ display:grid; grid-template-columns:1.5fr repeat(7, 0.72fr) 0.85fr 0.9fr; gap:6px; align-items:center; min-width:820px; }
+.sal-head2, .sal-row2{ display:grid; grid-template-columns:1.5fr repeat(8, 0.72fr) 0.85fr 0.9fr; gap:6px; align-items:center; min-width:900px; }
 .sal-head2{ padding:0 4px 10px; border-bottom:1px solid var(--border); margin-bottom:4px; }
 .sal-head2 span{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; text-align:center; }
 .sal-head2 span:first-child{ text-align:left; }
@@ -557,6 +557,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .sal-confirm-warn{ background:var(--coral-soft); color:var(--coral); border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.5; margin-top:12px; }
 .sal-modal-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
 .sal-modal-summary{ display:flex; gap:20px; background:var(--card-soft); border-radius:12px; padding:12px 16px; margin:6px 0 14px; }
+.sal-checkbox-label{ display:flex; align-items:center; gap:8px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; }
+.sal-checkbox-label input{ width:16px; height:16px; accent-color:var(--gold-deep); cursor:pointer; }
 .sal-modal-summary-item{ flex:1; }
 .sal-modal-summary-val{ font-family:var(--font-display); font-weight:700; font-size:14.5px; }
 .sal-modal-summary-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; margin-top:2px; }
@@ -2282,7 +2284,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
         </div>
 
-        <div class="kpi-row" id="salBreakdownRow" style="grid-template-columns:repeat(5,1fr);"></div>
+        <div class="kpi-row" id="salBreakdownRow" style="grid-template-columns:repeat(6,1fr);"></div>
 
         <div class="stat-grid-2" style="grid-template-columns:1fr 1.6fr;">
           <div class="stat-panel">
@@ -2328,7 +2330,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
           <div class="sal-emp-grid" id="salEmpGrid"></div>
           <div class="sal-table2" id="salTableWrap" style="display:none;">
-            <div class="sal-head2"><span>Zaposleni</span><span>Osnovica</span><span>Bonus</span><span>Prekovr.</span><span>Dedukcije</span><span>Porez</span><span>Neto</span><span>Ukupno</span><span>Status</span><span></span></div>
+            <div class="sal-head2"><span>Zaposleni</span><span>Osnovica</span><span>Bonus</span><span>Prekovr.</span><span>Dedukcije</span><span>Porez</span><span>Benefiti</span><span>Neto</span><span>Ukupno</span><span>Status</span><span></span></div>
             <div id="salTable"></div>
           </div>
 
@@ -2468,26 +2470,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="modal-title" id="salTitle">Unos plate</div>
     <div class="modal-field">
       <label>Zaposleni</label>
-      <select id="salEmpInput">
-        <option value="Dušan Stević">Dušan Stević</option>
-        <option value="Stefana Ristić">Stefana Ristić</option>
-        <option value="Radoslav Milanović">Radoslav Milanović</option>
-        <option value="Dalibor Mitić">Dalibor Mitić</option>
-        <option value="Katarina Đorđević">Katarina Đorđević</option>
-        <option value="Aleksandra Vukašinović">Aleksandra Vukašinović</option>
-        <option value="Mihajlo Nagradić">Mihajlo Nagradić</option>
-        <option value="Nikola Jovanović">Nikola Jovanović</option>
-        <option value="Anđela Pešić">Anđela Pešić</option>
-        <option value="Marija Todorović">Marija Todorović</option>
-        <option value="Ana Krstić">Ana Krstić</option>
-        <option value="Miljana Cvetković">Miljana Cvetković</option>
-        <option value="Miloš Tasić">Miloš Tasić</option>
-        <option value="Ivana Sazdov">Ivana Sazdov</option>
-        <option value="Lazar Pešić">Lazar Pešić</option>
-        <option value="Damjan Mitrović">Damjan Mitrović</option>
-        <option value="Aleksandar Jovanović">Aleksandar Jovanović</option>
-        <option value="Marija Milenković">Marija Milenković</option>
-      </select>
+      <select id="salEmpInput"></select>
     </div>
     <div class="modal-field">
       <label>Mesec</label>
@@ -2516,9 +2499,23 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <input type="number" id="salDedukcijeInput" placeholder="0">
       </div>
     </div>
+    <div class="sal-modal-grid">
+      <div class="modal-field">
+        <label>Zdravstveno osiguranje (RSD)</label>
+        <input type="number" id="salZdravstvenoInput" placeholder="npr. 3500">
+      </div>
+      <div class="modal-field">
+        <label>Porez i doprinosi (RSD)</label>
+        <input type="number" id="salPorezInput" placeholder="npr. 55000">
+      </div>
+    </div>
     <div class="modal-field">
-      <label>Porez i doprinosi (RSD)</label>
-      <input type="number" id="salPorezInput" placeholder="npr. 55000">
+      <label class="sal-checkbox-label"><input type="checkbox" id="salFitnesInput"> Ide na fitnes ovog meseca (4.000 RSD)</label>
+    </div>
+    <div class="modal-field">
+      <label>Side hustle — dodatni zadaci van radnog vremena</label>
+      <div id="salSideHustleList"></div>
+      <button type="button" class="price-add-btn" id="salSideHustleAddBtn" style="margin-top:6px;">+ Dodaj side hustle</button>
     </div>
     <div class="sal-modal-summary">
       <div class="sal-modal-summary-item"><div class="sal-modal-summary-val" id="salPreviewNeto">0 RSD</div><div class="sal-modal-summary-label">Neto (isplata)</div></div>
@@ -2539,6 +2536,29 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <button class="modal-delete" id="salDelete" style="display:none;">Obriši</button>
       <button class="modal-cancel" id="salCancel">Otkaži</button>
       <button class="modal-submit" id="salSubmit">Sačuvaj</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="sideHustleModalOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="sideHustleTitle">Side hustle</div>
+    <div class="modal-field">
+      <label>Projekat</label>
+      <select id="shProjectSelect"></select>
+    </div>
+    <div class="modal-field">
+      <label>Kadar</label>
+      <select id="shKadarSelect"></select>
+    </div>
+    <div class="modal-field">
+      <label>Iznos (RSD)</label>
+      <input type="number" id="shAmountInput" placeholder="npr. 15000">
+    </div>
+    <div class="modal-actions">
+      <button class="modal-delete" id="shDelete" style="display:none;">Obriši</button>
+      <button class="modal-cancel" id="shCancel">Otkaži</button>
+      <button class="modal-submit" id="shSubmit">Dodaj</button>
     </div>
   </div>
 </div>
@@ -2996,7 +3016,7 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teamMembers,
-      salaryEntries, events, todoItems, salConfirmedMonths, notifications
+      salaryEntries, sideHustleEntries, events, todoItems, salConfirmedMonths, notifications
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
       // identity fields. projCodeCounter removed — codes are now assigned
@@ -7125,6 +7145,12 @@ const salaryRaises = {
   "Dušan Stević":{5:260000}, "Katarina Đorđević":{6:185000}, "Miloš Tasić":{3:170000}, "Ana Krstić":{7:140000},
 };
 const salaryBase = {};
+/* Benefiti: zdravstveno je fiksno po dogovoru ali varira malo od osobe do
+   osobe u praksi (~30€), pa je ZDRAVSTVENO_DEFAULT samo predlog koji ostaje
+   editabilan po unosu — ne globalna konstanta primenjena svuda. Fitnes je
+   istinski fiksan i opciono prijavljen svaki mesec, pa ostaje konstanta. */
+const ZDRAVSTVENO_DEFAULT = 3500; // ~30 EUR
+const FITNES_AMOUNT = 4000;
 let salaryEntries = [];
 (function seedSalaryEntries(){
   const keys = Object.keys(salaryBaseByEmp);
@@ -7137,15 +7163,24 @@ let salaryEntries = [];
       const dedukcije = (i===9 && m===2) ? 8000 : (i===14 && m===5) ? 12000 : 0;
       const bruto = osn + bonus + prekovremeno;
       const porez = Math.round(bruto * 0.345);
-      salaryEntries.push({ _id:nextId(), employee:key, month:m, osnovica:osn, bonus, prekovremeno, dedukcije, porez, status: m<7 ? 'Isplaćeno' : 'Na čekanju' });
+      salaryEntries.push({ _id:nextId(), employee:key, month:m, osnovica:osn, bonus, prekovremeno, dedukcije, porez, zdravstveno:ZDRAVSTVENO_DEFAULT, fitnes:false, status: m<7 ? 'Isplaćeno' : 'Na čekanju' });
     }
     salaryBase[key] = osn;
   });
 })();
 fromPersisted('salaryEntries', salaryEntries);
+/* Side hustle: dodatni zadaci van redovnog radnog vremena, vezani za
+   konkretan kadar/projekat (ne nužno onaj koji je toj osobi inače
+   dodeljen — poenta je da neko preuzme višak posla), sa svojom cenom po
+   zadatku umesto fiksnog mesečnog iznosa poput zdravstvenog/fitnesa. */
+let sideHustleEntries = [];
+fromPersisted('sideHustleEntries', sideHustleEntries);
+function sideHustleFor(employee, month){ return sideHustleEntries.filter(s=>s.employee===employee && s.month===month); }
+function sideHustleTotal(employee, month){ return sideHustleFor(employee, month).reduce((s,e)=>s+e.amount,0); }
 function salaryFor(emp, month){ return salaryEntries.find(s=>s.employee===emp && s.month===month) || null; }
 function salBruto(e){ return e.osnovica + e.bonus + e.prekovremeno; }
-function salNeto(e){ return salBruto(e) - e.dedukcije; }
+function salBenefits(e){ return (e.zdravstveno||0) + (e.fitnes?FITNES_AMOUNT:0) + sideHustleTotal(e.employee, e.month); }
+function salNeto(e){ return salBruto(e) + salBenefits(e) - e.dedukcije; }
 function salUkupno(e){ return salNeto(e) + e.porez; }
 function monthlyPayrollTotal(month){ return salaryEntries.filter(s=>s.month===month).reduce((s,e)=>s+salUkupno(e),0); }
 function yearPayrollTotal(){ return salaryEntries.reduce((s,e)=>s+salUkupno(e),0); }
@@ -7903,11 +7938,13 @@ function renderSalBreakdown(){
   const sum = (arr, field) => arr.reduce((s,e)=>s+e[field],0);
   const sumBruto = arr => arr.reduce((s,e)=>s+salUkupno(e),0);
   const sumNeto = arr => arr.reduce((s,e)=>s+salNeto(e),0);
+  const sumBenefits = arr => arr.reduce((s,e)=>s+salBenefits(e),0);
   const cards = [
     { label:'Ukupan bruto trošak', icon:'<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/>', color:'var(--ink)', val: sumBruto(entries), prev: sumBruto(prevEntries) },
     { label:'Neto (isplata)', icon:'<path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"/><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"/><circle cx="16" cy="14" r="1"/>', color:'#4C8A55', val: sumNeto(entries), prev: sumNeto(prevEntries) },
     { label:'Bonusi', icon:'<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5C11 3 12 8 12 8s1-5 4.5-5a2.5 2.5 0 0 1 0 5"/>', color:salCatColors.bonus, val: sum(entries,'bonus'), prev: sum(prevEntries,'bonus') },
     { label:'Prekovremeno', icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', color:salCatColors.prekovremeno, val: sum(entries,'prekovremeno'), prev: sum(prevEntries,'prekovremeno') },
+    { label:'Benefiti', icon:'<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8Z"/>', color:'var(--sage)', val: sumBenefits(entries), prev: sumBenefits(prevEntries) },
     { label:'Porez i doprinosi', icon:'<path d="M3 21h18M4 21V10l8-6 8 6v11M9 21v-6h6v6"/>', color:salCatColors.porez, val: sum(entries,'porez'), prev: sum(prevEntries,'porez') },
   ];
   document.getElementById('salBreakdownRow').innerHTML = cards.map(c=>`
@@ -7931,21 +7968,32 @@ function renderSalPayrun(){
   const taxes = entries.reduce((s,e)=>s+e.porez,0);
   const total = grossPay + taxes;
   const confirmed = salConfirmedMonths.includes(month);
-  const lastDay = new Date(salBreakdownYear, month+1, 0).getDate();
   const activeCount = activeTeamMembers().length;
+  const missing = activeTeamMembers().filter(t=>!salaryFor(t.key, month));
+
+  const payday = new Date(salBreakdownYear, month+1, 5);
+  const now = new Date(TODAY.y, TODAY.m-1, TODAY.d);
+  const diffDays = Math.round((payday - now) / 86400000);
+  const paydayLabel = `${String(payday.getDate()).padStart(2,'0')}.${String(payday.getMonth()+1).padStart(2,'0')}.${payday.getFullYear()}.`;
+
   let statusLabel, statusPending;
-  if(confirmed){ statusLabel = '✓ Odobreno'; statusPending = false; }
-  else if(headcount < activeCount){ statusLabel = 'Nepotpuno'; statusPending = true; }
-  else { statusLabel = 'Čeka potvrdu'; statusPending = true; }
+  if(confirmed){ statusLabel = '✓ Isplaćeno'; statusPending = false; }
+  else if(diffDays > 1){ statusLabel = `za ${diffDays} dana`; statusPending = true; }
+  else if(diffDays === 1){ statusLabel = 'sutra'; statusPending = true; }
+  else if(diffDays === 0){ statusLabel = 'danas'; statusPending = true; }
+  else { statusLabel = `kasni ${Math.abs(diffDays)} ${Math.abs(diffDays)===1?'dan':'dana'}`; statusPending = true; }
+
   document.getElementById('salPayrunInfo').innerHTML = `
-    <div class="sal-payrun-row"><span>Period isplate</span><b>1–${lastDay}. ${monthNamesFull[month].toLowerCase()} ${salBreakdownYear}.</b></div>
+    <div class="sal-payrun-row"><span>Datum isplate</span><b>${paydayLabel}</b></div>
+    <div class="sal-payrun-row"><span>Status</span><b class="${statusPending?'pending':''}">${statusLabel}</b></div>
     <div class="sal-payrun-row"><span>Broj zaposlenih</span><b>${headcount} / ${activeCount}</b></div>
-    <div class="sal-payrun-row"><span>Status</span><b class="${statusPending?'pending':''}">${statusLabel}</b></div>`;
+    <div class="sal-payrun-row"><span>Ukupan trošak firme</span><b>${fmtRSD(total)}</b></div>
+    ${missing.length ? `<div class="sal-confirm-warn">⚠ Nedostaje unos plate za: ${missing.map(m=>escapeHtml(m.name)).join(', ')}</div>` : ''}`;
   const pct = total>0 ? (grossPay/total)*100 : 0;
   document.getElementById('salPayrunDonutCircle').style.background = `conic-gradient(var(--gold-deep) 0% ${pct}%, var(--plum) ${pct}% 100%)`;
   document.getElementById('salPayrunDonutLegend').innerHTML = `
-    <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--gold-deep)"></span>Isplata zaposlenima</span><b>${fmtK(grossPay)}</b></div>
-    <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--plum)"></span>Porez i doprinosi</span><b>${fmtK(taxes)}</b></div>`;
+    <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--gold-deep)"></span>Neto zaposlenima</span><b>${fmtK(grossPay)}</b></div>
+    <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--plum)"></span>Porez državi</span><b>${fmtK(taxes)}</b></div>`;
   animateCountUp(document.getElementById('salPayrunDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('salPayrunDonutWrap').classList.add('shown'); }, 100);
 }
@@ -8064,6 +8112,7 @@ function renderSalEmpGrid(){
         <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
       </div>
       <div class="sal-emp-card-amt">${fmtRSD(salUkupno(entry))}</div>
+      ${salBenefits(entry) ? `<div class="sal-emp-card-role" style="margin-top:-6px;">+ ${fmtRSD(salBenefits(entry))} benefiti</div>` : ''}
       <div class="sal-emp-card-status ${paid?'paid':''}">${paid?'✓':'⏳'} ${entry.status}</div>
       <button class="sal-emp-card-btn" data-emp="${e.key}">Unesi platu</button>
     </div>`;
@@ -8083,7 +8132,7 @@ function renderSalTable(){
     if(!entry){
       return `<div class="sal-row2">
         <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
-        <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
+        <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
         <div><span class="sal-status-badge missing">Nije uneto</span></div>
         <button class="sal-row-btn primary" data-emp="${e.key}">Unesi platu</button>
       </div>`;
@@ -8099,6 +8148,7 @@ function renderSalTable(){
       <div class="sal-cell2">${entry.prekovremeno ? fmtK(entry.prekovremeno) : '—'}</div>
       <div class="sal-cell2">${entry.dedukcije ? fmtK(entry.dedukcije) : '—'}</div>
       <div class="sal-cell2">${fmtK(entry.porez)}</div>
+      <div class="sal-cell2">${salBenefits(entry) ? fmtK(salBenefits(entry)) : '—'}</div>
       <div class="sal-cell2 strong">${fmtK(salNeto(entry))}</div>
       <div class="sal-cell2 strong">${fmtK(salUkupno(entry))}</div>
       <div><span class="sal-status-badge ${paid?'paid':'pending'}">${entry.status}</span></div>
@@ -8245,8 +8295,8 @@ function populateRaiseHistorySelect(){
 const salConfirmModalOverlay = document.getElementById('salConfirmModalOverlay');
 function openSalConfirmModal(){
   const month = salBreakdownMonth;
-  const missing = teamMembers.filter(t=>!salaryFor(t.key, month));
-  const present = teamMembers.filter(t=>salaryFor(t.key, month));
+  const missing = activeTeamMembers().filter(t=>!salaryFor(t.key, month));
+  const present = activeTeamMembers().filter(t=>salaryFor(t.key, month));
   document.getElementById('salConfirmTitleMonth').textContent = `${monthNamesFull[month]} ${salBreakdownYear}.`;
   const warnEl = document.getElementById('salConfirmWarning');
   warnEl.innerHTML = missing.length
@@ -8264,7 +8314,7 @@ function openSalConfirmModal(){
   const total = present.reduce((s,t)=>s+salUkupno(salaryFor(t.key, month)),0);
   document.getElementById('salConfirmSummary').innerHTML = `
     <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(total)}</div><div class="sal-modal-summary-label">Ukupno za isplatu</div></div>
-    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${present.length} / ${teamMembers.length}</div><div class="sal-modal-summary-label">Zaposlenih uneto</div></div>`;
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${present.length} / ${activeTeamMembers().length}</div><div class="sal-modal-summary-label">Zaposlenih uneto</div></div>`;
   document.getElementById('salConfirmSubmit').disabled = missing.length>0;
   document.getElementById('salConfirmSubmit').style.opacity = missing.length>0 ? '0.5' : '1';
   document.getElementById('salConfirmSubmit').style.cursor = missing.length>0 ? 'not-allowed' : 'pointer';
@@ -8284,7 +8334,7 @@ document.getElementById('salConfirmSubmit').addEventListener('click', ()=>{
   renderFinKpis(); renderFinFlowChart(); renderFinDonut();
   persist();
 });
-function closeSalModal(){ salModalOverlay.classList.remove('open'); }
+function closeSalModal(){ salModalOverlay.classList.remove('open'); activeSalEmp = null; activeSalMonth = null; }
 
 function updateSalModalLive(){
   const emp = document.getElementById('salEmpInput').value;
@@ -8294,7 +8344,10 @@ function updateSalModalLive(){
   const preko = parseFloat(document.getElementById('salPrekoInput').value) || 0;
   const deduk = parseFloat(document.getElementById('salDedukcijeInput').value) || 0;
   const porez = parseFloat(document.getElementById('salPorezInput').value) || 0;
-  const neto = osn + bonus + preko - deduk;
+  const zdravstveno = parseFloat(document.getElementById('salZdravstvenoInput').value) || 0;
+  const fitnes = document.getElementById('salFitnesInput').checked ? FITNES_AMOUNT : 0;
+  const sideHustle = sideHustleTotal(emp, month);
+  const neto = osn + bonus + preko - deduk + zdravstveno + fitnes + sideHustle;
   const ukupno = neto + porez;
   document.getElementById('salPreviewNeto').textContent = fmtRSD(neto);
   document.getElementById('salPreviewUkupno').textContent = fmtRSD(ukupno);
@@ -8312,17 +8365,19 @@ function updateSalModalLive(){
 
   if(emp) renderSalTrendMini(emp);
 }
-['salEmpInput','salMonthInput','salOsnovicaInput','salBonusInput','salPrekoInput','salDedukcijeInput','salPorezInput'].forEach(id=>{
+['salEmpInput','salMonthInput','salOsnovicaInput','salBonusInput','salPrekoInput','salDedukcijeInput','salPorezInput','salZdravstvenoInput','salFitnesInput'].forEach(id=>{
   document.getElementById(id).addEventListener('input', updateSalModalLive);
   document.getElementById(id).addEventListener('change', updateSalModalLive);
 });
 
+let activeSalEmp = null, activeSalMonth = null;
 function openSalModal(emp, month){
+  activeSalEmp = emp; activeSalMonth = month;
   const existing = salaryFor(emp, month);
   document.getElementById('salTitle').textContent = existing ? "Izmeni platu" : "Unos plate";
   document.getElementById('salSubmit').textContent = "Sačuvaj";
   document.getElementById('salDelete').style.display = existing ? 'block' : 'none';
-  document.getElementById('salEmpInput').value = emp;
+  populateEmployeeSelect('salEmpInput', emp);
   document.getElementById('salEmpInput').disabled = true;
   document.getElementById('salMonthInput').value = String(month);
   document.getElementById('salMonthInput').disabled = true;
@@ -8331,7 +8386,10 @@ function openSalModal(emp, month){
   document.getElementById('salPrekoInput').value = existing ? existing.prekovremeno : 0;
   document.getElementById('salDedukcijeInput').value = existing ? existing.dedukcije : 0;
   document.getElementById('salPorezInput').value = existing ? existing.porez : Math.round((salaryBase[emp]||0)*0.345);
+  document.getElementById('salZdravstvenoInput').value = existing ? (existing.zdravstveno ?? ZDRAVSTVENO_DEFAULT) : ZDRAVSTVENO_DEFAULT;
+  document.getElementById('salFitnesInput').checked = existing ? !!existing.fitnes : false;
   document.getElementById('salStatusInput').value = existing ? existing.status : 'Isplaćeno';
+  renderSalSideHustleList();
   updateSalModalLive();
   salModalOverlay.classList.add('open');
 }
@@ -8355,14 +8413,96 @@ document.getElementById('salSubmit').addEventListener('click', ()=>{
   const prekovremeno = parseFloat(document.getElementById('salPrekoInput').value) || 0;
   const dedukcije = parseFloat(document.getElementById('salDedukcijeInput').value) || 0;
   const porez = parseFloat(document.getElementById('salPorezInput').value) || 0;
+  const zdravstveno = parseFloat(document.getElementById('salZdravstvenoInput').value) || 0;
+  const fitnes = document.getElementById('salFitnesInput').checked;
   const status = document.getElementById('salStatusInput').value;
   if(!osnovica) return;
   const existing = salaryFor(emp, month);
-  if(existing){ Object.assign(existing, {osnovica, bonus, prekovremeno, dedukcije, porez, status}); }
-  else { salaryEntries.push({_id:nextId(), employee:emp, month, osnovica, bonus, prekovremeno, dedukcije, porez, status}); }
+  if(existing){ Object.assign(existing, {osnovica, bonus, prekovremeno, dedukcije, porez, zdravstveno, fitnes, status}); }
+  else { salaryEntries.push({_id:nextId(), employee:emp, month, osnovica, bonus, prekovremeno, dedukcije, porez, zdravstveno, fitnes, status}); }
   salaryBase[emp] = osnovica;
   closeSalModal();
   refreshAfterSalChange();
+  persist();
+});
+
+let editingSideHustleId = null;
+function renderSalSideHustleList(){
+  const list = document.getElementById('salSideHustleList');
+  if(!activeSalEmp){ list.innerHTML = ''; return; }
+  const entries = sideHustleFor(activeSalEmp, activeSalMonth);
+  list.innerHTML = entries.length ? entries.map(e=>`
+    <div class="price-kadar-row" data-shid="${e._id}" style="cursor:pointer;">
+      <div class="price-kadar-name">${escapeHtml(e.kadarName)} <span class="price-extra-hint" style="color:var(--ink-faint);">· ${escapeHtml(e.projectCode)}</span></div>
+      <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(e.amount)}</span></div>
+    </div>`).join('') : `<div class="price-kadar-unset" style="padding:6px 2px;">Nema side hustle zadataka za ovaj mesec</div>`;
+  list.querySelectorAll('[data-shid]').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const entry = sideHustleEntries.find(s=>s._id===row.dataset.shid);
+      if(entry) openSideHustleModal(entry);
+    });
+  });
+}
+function refreshSideHustleProjects(selected){
+  const el = document.getElementById('shProjectSelect');
+  el.innerHTML = allProjects.map(p=>`<option value="${p.code}">${p.code} — ${escapeHtml(p.name)}</option>`).join('');
+  if(selected && allProjects.some(p=>p.code===selected)) el.value = selected;
+  refreshSideHustleKadrovi();
+}
+function refreshSideHustleKadrovi(selected){
+  const projCode = document.getElementById('shProjectSelect').value;
+  const proj = allProjects.find(p=>p.code===projCode);
+  const kadrovi = proj ? proj.kadrovi : [];
+  const el = document.getElementById('shKadarSelect');
+  el.innerHTML = kadrovi.length
+    ? kadrovi.map(k=>`<option value="${escapeHtml(k.name)}">${escapeHtml(k.name)} (${escapeHtml(k.type)})</option>`).join('')
+    : `<option value="">Nema kadrova</option>`;
+  if(selected) el.value = selected;
+}
+document.getElementById('shProjectSelect').addEventListener('change', ()=> refreshSideHustleKadrovi());
+
+const sideHustleModalOverlay = document.getElementById('sideHustleModalOverlay');
+function closeSideHustleModal(){
+  sideHustleModalOverlay.classList.remove('open');
+  editingSideHustleId = null;
+}
+function openSideHustleModal(entry){
+  editingSideHustleId = entry ? entry._id : null;
+  document.getElementById('sideHustleTitle').textContent = entry ? "Izmeni side hustle" : "Dodaj side hustle";
+  document.getElementById('shSubmit').textContent = entry ? "Sačuvaj" : "Dodaj";
+  document.getElementById('shDelete').style.display = entry ? 'block' : 'none';
+  refreshSideHustleProjects(entry ? entry.projectCode : undefined);
+  refreshSideHustleKadrovi(entry ? entry.kadarName : undefined);
+  document.getElementById('shAmountInput').value = entry ? entry.amount : '';
+  sideHustleModalOverlay.classList.add('open');
+}
+document.getElementById('salSideHustleAddBtn').addEventListener('click', ()=> openSideHustleModal(null));
+document.getElementById('shCancel').addEventListener('click', closeSideHustleModal);
+wireOverlayClose(sideHustleModalOverlay, closeSideHustleModal);
+document.getElementById('shDelete').addEventListener('click', ()=>{
+  if(!editingSideHustleId) return;
+  if(!confirm('Obrisati ovaj side hustle unos?')) return;
+  const idx = sideHustleEntries.findIndex(s=>s._id===editingSideHustleId);
+  if(idx>-1) sideHustleEntries.splice(idx,1);
+  closeSideHustleModal();
+  renderSalSideHustleList();
+  updateSalModalLive();
+  persist();
+});
+document.getElementById('shSubmit').addEventListener('click', ()=>{
+  const projectCode = document.getElementById('shProjectSelect').value;
+  const kadarName = document.getElementById('shKadarSelect').value;
+  const amount = parseFloat(document.getElementById('shAmountInput').value);
+  if(!projectCode || !kadarName || !amount) return;
+  if(editingSideHustleId){
+    const entry = sideHustleEntries.find(s=>s._id===editingSideHustleId);
+    if(entry) Object.assign(entry, { projectCode, kadarName, amount });
+  } else {
+    sideHustleEntries.push({ _id:nextId(), employee:activeSalEmp, month:activeSalMonth, projectCode, kadarName, amount });
+  }
+  closeSideHustleModal();
+  renderSalSideHustleList();
+  updateSalModalLive();
   persist();
 });
 
