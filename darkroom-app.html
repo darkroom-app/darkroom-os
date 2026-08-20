@@ -2568,6 +2568,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="sal-modal-summary">
       <div class="sal-modal-summary-item"><div class="sal-modal-summary-val" id="salPreviewNeto">0 RSD</div><div class="sal-modal-summary-label">Neto (isplata)</div></div>
+      <div class="sal-modal-summary-item"><div class="sal-modal-summary-val" id="salPreviewBenefiti" style="color:var(--teal);">+ 0 RSD</div><div class="sal-modal-summary-label">Benefiti</div></div>
       <div class="sal-modal-summary-item"><div class="sal-modal-summary-val" id="salPreviewUkupno">0 RSD</div><div class="sal-modal-summary-label">Ukupan trošak</div></div>
     </div>
     <div class="modal-field">
@@ -7331,8 +7332,12 @@ function salaryFor(emp, month, year){
 }
 function salBruto(e){ return e.osnovica + e.bonus + e.prekovremeno; }
 function salBenefits(e){ return (e.zdravstveno||0) + (e.fitnes?FITNES_AMOUNT:0) + sideHustleTotal(e.employee, e.month); }
-function salNeto(e){ return salBruto(e) + salBenefits(e) - e.dedukcije; }
-function salUkupno(e){ return salNeto(e) + e.porez; }
+/* Neto je namerno cista plata (bruto - dedukcije) — benefiti (zdravstveno,
+   fitnes, side hustle) se NE racunaju u nju, vec se prikazuju kao odvojen
+   dodatak svuda u UI-ju. Ukupno (ukupan trosak firme) i dalje sabira sve
+   troje, samo van neto linije. */
+function salNeto(e){ return salBruto(e) - e.dedukcije; }
+function salUkupno(e){ return salNeto(e) + salBenefits(e) + e.porez; }
 function monthlyPayrollTotal(month, year){
   if(year === undefined) year = salBreakdownYear;
   return salaryEntries.filter(s=>s.month===month && (year===null || s.year===year)).reduce((s,e)=>s+salUkupno(e),0);
@@ -8230,7 +8235,7 @@ function renderSalPayrun(){
   const activeNames = new Set(activeTeamMembers().map(t=>t.key));
   const entries = salaryEntries.filter(s=>s.month===month && s.year===salBreakdownYear && activeNames.has(s.employee));
   const headcount = entries.length;
-  const grossPay = entries.reduce((s,e)=>s+salNeto(e),0);
+  const grossPay = entries.reduce((s,e)=>s+salNeto(e)+salBenefits(e),0);
   const taxes = entries.reduce((s,e)=>s+e.porez,0);
   const total = grossPay + taxes;
   const confirmed = salConfirmedMonths.includes(`${salBreakdownYear}-${month}`);
@@ -8258,7 +8263,7 @@ function renderSalPayrun(){
   const pct = total>0 ? (grossPay/total)*100 : 0;
   document.getElementById('salPayrunDonutCircle').style.background = `conic-gradient(var(--gold-deep) 0% ${pct}%, var(--plum) ${pct}% 100%)`;
   document.getElementById('salPayrunDonutLegend').innerHTML = `
-    <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--gold-deep)"></span>Neto zaposlenima</span><b>${fmtK(grossPay)}</b></div>
+    <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--gold-deep)"></span>Zaposlenima (neto + benefiti)</span><b>${fmtK(grossPay)}</b></div>
     <div class="donut-legend-item"><span class="donut-legend-left"><span class="donut-dot" style="background:var(--plum)"></span>Porez državi</span><b>${fmtK(taxes)}</b></div>`;
   animateCountUp(document.getElementById('salPayrunDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('salPayrunDonutWrap').classList.add('shown'); }, 100);
@@ -8633,9 +8638,11 @@ function updateSalModalLive(){
   const zdravstveno = parseFloat(document.getElementById('salZdravstvenoInput').value) || 0;
   const fitnes = document.getElementById('salFitnesInput').checked ? FITNES_AMOUNT : 0;
   const sideHustle = sideHustleTotal(emp, month);
-  const neto = osn + bonus + preko - deduk + zdravstveno + fitnes + sideHustle;
-  const ukupno = neto + porez;
+  const benefiti = zdravstveno + fitnes + sideHustle;
+  const neto = osn + bonus + preko - deduk;
+  const ukupno = neto + benefiti + porez;
   document.getElementById('salPreviewNeto').textContent = fmtRSD(neto);
+  document.getElementById('salPreviewBenefiti').textContent = '+ ' + fmtRSD(benefiti);
   document.getElementById('salPreviewUkupno').textContent = fmtRSD(ukupno);
 
   const badge = document.getElementById('salChangeBadge');
