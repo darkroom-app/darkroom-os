@@ -7331,7 +7331,7 @@ function receivablesTotal(){
 function renderFinHero(){
   const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
   const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
-  const totalSalary = yearPayrollTotal(TODAY.y);
+  const totalSalary = yearPayrollTotal(null);
   const totalOut = totalOutTx + totalSalary;
   const net = totalIn - totalOut;
   const balance = openingBalance + net;
