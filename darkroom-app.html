@@ -9994,8 +9994,18 @@ let allTransactions = [];
 async function loadTransactionsFromSupabase(){
   if(!sb) return false;
   try {
-    const { data, error } = await sb.from('transactions').select('*').order('date', { ascending:false });
-    if(error || !data) return false;
+    // PostgREST caps a single select() at 1000 rows — the ledger crossed that
+    // threshold once historical data was backfilled, so page through it like
+    // ensureRoundsSummaryLoaded()/loadSalaryEntriesFromSupabase() do.
+    const pageSize = 1000;
+    const data = [];
+    for(let from = 0; ; from += pageSize){
+      const { data: page, error } = await sb.from('transactions').select('*').order('date', { ascending:false }).range(from, from + pageSize - 1);
+      if(error) return false;
+      if(!page || !page.length) break;
+      data.push(...page);
+      if(page.length < pageSize) break;
+    }
     allTransactions.length = 0;
     data.forEach(row=>{
       allTransactions.push({
