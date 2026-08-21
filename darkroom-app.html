@@ -9260,6 +9260,21 @@ function buildChatContext(){
   }));
   const klijenti = allClients.map(c => ({ naziv: c.name, kontakt: c.contact, email: c.email, klijent_od: c.since }));
   const tim = teamMembers.map(t => ({ ime: t.name, uloga: t.role, pristup: t.access, datum_zaposlenja: t.hireDate, status: t.status }));
+
+  // Zadaci (raspoređenost po projektu), odsustva i praznici u prozoru
+  // [danas-3, danas+30] — dovoljno da odgovori na "ko je slobodan/na
+  // odsustvu narednih dana/nedelju", bez slanja cele istorije kalendara.
+  const kalOd = toISO(addDays(TODAY, -3)), kalDo = toISO(addDays(TODAY, 30));
+  const kalendar = events
+    .filter(e => toISO(e.start) <= kalDo && toISO(e.end) >= kalOd)
+    .map(e => ({
+      vrsta: e.kind, // 'zadatak' | 'odsustvo' | 'praznik'
+      osoba: e.person || null,
+      od: toISO(e.start), do: toISO(e.end),
+      projekat: e.projectCode || null, zadatak: e.taskName || null,
+      tip_odsustva: e.leaveType || null, praznik: e.holidayName || null,
+    }));
+
   const playbook = playbookArticles.map(a => ({
     naslov: a.navTitle,
     sadrzaj: a.sections.map(s => `${s.label}: ${s.body ? s.body.join(' ') : (s.list ? s.list.join('; ') : '')}`).join(' | '),
@@ -9286,7 +9301,7 @@ function buildChatContext(){
   return JSON.stringify({
     danas: toISO(TODAY),
     nalog_trenutnog_korisnika: { nivo_pristupa: currentAccess(), ima_pristup_finansijama: canAccessFinance() },
-    projekti, klijenti, tim, finansije, playbook,
+    projekti, klijenti, tim, kalendar, playbook, finansije,
   });
 }
 
@@ -9499,7 +9514,7 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
   });
 })();
 
-pushChatMessage('bot', "Zdravo! 👋 Mogu da pretražim projekte, klijente, portfolio, DR Playbook i tim. Šta tražiš?");
+pushChatMessage('bot', "Zdravo! 👋 Ja sam DR Asistent. Mogu da odgovorim na pitanja o projektima, klijentima, timu, rasporedu/odsustvima i DR Playbook pravilniku. Šta te zanima?");
 
 /* ==== LOGIN / SESIJA / PROFIL ==== */
 const loginScreen = document.getElementById('loginScreen');
