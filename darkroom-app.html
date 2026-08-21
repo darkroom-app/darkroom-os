@@ -920,6 +920,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .line-svg-wrap{ width:100%; }
 .line-month-labels{ display:flex; justify-content:space-between; margin-top:6px; padding:0 2px; }
 .line-month-labels span{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); }
+.raise-hist-select{ font-family:var(--font-body); font-size:10.5px; font-weight:600; border:1px solid var(--border); background:var(--card-soft); border-radius:9px; padding:6px 9px; color:var(--ink); cursor:pointer; }
+.raise-hist-stat{ display:flex; align-items:baseline; gap:7px; background:var(--card-soft); border-radius:10px; padding:7px 11px; margin-bottom:10px; }
+.raise-hist-stat-label{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; }
+.raise-hist-stat-val{ font-family:var(--font-display); font-weight:700; font-size:13px; }
+.raise-hist-stat-val.up{ color:#4C8A55; }
+.raise-hist-stat-val.down{ color:var(--coral); }
+.raise-hist-stat-amt{ font-family:var(--font-mono); font-size:10px; color:var(--ink-dim); }
 .fun-row{ display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin-bottom:16px; flex:0 0 auto; }
 .fun-card{ border-radius:20px; border:1px solid var(--border); padding:15px 20px; display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; background:var(--card); }
 .fun-card::before{ content:""; position:absolute; inset:0; z-index:0; }
@@ -2358,7 +2365,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
         </div>
 
-        <div class="stat-grid-2" style="grid-template-columns:1.8fr 1fr;">
+        <div class="stat-grid-2" style="grid-template-columns:2.1fr 1fr;">
           <div class="stat-panel">
             <div class="stat-panel-head">
               <div class="stat-panel-title">👥 Plate zaposlenih — <span id="salTableMonthLabel">—</span></div>
@@ -2388,17 +2395,22 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             </div>
           </div>
 
-          <div class="stat-panel">
-            <div class="stat-panel-head">
+          <div class="stat-panel" style="padding:14px 16px 16px;">
+            <div class="stat-panel-head" style="margin-bottom:8px;">
               <div>
                 <div class="stat-panel-title">📈 Istorija povećanja</div>
                 <div class="stat-panel-sub" id="raiseHistorySince"></div>
               </div>
-              <select id="raiseHistoryEmpSelect" style="font-family:var(--font-body); font-size:11.5px; font-weight:600; border:1px solid var(--border); background:var(--card-soft); border-radius:9px; padding:7px 11px; color:var(--ink); cursor:pointer;"></select>
+              <div style="display:flex; gap:6px;">
+                <select id="raiseHistoryScopeSelect" class="raise-hist-select"></select>
+                <select id="raiseHistoryEmpSelect" class="raise-hist-select"></select>
+              </div>
             </div>
+            <div class="raise-hist-stat" id="raiseHistoryLast12"></div>
             <div class="line-svg-wrap" id="raiseHistorySvgWrap"></div>
-            <div class="line-month-labels" id="raiseHistoryMonthLabels" style="margin-bottom:16px;"></div>
-            <div class="lb-list" id="raiseHistoryList"></div>
+            <div class="line-month-labels" id="raiseHistoryMonthLabels" style="margin-bottom:10px;"></div>
+            <div class="lb-list" id="raiseHistoryList" style="max-height:130px; overflow-y:auto;"></div>
+            <button class="price-add-btn" id="raiseHistoryExportBtn" style="width:100%; margin-top:10px; text-align:center;">📄 Generiši izvod</button>
           </div>
         </div>
       </div>
@@ -8492,28 +8504,66 @@ function refreshAfterSalChange(){
   renderRaiseHistory();
 }
 
-/* ==== ISTORIJA POVEĆANJA — od datuma zaposlenja do danas, po zaposlenom ==== */
-function raiseHistoryData(emp){
-  const entries = [];
-  for(let m=0;m<12;m++){ const e = salaryFor(emp, m); if(e) entries.push({m, osn:e.osnovica}); }
+/* ==== ISTORIJA POVEĆANJA ====
+   Scope je ili konkretna godina (isto ponasanje kao pre) ili "ukupno" —
+   godina===null — koje ide direktno kroz salaryEntries hronoloski umesto
+   kroz salaryFor(), jer bi salaryFor(emp,m,null) vratio samo PRVI mesec
+   koji se poklopi kad dve godine dele isti indeks meseca. */
+function raiseHistoryData(emp, year){
+  let entries;
+  if(year == null){
+    entries = salaryEntries.filter(e=>e.employee===emp)
+      .sort((a,b)=> (a.year-b.year) || (a.month-b.month))
+      .map(e=>({ year:e.year, month:e.month, osn:e.osnovica }));
+  } else {
+    entries = [];
+    for(let m=0;m<12;m++){ const e = salaryFor(emp, m, year); if(e) entries.push({ year, month:m, osn:e.osnovica }); }
+  }
   const events = [];
   for(let i=1;i<entries.length;i++){
     if(entries[i].osn !== entries[i-1].osn){
       const pct = ((entries[i].osn - entries[i-1].osn)/entries[i-1].osn)*100;
-      events.push({ month:entries[i].m, from:entries[i-1].osn, to:entries[i].osn, pct });
+      events.push({ year:entries[i].year, month:entries[i].month, from:entries[i-1].osn, to:entries[i].osn, pct });
     }
   }
   return { entries, events };
+}
+/* Nezavisno od izabranog scope-a — uvek poredi najnoviji unos naspram onog
+   od otprilike godinu dana ranije (ili najstarijeg dostupnog, ako osoba
+   ima manje od godinu dana istorije). */
+function raiseLast12Months(emp){
+  const all = salaryEntries.filter(e=>e.employee===emp).sort((a,b)=>(a.year-b.year)||(a.month-b.month));
+  if(all.length < 2) return null;
+  const latest = all[all.length-1];
+  const cutoff = new Date(latest.year-1, latest.month, 1);
+  const before = all.filter(e=> new Date(e.year, e.month, 1) <= cutoff);
+  const baseline = before.length ? before[before.length-1] : all[0];
+  if(baseline === latest) return null;
+  const diff = latest.osnovica - baseline.osnovica;
+  const pct = baseline.osnovica ? (diff/baseline.osnovica)*100 : 0;
+  return { latest, baseline, diff, pct };
+}
+function renderRaiseHistoryLast12(emp){
+  const el = document.getElementById('raiseHistoryLast12');
+  const r = raiseLast12Months(emp);
+  if(!r){ el.style.display = 'none'; return; }
+  el.style.display = '';
+  const up = r.pct >= 0;
+  el.innerHTML = `
+    <span class="raise-hist-stat-label">Poslednjih 12 meseci</span>
+    <span class="raise-hist-stat-val ${up?'up':'down'}">${up?'▲':'▼'} ${Math.abs(r.pct).toFixed(1)}%</span>
+    <span class="raise-hist-stat-amt">(${r.diff>=0?'+':'−'}${fmtRSD(Math.abs(r.diff))})</span>`;
 }
 function renderRaiseHistoryChart(entries){
   const wrap = document.getElementById('raiseHistorySvgWrap');
   const labelsWrap = document.getElementById('raiseHistoryMonthLabels');
   if(entries.length < 2){
-    wrap.innerHTML = '<div class="empty-state" style="padding:20px 0;">Nema dovoljno podataka za grafik.</div>';
+    wrap.innerHTML = '<div class="empty-state" style="padding:14px 0;">Nema dovoljno podataka za grafik.</div>';
     labelsWrap.innerHTML = '';
     return;
   }
-  const W=760, H=170, padL=10, padR=10, padT=14, padB=10;
+  const spansYears = entries[0].year !== entries[entries.length-1].year;
+  const W=560, H=92, padL=8, padR=8, padT=10, padB=8;
   const vals = entries.map(e=>e.osn);
   const max = Math.max(...vals), min = Math.min(...vals);
   const span = Math.max(max-min, 1);
@@ -8521,16 +8571,20 @@ function renderRaiseHistoryChart(entries){
   const yFor = v => padT + (1-(v-min)/span) * (H-padT-padB);
   const pts = entries.map((e,i)=>`${xFor(i)},${yFor(e.osn)}`).join(' ');
   let svg = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none">`;
-  svg += `<polyline points="${pts}" fill="none" stroke="var(--gold-deep)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="raise-hist-path"/>`;
+  svg += `<polyline points="${pts}" fill="none" stroke="var(--gold-deep)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="raise-hist-path"/>`;
   entries.forEach((e,i)=>{
     const changed = i>0 && entries[i-1].osn !== e.osn;
-    const r = changed ? 5 : 3;
+    const r = changed ? 4.2 : 2.4;
     const fill = changed ? '#4C8A55' : 'var(--gold-deep)';
-    svg += `<circle cx="${xFor(i)}" cy="${yFor(e.osn)}" r="${r}" fill="${fill}" stroke="var(--card)" stroke-width="1.5"><title>${monthNamesFull[e.m]}: ${fmtRSD(e.osn)}${changed?' (promena)':''}</title></circle>`;
+    svg += `<circle cx="${xFor(i)}" cy="${yFor(e.osn)}" r="${r}" fill="${fill}" stroke="var(--card)" stroke-width="1.3"><title>${monthNamesFull[e.month]} ${e.year}.: ${fmtRSD(e.osn)}${changed?' (promena)':''}</title></circle>`;
   });
   svg += `</svg>`;
   wrap.innerHTML = svg;
-  labelsWrap.innerHTML = entries.map(e=>`<span>${monthNamesShort[e.m]}</span>`).join('');
+  labelsWrap.innerHTML = entries.map((e,i)=>{
+    if(!spansYears) return `<span>${monthNamesShort[e.month]}</span>`;
+    const isYearStart = i===0 || e.year !== entries[i-1].year;
+    return `<span>${isYearStart ? e.year : ''}</span>`;
+  }).join('');
   requestAnimationFrame(()=>{
     const path = wrap.querySelector('.raise-hist-path');
     if(!path) return;
@@ -8542,22 +8596,27 @@ function renderRaiseHistoryChart(entries){
   });
 }
 function renderRaiseHistoryList(events){
-  document.getElementById('raiseHistoryList').innerHTML = events.length ? events.map(ev=>`
+  document.getElementById('raiseHistoryList').innerHTML = events.length ? events.slice().reverse().map(ev=>`
     <div class="lb-row">
-      <div class="lb-rank" style="width:auto; font-family:var(--font-mono); font-size:10px;">${monthNamesShort[ev.month]}</div>
+      <div class="lb-rank" style="width:auto; font-family:var(--font-mono); font-size:9px;">${monthNamesShort[ev.month]} '${String(ev.year).slice(2)}</div>
       <div class="lb-info">
         <div class="lb-name">${fmtRSD(ev.from)} → ${fmtRSD(ev.to)}</div>
       </div>
       <div class="lb-value" style="color:${ev.pct>=0?'#4C8A55':'var(--coral)'}; font-weight:700;">${ev.pct>=0?'▲':'▼'} ${Math.abs(ev.pct).toFixed(1)}%</div>
-    </div>`).join('') : '<div class="empty-state" style="padding:16px 0;">Nema promena osnovice u ovom periodu.</div>';
+    </div>`).join('') : '<div class="empty-state" style="padding:12px 0;">Nema promena osnovice u ovom periodu.</div>';
+}
+function raiseHistoryScopeYear(){
+  const val = document.getElementById('raiseHistoryScopeSelect').value;
+  return val === 'all' ? null : parseInt(val);
 }
 function renderRaiseHistory(){
   const sel = document.getElementById('raiseHistoryEmpSelect');
   if(!sel || !sel.value) return;
   const emp = sel.value;
-  const t = teamMembers.find(x=>x.name===emp);
-  document.getElementById('raiseHistorySince').textContent = t ? `Otkad je zaposlen/a — ${formatIsoDateHuman(t.hireDate) || t.hireDate}` : '';
-  const { entries, events } = raiseHistoryData(emp);
+  const year = raiseHistoryScopeYear();
+  document.getElementById('raiseHistorySince').textContent = year===null ? 'Ukupan pregled' : `Pregled za ${year}.`;
+  renderRaiseHistoryLast12(emp);
+  const { entries, events } = raiseHistoryData(emp, year);
   renderRaiseHistoryChart(entries);
   renderRaiseHistoryList(events);
 }
@@ -8568,7 +8627,48 @@ function populateRaiseHistorySelect(){
   const cu = currentUser();
   sel.value = (cu && names.includes(cu.name)) ? cu.name : names[0];
   sel.addEventListener('change', renderRaiseHistory);
+
+  const scopeSel = document.getElementById('raiseHistoryScopeSelect');
+  const years = salAvailableYears();
+  scopeSel.innerHTML = `<option value="all">Ukupno</option>` + years.map(y=>`<option value="${y}">${y}.</option>`).join('');
+  scopeSel.value = 'all';
+  scopeSel.addEventListener('change', renderRaiseHistory);
 }
+function generateRaiseHistoryIzvod(){
+  const emp = document.getElementById('raiseHistoryEmpSelect').value;
+  const year = raiseHistoryScopeYear();
+  const { entries, events } = raiseHistoryData(emp, year);
+  if(!entries.length){ customAlert('Nema podataka za izvod.'); return; }
+  const scopeLabel = year===null ? 'Ukupan pregled' : `Godina ${year}.`;
+  const first = entries[0], last = entries[entries.length-1];
+  const totalPct = first.osn ? ((last.osn-first.osn)/first.osn)*100 : 0;
+  const rows = events.length ? events.map(ev=>`
+    <tr><td>${monthNamesFull[ev.month]} ${ev.year}.</td><td>${fmtRSD(ev.from)}</td><td>${fmtRSD(ev.to)}</td>
+    <td style="color:${ev.pct>=0?'#2f7a3d':'#c0392b'};">${ev.pct>=0?'▲':'▼'} ${Math.abs(ev.pct).toFixed(1)}%</td></tr>`).join('')
+    : `<tr><td colspan="4">Nema promena osnovice u ovom periodu.</td></tr>`;
+  const html = `<!DOCTYPE html><html lang="sr"><head><meta charset="UTF-8"><title>Izvod — ${escapeHtml(emp)}</title>
+<style>
+  body{ font-family:Arial,Helvetica,sans-serif; padding:40px; color:#231F18; }
+  h1{ font-size:19px; margin:0 0 4px; }
+  .sub{ color:#847C6C; font-size:12px; margin-bottom:22px; }
+  table{ width:100%; border-collapse:collapse; margin-top:14px; }
+  th,td{ text-align:left; padding:8px 10px; border-bottom:1px solid #E5DFCE; font-size:12.5px; }
+  th{ font-size:10px; text-transform:uppercase; color:#847C6C; }
+  .summary{ margin-top:22px; padding:14px 16px; background:#FBF7EE; border-radius:10px; font-size:13px; }
+  @media print{ body{ padding:16px; } }
+</style></head><body>
+  <h1>DARKROOM STUDIO — Izvod istorije plate</h1>
+  <div class="sub">${escapeHtml(emp)} · ${scopeLabel} · generisano ${formatIsoDateHuman(toISO(TODAY))}</div>
+  <table><thead><tr><th>Datum</th><th>Sa</th><th>Na</th><th>Promena</th></tr></thead><tbody>${rows}</tbody></table>
+  <div class="summary"><b>Ukupna promena u periodu:</b> ${fmtRSD(first.osn)} → ${fmtRSD(last.osn)} (${totalPct>=0?'▲':'▼'} ${Math.abs(totalPct).toFixed(1)}%)</div>
+</body></html>`;
+  const w = window.open('', '_blank');
+  if(!w) return;
+  w.document.write(html);
+  w.document.close();
+  setTimeout(()=>{ w.focus(); w.print(); }, 250);
+}
+document.getElementById('raiseHistoryExportBtn').addEventListener('click', generateRaiseHistoryIzvod);
 function openRaiseHistoryFor(emp){
   const sel = document.getElementById('raiseHistoryEmpSelect');
   if(!sel || sel.value === emp) return;
@@ -9518,7 +9618,7 @@ function renderDashboardFinance(){
   const monthLabel = monthNamesFull[month].toLowerCase();
   const allEntries = salaryEntries.filter(e=>e.employee===u.key).sort((a,b)=> (a.year-b.year) || (a.month-b.month));
   const ytdTotal = allEntries.reduce((s,e)=>s+salUkupno(e),0);
-  const { events } = raiseHistoryData(u.key);
+  const { events } = raiseHistoryData(u.key, null);
 
   const summaryHtml = `
     <div class="fin-row"><span>Neto · ${monthLabel}</span><span>${entry ? fmtRSD(salNeto(entry)) : 'Nije uneto'}</span></div>
@@ -9533,7 +9633,7 @@ function renderDashboardFinance(){
 
   const growthHtml = events.length ? events.map(ev=>`
     <div class="fin-hist-item">
-      <div class="fin-hist-top"><b>${monthNamesShort[ev.month]}</b><span style="color:${ev.pct>=0?'#4C8A55':'var(--coral)'};">${ev.pct>=0?'▲':'▼'} ${Math.abs(ev.pct).toFixed(1)}%</span></div>
+      <div class="fin-hist-top"><b>${monthNamesShort[ev.month]} ${ev.year}.</b><span style="color:${ev.pct>=0?'#4C8A55':'var(--coral)'};">${ev.pct>=0?'▲':'▼'} ${Math.abs(ev.pct).toFixed(1)}%</span></div>
       <div class="fin-hist-sub">${fmtRSD(ev.from)} → ${fmtRSD(ev.to)}</div>
     </div>`).join('') : '<div class="agenda-empty">Nema promena osnovice od zaposlenja.</div>';
 
