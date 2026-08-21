@@ -734,4 +734,49 @@ create policy "superadmin can delete salary_entries"
   on public.salary_entries for delete to authenticated
   using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
 
+-- ==== Phase 8: real Kalendar events (zadatak/odsustvo/praznik) ====
+-- (run as a nineteenth query)
+--
+-- `events` was the last major array still 100% local/localStorage-only —
+-- every device had its own independent copy, seeded from a hardcoded mock
+-- list. Since time_entries (Phase 4) is real and shared, a device whose local
+-- calendar event got deleted/reset (cleared cache, different browser) would
+-- silently orphan that event's already-logged hours in Supabase forever —
+-- no UI path could reach them since the only way in is via the calendar
+-- event's own edit modal. This makes events a real table so the calendar
+-- itself is consistent across devices, closing that gap.
+--
+-- One row per calendar entry, all three kinds sharing one table (kind-specific
+-- columns are null for the other kinds) — same shape the client already uses.
+-- `initials` isn't stored — it's cheap to re-derive from `person` on load
+-- (artistInitials lookup), so it's not persisted here to avoid a second place
+-- that can go stale if someone's name changes.
+--
+-- Access follows Phase 5's fully-open shape (kadrovi/rounds/transactions),
+-- not Phase 7's superadmin gate: the client has never gated calendar
+-- create/edit/delete behind a role check the way Finansije is gated, so this
+-- doesn't invent a new restriction.
+create table public.calendar_events (
+  id uuid primary key default gen_random_uuid(),
+  kind text not null,                 -- 'zadatak' | 'odsustvo' | 'praznik'
+  person text,                        -- employee name; null for praznik
+  color text not null,                -- theme color key (zadatak) or 'leave'/'holiday'
+  start_date date not null,
+  end_date date not null,
+  project_code text,                  -- zadatak only
+  task_name text,                     -- zadatak only
+  urgency text,                       -- zadatak only: 'niska'|'srednja'|'visoka'
+  leave_type text,                    -- odsustvo only: 'odmor'|'bolovanje'|'placeno'|'neplaceno'
+  holiday_name text,                  -- praznik only
+  created_at timestamptz not null default now()
+);
+alter table public.calendar_events enable row level security;
+
+create policy "authenticated can read calendar_events" on public.calendar_events for select to authenticated using (true);
+create policy "authenticated can insert calendar_events" on public.calendar_events for insert to authenticated with check (true);
+create policy "authenticated can update calendar_events" on public.calendar_events for update to authenticated using (true) with check (true);
+create policy "authenticated can delete calendar_events" on public.calendar_events for delete to authenticated using (true);
+
+create index calendar_events_date_idx on public.calendar_events (start_date, end_date);
+
 create index salary_entries_employee_idx on public.salary_entries (employee_id);

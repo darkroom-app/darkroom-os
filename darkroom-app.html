@@ -3078,7 +3078,7 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teamMembers,
-      sideHustleEntries, events, todoItems, salConfirmedMonths, notifications,
+      sideHustleEntries, todoItems, salConfirmedMonths, notifications,
       finProjectionMarginPct
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
@@ -3091,6 +3091,11 @@ function persist(){
       // base_price/price_status ride along with loadProjectsFromSupabase().
       // salaryEntries removed (Phase 7) — real payroll now lives in Supabase's
       // salary_entries table, loaded via loadSalaryEntriesFromSupabase().
+      // events removed (Phase 8) — the calendar is now Supabase-backed via
+      // calendar_events, loaded via loadEventsFromSupabase(). This was the bug:
+      // local-only events could vanish per-device while their logged
+      // time_entries (already real/shared) survived, orphaning hours with no
+      // UI path back to them.
     }));
   } catch(e){}
 }
@@ -3221,67 +3226,12 @@ const _monthNamesSr = ["januar","februar","mart","april","maj","jun","jul","avgu
 const _topDateEl = document.querySelector('.top-date');
 if(_topDateEl) _topDateEl.textContent = `${_dowNamesSr[_nowDate.getDay()]} · ${TODAY.d}. ${_monthNamesSr[TODAY.m-1]} ${TODAY.y}.`;
 
-function zadatak(person, initials, color, projectCode, taskName, start, end, urgency){
-  return { kind:"zadatak", person, initials, color, projectCode, taskName, urgency, start, end };
-}
-function odsustvo(person, initials, leaveType, start, end){
-  return { kind:"odsustvo", person, initials, color:"leave", leaveType, start, end };
-}
-function praznik(holidayName, start, end){
-  return { kind:"praznik", person:null, initials:"", color:"holiday", holidayName, start, end };
-}
-
-const events = [
-  zadatak("Dušan Stević", "DS", "gold", "P001", "Enterijer_01", {y:2026,m:8,d:1}, {y:2026,m:8,d:2}, "niska"),
-  zadatak("Aleksandra Vukašinović", "AV", "sage", "P001", "Enterijer_06", {y:2026,m:8,d:4}, {y:2026,m:8,d:6}, "srednja"),
-  zadatak("Ana Krstić", "AK", "teal", "P002", "Enterijer_03", {y:2026,m:8,d:7}, {y:2026,m:8,d:10}, "visoka"),
-  zadatak("Damjan Mitrović", "DM", "sky", "P003", "Enterijer_01", {y:2026,m:8,d:10}, {y:2026,m:8,d:11}, "niska"),
-  zadatak("Radoslav Milanović", "RM", "coral", "P003", "Enterijer_06", {y:2026,m:8,d:13}, {y:2026,m:8,d:15}, "srednja"),
-  zadatak("Nikola Jovanović", "NJ", "plum", "P004", "Enterijer_02", {y:2026,m:8,d:16}, {y:2026,m:8,d:19}, "visoka"),
-  zadatak("Miloš Tasić", "MT", "gold", "P005", "Amenities_01", {y:2026,m:8,d:19}, {y:2026,m:8,d:20}, "niska"),
-  zadatak("Marija Milenković", "MM", "sage", "P005", "Amenities_06", {y:2026,m:8,d:22}, {y:2026,m:8,d:24}, "srednja"),
-  zadatak("Katarina Đorđević", "KĐ", "teal", "P006", "Eksterijer_03", {y:2026,m:8,d:25}, {y:2026,m:8,d:28}, "visoka"),
-  zadatak("Marija Todorović", "MT", "sky", "P007", "Enterijer_03", {y:2026,m:8,d:28}, {y:2026,m:8,d:29}, "niska"),
-  zadatak("Lazar Pešić", "LP", "coral", "P007", "Enterijer_08", {y:2026,m:8,d:3}, {y:2026,m:8,d:5}, "srednja"),
-  zadatak("Stefana Ristić", "SR", "plum", "P007", "Enterijer_13", {y:2026,m:8,d:6}, {y:2026,m:8,d:9}, "visoka"),
-  zadatak("Mihajlo Nagradić", "MN", "gold", "P007", "Enterijer_18", {y:2026,m:8,d:9}, {y:2026,m:8,d:10}, "niska"),
-  zadatak("Miljana Cvetković", "MC", "sage", "P007", "Eksterijer_03", {y:2026,m:8,d:12}, {y:2026,m:8,d:14}, "srednja"),
-  zadatak("Aleksandar Jovanović", "AJ", "teal", "P007", "Eksterijer_08", {y:2026,m:8,d:15}, {y:2026,m:8,d:18}, "visoka"),
-  zadatak("Dalibor Mitić", "DM", "sky", "P009", "Eksterijer_01", {y:2026,m:8,d:18}, {y:2026,m:8,d:19}, "niska"),
-  zadatak("Anđela Pešić", "AP", "coral", "P009", "Animacija_01", {y:2026,m:8,d:21}, {y:2026,m:8,d:23}, "srednja"),
-  zadatak("Ivana Sazdov", "IS", "plum", "P011", "Enterijer_01", {y:2026,m:8,d:24}, {y:2026,m:8,d:27}, "visoka"),
-  zadatak("Dušan Stević", "DS", "gold", "P011", "Eksterijer_01", {y:2026,m:8,d:27}, {y:2026,m:8,d:28}, "niska"),
-  zadatak("Aleksandra Vukašinović", "AV", "sage", "P012", "Enterijer_05", {y:2026,m:8,d:2}, {y:2026,m:8,d:4}, "srednja"),
-  zadatak("Ana Krstić", "AK", "teal", "P012", "Enterijer_10", {y:2026,m:8,d:5}, {y:2026,m:8,d:8}, "visoka"),
-  zadatak("Damjan Mitrović", "DM", "sky", "P012", "Enterijer_15", {y:2026,m:8,d:8}, {y:2026,m:8,d:9}, "niska"),
-  zadatak("Radoslav Milanović", "RM", "coral", "P012", "Eksterijer_05", {y:2026,m:8,d:11}, {y:2026,m:8,d:13}, "srednja"),
-  zadatak("Nikola Jovanović", "NJ", "plum", "P013", "Enterijer_05", {y:2026,m:8,d:14}, {y:2026,m:8,d:17}, "visoka"),
-  zadatak("Miloš Tasić", "MT", "gold", "P014", "Enterijer_04", {y:2026,m:8,d:17}, {y:2026,m:8,d:18}, "niska"),
-  zadatak("Marija Milenković", "MM", "sage", "P015", "Enterijer_04", {y:2026,m:8,d:20}, {y:2026,m:8,d:22}, "srednja"),
-  zadatak("Katarina Đorđević", "KĐ", "teal", "P016", "Enterijer_03", {y:2026,m:8,d:23}, {y:2026,m:8,d:26}, "visoka"),
-  zadatak("Marija Todorović", "MT", "sky", "P016", "Eksterijer_03", {y:2026,m:8,d:26}, {y:2026,m:8,d:27}, "niska"),
-  zadatak("Lazar Pešić", "LP", "coral", "P017", "Enterijer_03", {y:2026,m:8,d:1}, {y:2026,m:8,d:3}, "srednja"),
-  zadatak("Stefana Ristić", "SR", "plum", "P017", "Eksterijer_02", {y:2026,m:8,d:4}, {y:2026,m:8,d:7}, "visoka"),
-  zadatak("Mihajlo Nagradić", "MN", "gold", "P018", "Enterijer_03", {y:2026,m:8,d:7}, {y:2026,m:8,d:8}, "niska"),
-  zadatak("Miljana Cvetković", "MC", "sage", "P018", "Eksterijer_03", {y:2026,m:8,d:10}, {y:2026,m:8,d:12}, "srednja"),
-  zadatak("Aleksandar Jovanović", "AJ", "teal", "P019", "Enterijer_03", {y:2026,m:8,d:13}, {y:2026,m:8,d:16}, "visoka"),
-  zadatak("Dalibor Mitić", "DM", "sky", "P019", "Eksterijer_02", {y:2026,m:8,d:16}, {y:2026,m:8,d:17}, "niska"),
-  zadatak("Anđela Pešić", "AP", "coral", "P020", "Enterijer_03", {y:2026,m:8,d:19}, {y:2026,m:8,d:21}, "srednja"),
-  zadatak("Ivana Sazdov", "IS", "plum", "P020", "Enterijer_08", {y:2026,m:8,d:22}, {y:2026,m:8,d:25}, "visoka"),
-  zadatak("Dušan Stević", "DS", "gold", "P020", "Enterijer_13", {y:2026,m:8,d:25}, {y:2026,m:8,d:26}, "niska"),
-  zadatak("Aleksandra Vukašinović", "AV", "sage", "P020", "Enterijer_18", {y:2026,m:8,d:28}, {y:2026,m:8,d:30}, "srednja"),
-  zadatak("Ana Krstić", "AK", "teal", "P020", "Enterijer_23", {y:2026,m:8,d:3}, {y:2026,m:8,d:6}, "visoka"),
-  zadatak("Damjan Mitrović", "DM", "sky", "P020", "Enterijer_28", {y:2026,m:8,d:6}, {y:2026,m:8,d:7}, "niska"),
-
-  odsustvo("Miloš Tasić","MT","odmor",{y:2026,m:8,d:3},{y:2026,m:8,d:7}),
-  odsustvo("Lazar Pešić","LP","bolovanje",{y:2026,m:8,d:4},{y:2026,m:8,d:5}),
-  odsustvo("Marija Milenković","MM","placeno",{y:2026,m:8,d:5},{y:2026,m:8,d:9}),
-  odsustvo("Damjan Mitrović","DM","neplaceno",{y:2026,m:8,d:6},{y:2026,m:8,d:7}),
-
-  praznik("Dan osnivanja studija",{y:2026,m:8,d:15},{y:2026,m:8,d:15}),
-];
-events.forEach(e=>e._id=nextId());
-fromPersisted('events', events);
+/* Phase 8: real Kalendar events. Was 100% local/localStorage-only (hardcoded
+   mock seed below, one independent copy per device) — loadEventsFromSupabase()
+   (near the other load*FromSupabase() functions) now wipes and rebuilds this
+   in place from the real calendar_events table, same pattern as every other
+   migrated array. Starts empty; populated at boot. */
+const events = [];
 
 function keyOf(o){ return o.y + "-" + o.m + "-" + o.d; }
 function toISO(o){ return `${o.y}-${String(o.m).padStart(2,'0')}-${String(o.d).padStart(2,'0')}`; }
@@ -3643,6 +3593,23 @@ function onBarDrag(e){
   renderCalendar();
 }
 
+/* Maps an in-memory event object to a calendar_events row for insert/update.
+   Kind-specific fields that don't apply just come through as undefined/null,
+   matching the column defaults. */
+function calendarEventDbRow(ev){
+  return {
+    kind: ev.kind,
+    person: ev.person || null,
+    color: ev.color,
+    start_date: toISO(ev.start),
+    end_date: toISO(ev.end),
+    project_code: ev.projectCode || null,
+    task_name: ev.taskName || null,
+    urgency: ev.urgency || null,
+    leave_type: ev.leaveType || null,
+    holiday_name: ev.holidayName || null,
+  };
+}
 async function reassignZadatakPerson(evObj){
   evObj.initials = artistInitials[evObj.person] || evObj.person.slice(0,2).toUpperCase();
   evObj.color = personColorMap[evObj.person] || 'gold';
@@ -3680,7 +3647,11 @@ async function endBarDrag(){
         ? `Prebaciti "${label}" sa ${origPerson} na ${evObj.person} (${rangeLabel})?`
         : `${mode === 'move' ? 'Pomeriti' : 'Promeniti trajanje za'} "${evObj.person} · ${label}" na ${rangeLabel}?`;
       if(await customConfirm(confirmMsg)){
-        if(reassigned) reassignZadatakPerson(evObj);
+        if(reassigned) await reassignZadatakPerson(evObj);
+        if(evObj.dbId){
+          const { error } = await sb.from('calendar_events').update(calendarEventDbRow(evObj)).eq('id', evObj.dbId);
+          if(error) await customAlert('Čuvanje nije uspelo: ' + error.message);
+        }
         buildCalFilterMenus();
         persist();
       } else {
@@ -3707,6 +3678,10 @@ calWeeks.addEventListener('click', async (e)=>{
     if(!evObj || !canEditCalendarFor(evObj.person)) return;
     if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
     await deleteTimeEntriesForEvent(evObj);
+    if(evObj.dbId){
+      const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
+      if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+    }
     const idx = events.findIndex(x=>x._id===evObj._id);
     if(idx>-1) events.splice(idx,1);
     buildCalFilterMenus();
@@ -3730,44 +3705,6 @@ calWeeks.addEventListener('click', async (e)=>{
     openEventModal(null, toISO(date), track.dataset.person);
   }
 });
-
-/* Zamenjuje mock "zadatak" stavke (koje su ostale od pre Supabase migracije i
-   ne odgovaraju stvarnim projektima) stvarnim rasporedom generisanim iz
-   trenutno aktivnih kadrova. Da kalendar/dashboard ostanu pregledni, svaki
-   zaposleni dobija samo nasumično 2-3 zadatka za tekuću nedelju (ne svaki
-   njegov aktivan kadar) — grubo i privremeno, lako zamenljivo preciznijim
-   rasporedom kasnije. */
-function generateEventsFromKadrovi(){
-  for(let i=events.length-1; i>=0; i--){ if(events[i].kind==='zadatak') events.splice(i,1); }
-  const byPerson = {};
-  allProjects.forEach(p=>{
-    if(p.status==='Završeno') return;
-    p.kadrovi.forEach(k=>{
-      if(!k.employee || (k.status!=='aktivan' && k.status!=='na čekanju')) return;
-      (byPerson[k.employee] = byPerson[k.employee] || []).push({project:p, kadar:k});
-    });
-  });
-  const monday = mondayOf(TODAY);
-  Object.keys(byPerson).forEach(person=>{
-    const pool = byPerson[person];
-    const count = Math.min(pool.length, 2 + Math.floor(Math.random()*2));
-    const picks = [...pool].sort(()=>Math.random()-0.5).slice(0, count);
-    const dayOffsets = [0,1,2,3,4].sort(()=>Math.random()-0.5).slice(0, count);
-    picks.forEach((item, idx)=>{
-      const dayOffset = dayOffsets[idx];
-      const start = addDays(monday, dayOffset);
-      const span = Math.min(Math.random() < 0.5 ? 0 : 1, 4 - dayOffset);
-      const end = addDays(monday, dayOffset + span);
-      events.push({
-        _id:nextId(), kind:'zadatak', person,
-        initials: artistInitials[person] || person.slice(0,2).toUpperCase(),
-        color: personColorMap[person] || 'gold',
-        projectCode:item.project.code, taskName:item.kadar.name, urgency:'srednja',
-        start, end
-      });
-    });
-  });
-}
 
 const CAL_FILTER_SEARCH_THRESHOLD = 7;
 function renderCalFilterMenu(menuEl, items, allItemHtml){
@@ -4121,6 +4058,10 @@ document.getElementById('evDelete').addEventListener('click', async ()=>{
   if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
   const evObj = events.find(e=>e._id===editingEventId);
   await deleteTimeEntriesForEvent(evObj);
+  if(evObj && evObj.dbId){
+    const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+  }
   const idx = events.findIndex(e=>e._id===editingEventId);
   if(idx>-1) events.splice(idx,1);
   closeEventModal();
@@ -4174,11 +4115,15 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
       if(ev.kind==='zadatak'){
         oldZadatakSnapshot = { kind:'zadatak', person:ev.person, projectCode:ev.projectCode, taskName:ev.taskName, start:ev.start, end:ev.end };
       }
-      Object.keys(ev).forEach(k=>{ if(!['_id'].includes(k)) delete ev[k]; });
+      const { error } = await sb.from('calendar_events').update(calendarEventDbRow(newEvent)).eq('id', ev.dbId);
+      if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
+      Object.keys(ev).forEach(k=>{ if(!['_id','dbId'].includes(k)) delete ev[k]; });
       Object.assign(ev, newEvent);
     }
   } else {
-    events.push({ _id:nextId(), ...newEvent });
+    const { data, error } = await sb.from('calendar_events').insert(calendarEventDbRow(newEvent)).select().single();
+    if(error || !data){ await customAlert('Čuvanje nije uspelo: ' + (error?.message||'')); return; }
+    events.push({ _id:nextId(), dbId:data.id, ...newEvent });
   }
   if(kind==='zadatak'){
     if(oldZadatakSnapshot) await pruneStaleTimeEntries(oldZadatakSnapshot, newEvent);
@@ -9986,6 +9931,36 @@ async function loadTimeEntriesFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+/* Phase 8: real Kalendar events. Wipes and rebuilds `events` in place from
+   calendar_events, same pattern as every other load*FromSupabase() function.
+   `initials` isn't a DB column — re-derived from `person` here rather than
+   stored, so it can never go stale if someone's display name changes. */
+async function loadEventsFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('calendar_events').select('*').order('start_date');
+    if(error || !data) return false;
+    events.length = 0;
+    data.forEach(row=>{
+      events.push({
+        _id: nextId(),
+        dbId: row.id,
+        kind: row.kind,
+        person: row.person,
+        initials: row.person ? (artistInitials[row.person] || row.person.slice(0,2).toUpperCase()) : '',
+        color: row.color,
+        projectCode: row.project_code,
+        taskName: row.task_name,
+        urgency: row.urgency,
+        leaveType: row.leave_type,
+        holidayName: row.holiday_name,
+        start: fromISO(row.start_date),
+        end: fromISO(row.end_date),
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
 function findKadarByDbId(kadarDbId){
   for(const p of allProjects){
     const k = p.kadrovi.find(x=>x.dbId===kadarDbId);
@@ -10066,7 +10041,7 @@ async function resolveSessionLogin(session){
     await loadExtraChargesFromSupabase();
     await loadTransactionsFromSupabase();
     await loadSalaryEntriesFromSupabase();
-    generateEventsFromKadrovi();
+    await loadEventsFromSupabase();
     buildCalFilterMenus();
     renderCalendar();
     renderWeekWidget();
