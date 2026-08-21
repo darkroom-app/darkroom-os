@@ -9199,7 +9199,9 @@ function chatbotSearch(query){
 }
 
 let chatMessages = [];
+let chatHistory = []; // [{role:'user'|'model', text}] — sent to Gemini for multi-turn context
 let chatOpen = false;
+let chatBusy = false;
 
 function toggleChat(force){
   chatOpen = force !== undefined ? force : !chatOpen;
@@ -9212,6 +9214,7 @@ document.getElementById('chatClose').addEventListener('click', ()=> toggleChat(f
 function pushChatMessage(role, text, results){
   chatMessages.push({role, text, results});
   renderChatMessages();
+  return chatMessages.length - 1;
 }
 
 function renderChatMessages(){
@@ -9236,21 +9239,87 @@ function renderChatMessages(){
   });
 }
 
-function runChatSearch(query){
+/* Kompaktan JSON snimak trenutnih podataka studija — šalje se Gemini-ju kao
+   sistemski kontekst uz svaku poruku (edge function ga samo prosleđuje, ne
+   dira bazu). Namerno bez avatar/thumbnail base64 i punog round-po-round
+   istorijata — to bi naduvalo payload bez koristi za tipična pitanja. */
+function buildChatContext(){
+  const projekti = allProjects.map(p => ({
+    kod: p.code, naziv: p.name, klijent: p.client, menadzer: p.managerName,
+    godina: p.year, status: p.status, pocetak: p.startDate,
+    broj_kadrova: p.kadrovi.length,
+    tim: [...new Set(p.kadrovi.map(k=>k.employee))],
+  }));
+  const klijenti = allClients.map(c => ({ naziv: c.name, kontakt: c.contact, email: c.email, klijent_od: c.since }));
+  const tim = teamMembers.map(t => ({ ime: t.name, uloga: t.role, pristup: t.access, datum_zaposlenja: t.hireDate, status: t.status }));
+  const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
+  const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
+  const totalSalary = yearPayrollTotal(null);
+  const ovaGod = String(TODAY.y);
+  const finansije = {
+    trenutno_stanje_rsd: Math.round(openingBalance + totalIn - totalOutTx - totalSalary),
+    ukupno_svih_godina: { priliv: totalIn, odliv: totalOutTx, plate: totalSalary },
+    ova_godina: {
+      godina: TODAY.y,
+      priliv: allTransactions.filter(t=>t.type==='Priliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
+      odliv: allTransactions.filter(t=>t.type==='Odliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
+      plate: yearPayrollTotal(TODAY.y),
+    },
+  };
+  const playbook = playbookArticles.map(a => ({
+    naslov: a.navTitle,
+    sadrzaj: a.sections.map(s => `${s.label}: ${s.body ? s.body.join(' ') : (s.list ? s.list.join('; ') : '')}`).join(' | '),
+  }));
+  return JSON.stringify({ danas: toISO(TODAY), projekti, klijenti, tim, finansije, playbook });
+}
+
+/* Escape prvo (bezbednost — Gemini odgovor ide u innerHTML), pa tek onda
+   primeni minimalno formatiranje nad već-escape-ovanim tekstom. */
+function formatBotReply(text){
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/\n/g, '<br>');
+}
+
+async function runChatSearch(query){
+  if(chatBusy) return;
   pushChatMessage('user', escapeHtml(query));
   const results = chatbotSearch(query);
-  let reply;
-  if(results.length){
-    reply = `Pronašao sam ${results.length} ${results.length===1?'rezultat':'rezultata'} za "<b>${escapeHtml(query)}</b>":`;
-  } else {
-    reply = `Nisam našao ništa za "<b>${escapeHtml(query)}</b>". Probaj naziv projekta, klijenta, umetnika ili temu iz DR Playbook-a.`;
+  const thinkingIdx = pushChatMessage('bot', '…');
+  chatBusy = true;
+  document.getElementById('chatSend').disabled = true;
+
+  let replyHtml, ok = false, replyRaw = '';
+  try {
+    const context = buildChatContext();
+    const { data, error } = await sb.functions.invoke('gemini-chat', {
+      body: { message: query, history: chatHistory, context },
+    });
+    if(error || !data || !data.ok){
+      const errMsg = (data && data.error) || error?.message || 'nepoznata greška';
+      replyHtml = `Došlo je do greške: ${escapeHtml(errMsg)}`;
+    } else {
+      replyRaw = data.reply;
+      replyHtml = formatBotReply(replyRaw);
+      ok = true;
+    }
+  } catch(e){
+    replyHtml = `Došlo je do greške: ${escapeHtml(String(e))}`;
   }
-  setTimeout(()=>{ pushChatMessage('bot', reply, results); }, 260);
+
+  if(ok){
+    chatHistory.push({role:'user', text: query});
+    chatHistory.push({role:'model', text: replyRaw});
+  }
+  chatMessages[thinkingIdx] = { role:'bot', text: replyHtml, results };
+  chatBusy = false;
+  document.getElementById('chatSend').disabled = false;
+  renderChatMessages();
 }
 
 function sendChatFrom(input){
   const val = input.value.trim();
-  if(!val) return;
+  if(!val || chatBusy) return;
   input.value = '';
   runChatSearch(val);
 }
