@@ -9242,7 +9242,15 @@ function renderChatMessages(){
 /* Kompaktan JSON snimak trenutnih podataka studija — šalje se Gemini-ju kao
    sistemski kontekst uz svaku poruku (edge function ga samo prosleđuje, ne
    dira bazu). Namerno bez avatar/thumbnail base64 i punog round-po-round
-   istorijata — to bi naduvalo payload bez koristi za tipična pitanja. */
+   istorijata — to bi naduvalo payload bez koristi za tipična pitanja.
+
+   Finansijski blok prati isti pristup kao i sam Finansije tab
+   (canAccessFinance() → samo superadmin, vidi navFinansije/9702) — inače bi
+   chatbot bio zaobilazni put ka podacima koje ostatak aplikacije namerno
+   krije od 'user'/'admin' naloga. Plate su i onako individualno vidljive
+   samo superadminu preko RLS-a na salary_entries (nikad se ni ne učitaju u
+   memoriju za nižа prava), pa ovde šaljemo samo agregatni zbir, nikad
+   pojedinačne iznose po zaposlenom. */
 function buildChatContext(){
   const projekti = allProjects.map(p => ({
     kod: p.code, naziv: p.name, klijent: p.client, menadzer: p.managerName,
@@ -9252,25 +9260,34 @@ function buildChatContext(){
   }));
   const klijenti = allClients.map(c => ({ naziv: c.name, kontakt: c.contact, email: c.email, klijent_od: c.since }));
   const tim = teamMembers.map(t => ({ ime: t.name, uloga: t.role, pristup: t.access, datum_zaposlenja: t.hireDate, status: t.status }));
-  const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
-  const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
-  const totalSalary = yearPayrollTotal(null);
-  const ovaGod = String(TODAY.y);
-  const finansije = {
-    trenutno_stanje_rsd: Math.round(openingBalance + totalIn - totalOutTx - totalSalary),
-    ukupno_svih_godina: { priliv: totalIn, odliv: totalOutTx, plate: totalSalary },
-    ova_godina: {
-      godina: TODAY.y,
-      priliv: allTransactions.filter(t=>t.type==='Priliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
-      odliv: allTransactions.filter(t=>t.type==='Odliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
-      plate: yearPayrollTotal(TODAY.y),
-    },
-  };
   const playbook = playbookArticles.map(a => ({
     naslov: a.navTitle,
     sadrzaj: a.sections.map(s => `${s.label}: ${s.body ? s.body.join(' ') : (s.list ? s.list.join('; ') : '')}`).join(' | '),
   }));
-  return JSON.stringify({ danas: toISO(TODAY), projekti, klijenti, tim, finansije, playbook });
+
+  let finansije = null;
+  if(canAccessFinance()){
+    const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
+    const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
+    const totalSalary = yearPayrollTotal(null);
+    const ovaGod = String(TODAY.y);
+    finansije = {
+      trenutno_stanje_rsd: Math.round(openingBalance + totalIn - totalOutTx - totalSalary),
+      ukupno_svih_godina: { priliv: totalIn, odliv: totalOutTx, plate: totalSalary },
+      ova_godina: {
+        godina: TODAY.y,
+        priliv: allTransactions.filter(t=>t.type==='Priliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
+        odliv: allTransactions.filter(t=>t.type==='Odliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
+        plate: yearPayrollTotal(TODAY.y),
+      },
+    };
+  }
+
+  return JSON.stringify({
+    danas: toISO(TODAY),
+    nalog_trenutnog_korisnika: { nivo_pristupa: currentAccess(), ima_pristup_finansijama: canAccessFinance() },
+    projekti, klijenti, tim, finansije, playbook,
+  });
 }
 
 /* Escape prvo (bezbednost — Gemini odgovor ide u innerHTML), pa tek onda
