@@ -2487,6 +2487,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <option value="Neplaćeno">Neplaćeno</option>
       </select>
     </div>
+    <div class="modal-field">
+      <label>Datum unosa cene</label>
+      <input type="date" id="kadarDateInput">
+    </div>
+    <div class="modal-field">
+      <button type="button" class="price-add-btn" id="kadarAddExtraChargeBtn" style="width:100%;">+ Dodatna naplata za ovaj kadar</button>
+    </div>
     <div class="modal-actions">
       <button class="modal-delete" id="kadarDelete" style="display:none;">Ukloni cenu</button>
       <button class="modal-cancel" id="kadarCancel">Otkaži</button>
@@ -7319,6 +7326,7 @@ function yearPayrollTotal(year){
 }
 
 function txMonth(dateStr){ return parseInt(dateStr.split('-')[1],10) - 1; }
+function txYear(dateStr){ return parseInt(dateStr.split('-')[0],10); }
 
 function receivablesTotal(){
   return allPricedItems().filter(r=>r.status==='Fakturisano' || r.status==='Neplaćeno').reduce((s,r)=>s+r.price,0);
@@ -7339,7 +7347,7 @@ function renderFinHero(){
   const payrollPct = totalIn > 0 ? (totalSalary/totalIn)*100 : 0;
 
   const currM = TODAY.m - 1, prevM = currM - 1;
-  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
+  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
   const outCurr = outFor(currM), outPrev = prevM>=0 ? outFor(prevM) : 0;
   const outTrend = outPrev>0 ? ((outCurr-outPrev)/outPrev)*100 : null;
 
@@ -7375,8 +7383,8 @@ function renderFinHero(){
 function renderFinFlowChart(){
   const monthIn = [], monthOut = [];
   for(let m=0;m<8;m++){
-    monthIn.push(allTransactions.filter(t=>t.type==='Priliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0));
-    monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y));
+    monthIn.push(allTransactions.filter(t=>t.type==='Priliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0));
+    monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y));
   }
   const wrap = document.getElementById('finFlowChart');
   wrap.classList.remove('shown');
@@ -7573,7 +7581,7 @@ function renderClientRevenueBoard(){
 
 function renderTopExpenses(){
   const currM = TODAY.m - 1;
-  const top = allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===currM).sort((a,b)=>b.amount-a.amount).slice(0,5);
+  const top = allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===currM).sort((a,b)=>b.amount-a.amount).slice(0,5);
   const max = Math.max(...top.map(t=>t.amount), 1);
   document.getElementById('topExpensesList').innerHTML = top.length ? top.map((t,i)=>`
     <div class="lb-row">
@@ -7597,8 +7605,9 @@ function renderTopExpenses(){
    stvarna istorijska profitna marza nije pouzdan signal dok se prihodi jos
    ne belaze dosledno kroz ledger (transactions je tek nedavno migriran). */
 let finProjectionMarginPct = (_persistedRaw && typeof _persistedRaw.finProjectionMarginPct === 'number') ? _persistedRaw.finProjectionMarginPct : 20;
-function finMonthCost(m){
-  return allTransactions.filter(t=>t.type==='Odliv' && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
+function finMonthCost(m, year){
+  if(year === undefined) year = TODAY.y;
+  return allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===year && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, year);
 }
 function finProjectionData(){
   const lastM = TODAY.m - 2; // poslednji zavrseni mesec (0-indeksirano)
@@ -8028,6 +8037,7 @@ function openKadarModal(kadar, project){
   document.getElementById('kadarDelete').style.display = kadar.basePrice!=null ? 'block' : 'none';
   document.getElementById('kadarAmountInput').value = kadar.basePrice != null ? kadar.basePrice : '';
   document.getElementById('kadarStatusInput').value = kadar.priceStatus || 'Neplaćeno';
+  document.getElementById('kadarDateInput').value = kadar.priceUpdatedAt ? kadar.priceUpdatedAt.slice(0,10) : toISO(TODAY);
   kadarModalOverlay.classList.add('open');
 }
 document.getElementById('kadarCancel').addEventListener('click', closeKadarModal);
@@ -8047,17 +8057,25 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
   if(!price) return;
   const status = document.getElementById('kadarStatusInput').value;
   const wasNaplaceno = activeKadar.priceStatus === 'Plaćeno';
-  const now = new Date().toISOString();
+  const dateVal = document.getElementById('kadarDateInput').value || toISO(TODAY);
+  const priceUpdatedAt = new Date(dateVal + 'T12:00:00').toISOString();
 
-  const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status, price_updated_at:now }).eq('id', activeKadar.dbId);
+  const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status, price_updated_at:priceUpdatedAt }).eq('id', activeKadar.dbId);
   if(error) return;
-  activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = now;
+  activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = priceUpdatedAt;
   if(status==='Plaćeno' && !wasNaplaceno){
-    await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:toISO(TODAY), kadarDbId:activeKadar.dbId });
+    await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:dateVal, kadarDbId:activeKadar.dbId });
     refreshFinAfterTxChange();
   }
   closeKadarModal();
   renderPricingList();
+});
+document.getElementById('kadarAddExtraChargeBtn').addEventListener('click', ()=>{
+  if(!activeKadar || !activePriceProject) return;
+  const kadar = activeKadar, project = activePriceProject;
+  closeKadarModal();
+  openExtraChargeModal(project, null);
+  document.getElementById('extraChargeDescInput').value = `${kadar.name} (dodatna revizija)`;
 });
 
 const extraChargeModalOverlay = document.getElementById('extraChargeModalOverlay');
