@@ -20,7 +20,7 @@
 // sent it. Swap MODEL below if Google renames/deprecates it.
 
 const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY") ?? "";
-const MODEL = "gemini-2.5-flash";
+const MODEL = "gemini-3.6-flash";
 const MAX_HISTORY_TURNS = 12;
 
 const SYSTEM_PROMPT = `Ti si AI asistent unutar DARKROOM — Titanium OS, internog dashboard-a 3D vizuelizacione studija. Korisnici su članovi tima (dizajneri, menadžeri, vlasnik). Uvek odgovaraj na srpskom jeziku, kratko i konkretno — ovo je radni alat, ne ćaskanje.
