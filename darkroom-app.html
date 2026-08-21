@@ -9286,6 +9286,23 @@ function buildChatContext(){
     const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
     const totalSalary = yearPayrollTotal(null);
     const ovaGod = String(TODAY.y);
+
+    // Pojedinačne plate: salaryEntries se i onako učitava u memoriju samo za
+    // superadmin (RLS na salary_entries), pa je ovaj blok jednako zaštićen
+    // kao i ostatak finansija — canAccessFinance() ovde nije dodatna
+    // restrikcija, samo prati isti gate. Šaljemo samo najnoviji poznati
+    // mesec po zaposlenom (ne celu istoriju) da payload ostane kompaktan.
+    const latestByEmp = {};
+    salaryEntries.forEach(e=>{
+      const cur = latestByEmp[e.employee];
+      if(!cur || e.year>cur.year || (e.year===cur.year && e.month>cur.month)) latestByEmp[e.employee] = e;
+    });
+    const plate_po_zaposlenom = Object.values(latestByEmp).map(e => ({
+      ime: e.employee, godina: e.year, mesec: e.month+1,
+      neto: salNeto(e), bonus: e.bonus, prekovremeno: e.prekovremeno,
+      porez: e.porez, benefiti: salBenefits(e), ukupan_trosak_firme: salUkupno(e),
+    }));
+
     finansije = {
       trenutno_stanje_rsd: Math.round(openingBalance + totalIn - totalOutTx - totalSalary),
       ukupno_svih_godina: { priliv: totalIn, odliv: totalOutTx, plate: totalSalary },
@@ -9295,6 +9312,7 @@ function buildChatContext(){
         odliv: allTransactions.filter(t=>t.type==='Odliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
         plate: yearPayrollTotal(TODAY.y),
       },
+      plate_po_zaposlenom,
     };
   }
 
