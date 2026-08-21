@@ -7279,13 +7279,23 @@ const NEOPOREZIVI_IZNOS = 34221; // RSD mesecno, 2026.
 const STOPA_POREZ = 0.10;
 const STOPA_DOPRINOSI_ZAPOSLENI = 0.199; // 14 + 5.15 + 0.75
 const STOPA_DOPRINOSI_POSLODAVAC = 0.1515; // 10 + 5.15
-function calcPorezIDoprinosi(neto){
+/* Dvoje ljudi imaju drugaciji efektivan porez/doprinosi od standardne formule
+   iznad, pa se standardni rezultat skalira koeficijentom izvedenim iz realnog
+   primera koji je Dusan potvrdio: Dusan (vlasnik) placa vise (osnivacki status),
+   Dalibor ima gradsku subvenciju pa placa manje. */
+const POREZ_KOEFICIJENT = {
+  "Dušan Stević": 1.2824928045130095,
+  "Dalibor Mitić": 0.7937883825542734,
+};
+function calcPorezIDoprinosi(neto, emp){
   neto = parseFloat(neto) || 0;
   if(neto <= 0) return 0;
   let bruto1 = (neto - STOPA_POREZ*NEOPOREZIVI_IZNOS) / (1 - STOPA_DOPRINOSI_ZAPOSLENI - STOPA_POREZ);
   if(bruto1 < NEOPOREZIVI_IZNOS) bruto1 = neto / (1 - STOPA_DOPRINOSI_ZAPOSLENI); // ispod praga, nema poreza na zaradu
   const bruto2 = bruto1 * (1 + STOPA_DOPRINOSI_POSLODAVAC);
-  return Math.round(bruto2 - neto);
+  const porez = Math.round(bruto2 - neto);
+  const koef = POREZ_KOEFICIJENT[emp];
+  return koef ? Math.round(porez * koef * 100) / 100 : porez;
 }
 /* Phase 7: real payroll. Zameni lokalni mock — salary_entries u Supabase je
    sad jedini izvor istine, isti pristup kao Phase 5 za cenovnik/transakcije.
@@ -8763,7 +8773,7 @@ function autoCalcSalPorez(){
   const osn = parseFloat(document.getElementById('salOsnovicaInput').value) || 0;
   const bonus = parseFloat(document.getElementById('salBonusInput').value) || 0;
   const preko = parseFloat(document.getElementById('salPrekoInput').value) || 0;
-  document.getElementById('salPorezInput').value = calcPorezIDoprinosi(osn + bonus + preko);
+  document.getElementById('salPorezInput').value = calcPorezIDoprinosi(osn + bonus + preko, activeSalEmp);
 }
 ['salOsnovicaInput','salBonusInput','salPrekoInput'].forEach(id=>{
   document.getElementById(id).addEventListener('input', autoCalcSalPorez);
@@ -8790,7 +8800,7 @@ function openSalModal(emp, month){
   document.getElementById('salBonusInput').value = existing ? existing.bonus : 0;
   document.getElementById('salPrekoInput').value = existing ? existing.prekovremeno : 0;
   document.getElementById('salDedukcijeInput').value = existing ? existing.dedukcije : 0;
-  document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(lastOsn||0);
+  document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(lastOsn||0, emp);
   document.getElementById('salZdravstvenoInput').value = existing ? (existing.zdravstveno ?? ZDRAVSTVENO_DEFAULT) : ZDRAVSTVENO_DEFAULT;
   document.getElementById('salFitnesInput').checked = existing ? !!existing.fitnes : false;
   document.getElementById('salStatusInput').value = existing ? existing.status : 'Isplaćeno';
