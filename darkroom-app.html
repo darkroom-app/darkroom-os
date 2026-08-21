@@ -7198,7 +7198,10 @@ const monthAbbrRS = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg"];
 
 const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55",
   "Povraćaj poreza":"var(--teal-soft)", "Porezi firma":"var(--gold-deep)", "Računi":"var(--teal)", "Kirija":"var(--coral)", "Hardver":"var(--plum)", "Sajt":"var(--gold)", "Saradnici":"var(--coral-soft)" };
-const openingBalance = 850000;
+// Bilo je hardkodovano na 850.000 kao mock placeholder iz vremena pre prave
+// transakcione istorije — Dusan nema stvarni broj za pocetno stanje pre prve
+// unete transakcije (jan 2021), pa ostaje 0 dok se ne sazna.
+const openingBalance = 0;
 
 /* Poslednja poznata osnovica za nekoga — koristi se samo da predlozi
    default kad se otvara unos za NOV mesec (nastavak prosle), izvedena
