@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       parts: [{ text: `${SYSTEM_PROMPT}\n\nPODACI STUDIJA (JSON):\n${context}` }],
     },
     contents,
-    generationConfig: { temperature: 0.4, maxOutputTokens: 1024 },
+    generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
   };
 
   let geminiResp: Response;
@@ -111,7 +111,14 @@ Deno.serve(async (req) => {
   }
 
   const data = await geminiResp.json();
-  const reply = data?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "";
+  // Thinking-capable models can return internal reasoning as separate parts
+  // (marked `thought: true`) alongside the real answer — only join the
+  // non-thought parts, or a truncated/garbled reasoning trace leaks into
+  // the chat instead of the actual reply.
+  const reply = data?.candidates?.[0]?.content?.parts
+    ?.filter((p: { thought?: boolean }) => !p.thought)
+    ?.map((p: { text?: string }) => p.text ?? "")
+    ?.join("") ?? "";
   if (!reply) {
     const blockReason = data?.promptFeedback?.blockReason;
     return jsonResponse(
