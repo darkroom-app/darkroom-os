@@ -2482,7 +2482,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="modal-field">
       <label>Status</label>
       <select id="kadarStatusInput">
-        <option value="Naplaćeno">Naplaćeno</option>
+        <option value="Plaćeno">Plaćeno</option>
         <option value="Fakturisano">Fakturisano</option>
         <option value="Neplaćeno">Neplaćeno</option>
       </select>
@@ -2513,7 +2513,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="modal-field">
       <label>Status</label>
       <select id="extraChargeStatusInput">
-        <option value="Naplaćeno">Naplaćeno</option>
+        <option value="Plaćeno">Plaćeno</option>
         <option value="Fakturisano">Fakturisano</option>
         <option value="Neplaćeno">Neplaćeno</option>
       </select>
@@ -4923,7 +4923,7 @@ function clientPaymentTotals(clientName){
   allProjects.filter(p=>p.client===clientName).forEach(p=>{
     projectPricedItems(p).forEach(r=>{
       total += r.price;
-      if(r.status==='Naplaćeno') paid += r.price; else owed += r.price;
+      if(r.status==='Plaćeno') paid += r.price; else owed += r.price;
     });
   });
   return { total, paid, owed };
@@ -7829,7 +7829,7 @@ document.getElementById('txSubmit').addEventListener('click', async ()=>{
 });
 
 let activePriceProject = null;
-const priceState = { search:"", client:"Svi klijenti", sortDir:"desc" };
+const priceState = { search:"", client:"Svi klijenti", sortDir:"desc", expandedIds:new Set() };
 function buildPriceClientMenu(){
   const clients = uniqueSorted(allProjects.map(p=>p.client));
   document.getElementById('filterPriceKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
@@ -7874,20 +7874,20 @@ function renderPriceOverview(){
       const st = k.priceStatus || 'Neplaćeno';
       if(st==='Neplaćeno'){ neplaceno += k.basePrice; neplacenoCount++; }
       else if(st==='Fakturisano'){ fakturisano += k.basePrice; fakturisanoCount++; }
-      else if(st==='Naplaćeno'){ naplaceno += k.basePrice; }
-      if(st!=='Naplaćeno') waiting.push({ project:p, label:k.name, amount:k.basePrice, status:st, date:k.priceUpdatedAt });
+      else if(st==='Plaćeno'){ naplaceno += k.basePrice; }
+      if(st!=='Plaćeno') waiting.push({ project:p, label:k.name, amount:k.basePrice, status:st, date:k.priceUpdatedAt });
     });
     extraCharges.filter(c=>c.projectDbId===p.dbId).forEach(c=>{
       if(c.status==='Neplaćeno'){ neplaceno += c.amount; neplacenoCount++; }
       else if(c.status==='Fakturisano'){ fakturisano += c.amount; fakturisanoCount++; }
-      else if(c.status==='Naplaćeno'){ naplaceno += c.amount; }
-      if(c.status!=='Naplaćeno') waiting.push({ project:p, label:c.description, amount:c.amount, status:c.status, date:c.date });
+      else if(c.status==='Plaćeno'){ naplaceno += c.amount; }
+      if(c.status!=='Plaćeno') waiting.push({ project:p, label:c.description, amount:c.amount, status:c.status, date:c.date });
     });
   });
   const kpis = [
     { icon:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.6 2.7h17.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/>', val:neplaceno, label:`Neplaćeno (${neplacenoCount})`, color:"var(--coral)" },
     { icon:'<path d="M17 9V7a5 5 0 0 0-10 0v2"/><rect x="4" y="9" width="16" height="12" rx="2"/>', val:fakturisano, label:`Fakturisano — čeka uplatu (${fakturisanoCount})`, color:"var(--gold-deep)" },
-    { icon:'<path d="M20 6 9 17l-5-5"/>', val:naplaceno, label:"Naplaćeno ukupno", color:"#4C8A55" },
+    { icon:'<path d="M20 6 9 17l-5-5"/>', val:naplaceno, label:"Plaćeno ukupno", color:"#4C8A55" },
     { icon:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>', val: totalKadarCount ? (pricedCount/totalKadarCount)*100 : 0, decimals:1, suffix:'%', label:`Cenjeno (${pricedCount}/${totalKadarCount} kadrova)`, color:"var(--ink)" },
   ];
   document.getElementById('priceKpiRow').innerHTML = kpis.map(k=>`
@@ -7939,7 +7939,7 @@ function renderPricingList(){
     const charges = extraCharges.filter(c=>c.projectDbId===p.dbId);
     const total = projectPricedItems(p).reduce((s,r)=>s+r.price,0);
     return `
-    <div class="price-project" data-pid="${p._id}">
+    <div class="price-project${priceState.expandedIds.has(p._id)?' open':''}" data-pid="${p._id}">
       <div class="price-project-head" data-pid="${p._id}">
         <div>
           <div class="price-project-name">${p.name}</div>
@@ -7959,7 +7959,7 @@ function renderPricingList(){
           <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
             <div class="price-kadar-name">${escapeHtml(k.name)}${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
             <div class="price-kadar-right">${priced
-              ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Naplaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
+              ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
               : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
           </div>`;
         }).join('')}
@@ -7969,7 +7969,7 @@ function renderPricingList(){
         ${charges.map(c=>`
           <div class="price-kadar-row price-charge-row" data-pid="${p._id}" data-cid="${c._id}" style="cursor:pointer;">
             <div class="price-kadar-name">${escapeHtml(c.description)}</div>
-            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Naplaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
+            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Plaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
           </div>`).join('')}
         <div class="price-add-row"><button class="price-add-btn" data-pid="${p._id}">+ Dodatna naplata</button></div>
       </div>
@@ -7978,6 +7978,9 @@ function renderPricingList(){
 
   document.querySelectorAll('.price-project-head').forEach(head=>{
     head.addEventListener('click', ()=>{
+      const pid = Number(head.dataset.pid);
+      if(priceState.expandedIds.has(pid)) priceState.expandedIds.delete(pid);
+      else priceState.expandedIds.add(pid);
       head.closest('.price-project').classList.toggle('open');
     });
   });
@@ -8043,13 +8046,13 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
   const price = parseFloat(document.getElementById('kadarAmountInput').value);
   if(!price) return;
   const status = document.getElementById('kadarStatusInput').value;
-  const wasNaplaceno = activeKadar.priceStatus === 'Naplaćeno';
+  const wasNaplaceno = activeKadar.priceStatus === 'Plaćeno';
   const now = new Date().toISOString();
 
   const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status, price_updated_at:now }).eq('id', activeKadar.dbId);
   if(error) return;
   activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = now;
-  if(status==='Naplaćeno' && !wasNaplaceno){
+  if(status==='Plaćeno' && !wasNaplaceno){
     await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:toISO(TODAY), kadarDbId:activeKadar.dbId });
     refreshFinAfterTxChange();
   }
@@ -8100,11 +8103,11 @@ document.getElementById('extraChargeSubmit').addEventListener('click', async ()=
   if(editingChargeId){
     const charge = extraCharges.find(c=>c._id===editingChargeId);
     if(!charge) return;
-    const wasNaplaceno = charge.status === 'Naplaćeno';
+    const wasNaplaceno = charge.status === 'Plaćeno';
     const { error } = await sb.from('extra_charges').update({ description, amount, date, status }).eq('id', charge.dbId);
     if(error) return;
     Object.assign(charge, { description, amount, date, status });
-    if(status==='Naplaćeno' && !wasNaplaceno){
+    if(status==='Plaćeno' && !wasNaplaceno){
       await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:charge.dbId });
       refreshFinAfterTxChange();
     }
@@ -8113,7 +8116,7 @@ document.getElementById('extraChargeSubmit').addEventListener('click', async ()=
     if(error) return;
     const newCharge = { _id:nextId(), dbId:data.id, projectDbId:data.project_id, description:data.description, amount:data.amount, date:data.date, status:data.status };
     extraCharges.unshift(newCharge);
-    if(status==='Naplaćeno'){
+    if(status==='Plaćeno'){
       await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:newCharge.dbId });
       refreshFinAfterTxChange();
     }
