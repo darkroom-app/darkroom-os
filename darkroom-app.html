@@ -7973,8 +7973,8 @@ function renderPricingList(){
     <div class="price-project${priceState.expandedIds.has(p._id)?' open':''}" data-pid="${p._id}">
       <div class="price-project-head" data-pid="${p._id}">
         <div>
-          <div class="price-project-name">${p.name}</div>
-          <div class="price-project-meta">${p.code} · ${p.client} · ${p.kadrovi.length} kadrova</div>
+          <div class="price-project-name">${p.code} — ${escapeHtml(p.name)}</div>
+          <div class="price-project-meta">${escapeHtml(p.client)} · ${p.kadrovi.length} kadrova · ${formatDateHuman(fromISO(p.startDate))}</div>
         </div>
         <div class="price-project-right">
           <div class="price-project-total">${fmtRSD(total)}</div>
