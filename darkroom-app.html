@@ -8522,7 +8522,7 @@ function raiseHistoryData(emp, year){
   const events = [];
   for(let i=1;i<entries.length;i++){
     if(entries[i].osn !== entries[i-1].osn){
-      const pct = ((entries[i].osn - entries[i-1].osn)/entries[i-1].osn)*100;
+      const pct = entries[i-1].osn ? ((entries[i].osn - entries[i-1].osn)/entries[i-1].osn)*100 : null;
       events.push({ year:entries[i].year, month:entries[i].month, from:entries[i-1].osn, to:entries[i].osn, pct });
     }
   }
@@ -8602,7 +8602,7 @@ function renderRaiseHistoryList(events){
       <div class="lb-info">
         <div class="lb-name">${fmtRSD(ev.from)} → ${fmtRSD(ev.to)}</div>
       </div>
-      <div class="lb-value" style="color:${ev.pct>=0?'#4C8A55':'var(--coral)'}; font-weight:700;">${ev.pct>=0?'▲':'▼'} ${Math.abs(ev.pct).toFixed(1)}%</div>
+      <div class="lb-value" style="color:${ev.pct==null||ev.pct>=0?'#4C8A55':'var(--coral)'}; font-weight:700;">${ev.pct==null?'Nova osnovica':(ev.pct>=0?'▲':'▼')+' '+Math.abs(ev.pct).toFixed(1)+'%'}</div>
     </div>`).join('') : '<div class="empty-state" style="padding:12px 0;">Nema promena osnovice u ovom periodu.</div>';
 }
 function raiseHistoryScopeYear(){
@@ -8644,7 +8644,7 @@ function generateRaiseHistoryIzvod(){
   const totalPct = first.osn ? ((last.osn-first.osn)/first.osn)*100 : 0;
   const rows = events.length ? events.map(ev=>`
     <tr><td>${monthNamesFull[ev.month]} ${ev.year}.</td><td>${fmtRSD(ev.from)}</td><td>${fmtRSD(ev.to)}</td>
-    <td style="color:${ev.pct>=0?'#2f7a3d':'#c0392b'};">${ev.pct>=0?'▲':'▼'} ${Math.abs(ev.pct).toFixed(1)}%</td></tr>`).join('')
+    <td style="color:${ev.pct==null||ev.pct>=0?'#2f7a3d':'#c0392b'};">${ev.pct==null?'Nova osnovica':(ev.pct>=0?'▲':'▼')+' '+Math.abs(ev.pct).toFixed(1)+'%'}</td></tr>`).join('')
     : `<tr><td colspan="4">Nema promena osnovice u ovom periodu.</td></tr>`;
   const html = `<!DOCTYPE html><html lang="sr"><head><meta charset="UTF-8"><title>Izvod — ${escapeHtml(emp)}</title>
 <style>
