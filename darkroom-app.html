@@ -2446,7 +2446,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field">
       <label>Kategorija</label>
-      <input type="text" id="txCategoryInput" placeholder="npr. Uplata klijenta, Zakup...">
+      <select id="txCategoryInput"></select>
     </div>
     <div class="modal-field">
       <label>Opis / Strana</label>
@@ -7251,7 +7251,8 @@ const monthAbbrRS = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg"];
    phantom project codes, disconnected from real kadrovi) are gone; nothing
    left to seed here. */
 
-const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55" };
+const categoryColorVar = { "Plate":"var(--gold)", "Zakup prostora":"var(--coral)", "Softver":"var(--sky)", "Oprema":"var(--plum)", "Ostalo":"var(--sage)", "Uplata klijenta":"#4C8A55",
+  "Povraćaj poreza":"var(--teal-soft)", "Porezi firma":"var(--gold-deep)", "Računi":"var(--teal)", "Kirija":"var(--coral)", "Hardver":"var(--plum)", "Sajt":"var(--gold)", "Saradnici":"var(--coral-soft)" };
 const openingBalance = 850000;
 
 /* Poslednja poznata osnovica za nekoga — koristi se samo da predlozi
@@ -7789,6 +7790,24 @@ bindCalFilter('filterTxType', (val)=>{ txState.type = val; renderTxList(); });
 
 const txModalOverlay = document.getElementById('txModalOverlay');
 let editingTxId = null;
+/* "Uplata klijenta" nije ovde jer se ne unosi rucno kroz ovaj modal — te
+   transakcije se automatski generisu iz Finansije→Projekti (avansi/rate),
+   isto kao i ranije. Ako se ipak otvori za izmenu, populateTxCategorySelect
+   je dodaje kao dodatnu opciju da se ne izgubi pri cuvanju. */
+const TX_CATEGORIES = {
+  Priliv: ["Povraćaj poreza", "Ostalo"],
+  Odliv: ["Porezi firma", "Računi", "Kirija", "Hardver", "Softver", "Sajt", "Saradnici", "Ostalo"],
+};
+function populateTxCategorySelect(type, selected){
+  const sel = document.getElementById('txCategoryInput');
+  const list = TX_CATEGORIES[type] || TX_CATEGORIES.Priliv;
+  const opts = selected && !list.includes(selected) ? [selected, ...list] : list;
+  sel.innerHTML = opts.map(c=>`<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('');
+  sel.value = selected && opts.includes(selected) ? selected : opts[0];
+}
+document.getElementById('txTypeInput').addEventListener('change', ()=>{
+  populateTxCategorySelect(document.getElementById('txTypeInput').value);
+});
 function refreshFinAfterTxChange(){
   buildTxCategoryMenu(); buildTxYearMenu(); renderTxList(); renderFinHero(); renderFinFlowChart(); renderFinDonut(); renderRecentTx();
   renderFinProjection(); renderTopValueProjects();
@@ -7804,7 +7823,7 @@ function openTxModal(tx){
   document.getElementById('txDelete').style.display = 'block';
   document.getElementById('txDateInput').value = tx.date;
   document.getElementById('txTypeInput').value = tx.type;
-  document.getElementById('txCategoryInput').value = tx.category;
+  populateTxCategorySelect(tx.type, tx.category);
   document.getElementById('txDescInput').value = tx.desc;
   document.getElementById('txAmountInput').value = tx.amount;
   document.getElementById('txMethodInput').value = tx.method;
@@ -7815,7 +7834,9 @@ document.getElementById('newTxBtn').addEventListener('click', ()=>{
   document.getElementById('txTitle').textContent = "Nova transakcija";
   document.getElementById('txSubmit').textContent = "Dodaj transakciju";
   document.getElementById('txDelete').style.display = 'none';
-  ['txDescInput','txAmountInput','txCategoryInput'].forEach(id=>document.getElementById(id).value='');
+  ['txDescInput','txAmountInput'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('txTypeInput').value = 'Priliv';
+  populateTxCategorySelect('Priliv');
   document.getElementById('txDateInput').value = toISO(TODAY);
   txModalOverlay.classList.add('open');
 });
