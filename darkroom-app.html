@@ -424,7 +424,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-flow-legend-dot{ width:8px; height:8px; border-radius:3px; }
 
 /* Trend chart — hand-rolled gradient area/line (replaces the old bar chart) */
-.fin-trend-chart{ height:96px; }
+.fin-trend-chart{ height:150px; }
 .fin-trend-chart svg{ display:block; overflow:visible; }
 .fin-trend-chart circle{ opacity:0; transition:opacity .4s ease .9s; }
 .fin-trend-chart.shown circle{ opacity:1; }
@@ -887,6 +887,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .donut-legend-left{ display:flex; align-items:center; gap:8px; color:var(--ink-dim); }
 .donut-dot{ width:9px; height:9px; border-radius:50%; flex-shrink:0; }
 .donut-legend-item b{ font-family:var(--font-display); font-size:12px; }
+.donut-legend-right{ display:flex; align-items:baseline; gap:6px; }
+.donut-legend-pct{ font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); min-width:34px; text-align:right; }
 
 /* leaderboard bars */
 .lb-list{ display:flex; flex-direction:column; gap:13px; }
@@ -7415,7 +7417,7 @@ function renderFinFlowChart(){
   const wrap = document.getElementById('finFlowChart');
   wrap.classList.remove('shown');
   const n = monthAbbrRS.length;
-  const W = 640, H = 96, padT = 14, padB = 6;
+  const W = 640, H = 150, padT = 20, padB = 10;
   const max = Math.max(...monthIn, ...monthOut, 1);
   const xFor = i => (i/(n-1)) * W;
   const yFor = v => padT + (1-(v/max)) * (H-padT-padB);
@@ -7511,7 +7513,7 @@ function renderModernDonut(ringId, legendId, items){
   document.getElementById(legendId).innerHTML = items.map(i=>`
     <div class="donut-legend-item">
       <span class="donut-legend-left"><span class="donut-dot" style="background:${i.color}"></span>${escapeHtml(i.label)}</span>
-      <b>${fmtK(i.value)}</b>
+      <span class="donut-legend-right"><b>${fmtK(i.value)}</b><span class="donut-legend-pct">${(total>0 ? (i.value/total)*100 : 0).toFixed(1)}%</span></span>
     </div>`).join('');
   requestAnimationFrame(()=>{
     ring.querySelectorAll('.modern-donut-seg').forEach((seg,i)=>{
