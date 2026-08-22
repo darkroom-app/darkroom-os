@@ -9036,7 +9036,7 @@ window.addEventListener('popstate', (e)=>{
   showView(v);
   _histSyncing = false;
 });
-history.replaceState({view:'pregled'}, '', location.href);
+history.replaceState({view:'pregled'}, '', location.pathname + location.search);
 document.querySelectorAll('.nav a').forEach(a=>{
   a.addEventListener('click', (e)=>{
     e.preventDefault();
