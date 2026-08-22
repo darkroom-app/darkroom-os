@@ -7988,7 +7988,7 @@ function renderPricingList(){
           const priced = k.basePrice != null;
           return `
           <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
-            <div class="price-kadar-name">${escapeHtml(k.name)}${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
+            <div class="price-kadar-name">${escapeHtml(k.name)} <span class="price-extra-hint">· ${escapeHtml(k.type)}</span>${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
             <div class="price-kadar-right">${priced
               ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
               : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
