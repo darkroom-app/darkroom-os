@@ -81,7 +81,7 @@ body{
   position:relative; z-index:1;
   overflow-y:auto;
 }
-.brand{ display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:2px 6px 22px; }
+.brand{ display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:2px 6px 22px; cursor:pointer; }
 .brand-logo-img{ width:118px; height:auto; display:block; }
 .brand-sub{ font-family:var(--font-mono); font-size:8.5px; color:var(--gold-deep); letter-spacing:0.09em; }
 
@@ -334,11 +334,15 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .login-hint{ margin-top:14px; font-size:11px; color:var(--ink-faint); text-align:center; }
 
 /* profil */
-.profile-page-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); padding:32px; max-width:480px; }
-.profile-page-avatar{ width:74px; height:74px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:24px; color:#fff; margin-bottom:16px; }
-.profile-page-name{ font-family:var(--font-display); font-weight:700; font-size:20px; }
+.profile-page-card{ background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg); max-width:480px; overflow:hidden; }
+.profile-page-banner{ height:80px; }
+.profile-page-body{ padding:0 32px 32px; }
+.profile-page-avatar{ width:84px; height:84px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:26px; color:#fff; margin-top:-42px; border:4px solid var(--card); box-shadow:0 2px 10px rgba(0,0,0,0.1); }
+.profile-page-name{ font-family:var(--font-display); font-weight:700; font-size:20px; margin-top:14px; }
 .profile-page-role{ color:var(--ink-dim); font-size:13px; margin-top:2px; }
-.profile-page-info{ margin-top:20px; display:flex; flex-direction:column; gap:10px; }
+.profile-page-badges{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+.profile-page-stats{ display:flex; gap:8px; margin-top:18px; }
+.profile-page-info{ margin-top:20px; padding-top:18px; border-top:1px solid var(--border); display:flex; flex-direction:column; gap:10px; }
 .profile-page-row{ display:flex; align-items:center; gap:10px; font-size:12.5px; color:var(--ink-dim); }
 .profile-page-row svg{ width:16px; height:16px; flex-shrink:0; color:var(--ink-faint); }
 .profile-page-actions{ display:flex; gap:10px; margin-top:24px; }
@@ -8084,9 +8088,9 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
   const price = parseFloat(document.getElementById('kadarAmountInput').value);
   const chargeOpen = !document.getElementById('kadarInlineChargeSection').hidden;
   const chargeAmount = chargeOpen ? parseFloat(document.getElementById('kadarChargeAmountInput').value) : NaN;
-  if(!price && !chargeAmount) return;
+  if(isNaN(price) && isNaN(chargeAmount)) return;
 
-  if(price){
+  if(!isNaN(price)){
     const status = document.getElementById('kadarStatusInput').value;
     const wasNaplaceno = activeKadar.priceStatus === 'Plaćeno';
     const dateVal = document.getElementById('kadarDateInput').value || toISO(TODAY);
@@ -8095,13 +8099,13 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
     const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status, price_updated_at:priceUpdatedAt }).eq('id', activeKadar.dbId);
     if(error) return;
     activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = priceUpdatedAt;
-    if(status==='Plaćeno' && !wasNaplaceno){
+    if(status==='Plaćeno' && !wasNaplaceno && price>0){
       await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:dateVal, kadarDbId:activeKadar.dbId });
       refreshFinAfterTxChange();
     }
   }
 
-  if(chargeAmount){
+  if(!isNaN(chargeAmount)){
     const description = document.getElementById('kadarChargeDescInput').value.trim() || `${activeKadar.name} (dodatna revizija)`;
     const date = document.getElementById('kadarChargeDateInput').value || toISO(TODAY);
     const status = document.getElementById('kadarChargeStatusInput').value;
@@ -8109,7 +8113,7 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
     if(!error){
       const newCharge = { _id:nextId(), dbId:data.id, projectDbId:data.project_id, description:data.description, amount:data.amount, date:data.date, status:data.status };
       extraCharges.unshift(newCharge);
-      if(status==='Plaćeno'){
+      if(status==='Plaćeno' && chargeAmount>0){
         await txAutoLogPayment({ desc:`${activePriceProject.name} — ${description}`, amount:chargeAmount, date, extraChargeDbId:newCharge.dbId });
         refreshFinAfterTxChange();
       }
@@ -8163,7 +8167,7 @@ document.getElementById('extraChargeSubmit').addEventListener('click', async ()=
   const amount = parseFloat(document.getElementById('extraChargeAmountInput').value);
   const date = document.getElementById('extraChargeDateInput').value || toISO(TODAY);
   const status = document.getElementById('extraChargeStatusInput').value;
-  if(!description || !amount) return;
+  if(!description || isNaN(amount)) return;
 
   if(editingChargeId){
     const charge = extraCharges.find(c=>c._id===editingChargeId);
@@ -8172,7 +8176,7 @@ document.getElementById('extraChargeSubmit').addEventListener('click', async ()=
     const { error } = await sb.from('extra_charges').update({ description, amount, date, status }).eq('id', charge.dbId);
     if(error) return;
     Object.assign(charge, { description, amount, date, status });
-    if(status==='Plaćeno' && !wasNaplaceno){
+    if(status==='Plaćeno' && !wasNaplaceno && amount>0){
       await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:charge.dbId });
       refreshFinAfterTxChange();
     }
@@ -8181,7 +8185,7 @@ document.getElementById('extraChargeSubmit').addEventListener('click', async ()=
     if(error) return;
     const newCharge = { _id:nextId(), dbId:data.id, projectDbId:data.project_id, description:data.description, amount:data.amount, date:data.date, status:data.status };
     extraCharges.unshift(newCharge);
-    if(status==='Plaćeno'){
+    if(status==='Plaćeno' && amount>0){
       await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:newCharge.dbId });
       refreshFinAfterTxChange();
     }
@@ -9044,6 +9048,7 @@ document.querySelectorAll('.nav a').forEach(a=>{
     if(v) showView(v);
   });
 });
+document.querySelector('.brand').addEventListener('click', ()=> showView('pregled'));
 
 /* ==== NOTIFICATIONS (prikazano u "Obaveštenja" panelu na Pregledu) ==== */
 let notifications = [];
@@ -9882,11 +9887,26 @@ function renderProfilePage(){
   const avatarHtml = avatar ? `style="background-image:url('${avatar}');background-size:cover;background-position:center;"` : `style="background:${grad};"`;
   const hireLabel = formatIsoDateHuman(u.hireDate);
   const birthLabel = formatIsoDateHuman(u.birthDate);
+  const year = TODAY.y;
+  const allotment = u.slobodniDani != null ? u.slobodniDani : 20;
+  const preostalo = Math.max(0, allotment - leaveDaysUsed(u.name, 'odmor', year));
+  const bolovanje = leaveDaysUsed(u.name, 'bolovanje', year);
+  const placeno = leaveDaysUsed(u.name, 'placeno', year);
   card.innerHTML = `
+    <div class="profile-page-banner" style="background:${grad};"></div>
+    <div class="profile-page-body">
     <div class="profile-page-avatar" ${avatarHtml}>${avatar ? '' : initials}</div>
     <div class="profile-page-name">${escapeHtml(u.name)}</div>
     <div class="profile-page-role">${escapeHtml(u.role)}</div>
-    <span class="tag ${u.status==='Aktivan' ? 'tag-final' : 'tag-review'}" style="margin-top:8px; display:inline-block;">${u.status}</span>
+    <div class="profile-page-badges">
+      <span class="tag ${u.status==='Aktivan' ? 'tag-final' : 'tag-review'}">${u.status}</span>
+      <span class="tag ${accessTagClass[u.access] || 'tag-hold'}">${accessLabel[u.access] || u.access}</span>
+    </div>
+    <div class="profile-page-stats">
+      <div class="top-pill"><div class="tp-val">${preostalo} <span>dana</span></div><div class="tp-label">Preostalo slobodnih</div></div>
+      <div class="top-pill"><div class="tp-val">${bolovanje} <span>dana</span></div><div class="tp-label">Bolovanje</div></div>
+      <div class="top-pill"><div class="tp-val">${placeno} <span>dana</span></div><div class="tp-label">Plaćeno odsustvo</div></div>
+    </div>
     <div class="profile-page-info">
       <div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(u.emailBusiness || '—')} (poslovni)</span></div>
       ${u.emailPrivate ? `<div class="profile-page-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 6 12 13 2 6"/><path d="M2 6h20v12H2z"/></svg><span>${escapeHtml(u.emailPrivate)} (privatni)</span></div>` : ''}
@@ -9898,6 +9918,7 @@ function renderProfilePage(){
     <div class="profile-page-actions">
       <button class="modal-submit" id="profileEditBtn" style="flex:1;">Izmeni profil</button>
       <button class="modal-cancel" id="profileLogoutBtn" style="flex:1;">Odjavi se</button>
+    </div>
     </div>`;
   document.getElementById('profileEditBtn').addEventListener('click', ()=> openTeamModal(u));
   document.getElementById('profileLogoutBtn').addEventListener('click', logout);
