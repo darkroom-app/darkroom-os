@@ -2121,7 +2121,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
       <div class="stat-tab-panel active" id="statTabProjekti">
 
-        <div class="kpi-row" id="kpiRow" style="grid-template-columns:repeat(5,1fr);"></div>
+        <div class="kpi-row" id="kpiRow" style="grid-template-columns:repeat(3,1fr);"></div>
 
         <div class="stat-grid-2">
           <div class="stat-panel">
@@ -6593,16 +6593,12 @@ function empYearTotal(name){
 function renderKpiRow(){
   const totalProjects = allProjects.length;
   const avgDuration = avgProjectDuration();
-  const totalRevenue = allProjects.reduce((s,p)=>s+projectValueByCode(p.code),0);
-  const avgProjectValue = totalProjects ? Math.round(totalRevenue/totalProjects) : 0;
   const monthly = monthlyOutput(allRounds());
   const topMonthIdx = monthly.indexOf(Math.max(...monthly));
   const kpis = [
     { icon:'<path d="M3 7 12 2l9 5-9 5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/>', val:totalProjects, suffix:"", label:"Ukupno projekata (2026)" },
     { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', val:avgDuration, suffix:" dana", label:"Prosečno trajanje projekta" },
-    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:totalRevenue, decimals:0, prefix:"", suffix:" RSD", label:"Ukupan prihod (2026)" },
     { icon:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', val:null, label:"Najaktivniji mesec", text:monthNamesFull[topMonthIdx] },
-    { icon:'<path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>', val:avgProjectValue, decimals:0, suffix:" RSD", label:"Prosečna vrednost projekta" },
   ];
   document.getElementById('kpiRow').innerHTML = kpis.map(k=>`
     <div class="kpi-card">
@@ -6613,8 +6609,6 @@ function renderKpiRow(){
   const cuEls = document.querySelectorAll('#kpiRow .cu');
   cuEls[0] && animateCountUp(cuEls[0], totalProjects);
   cuEls[1] && animateCountUp(cuEls[1], avgDuration);
-  cuEls[2] && animateCountUp(cuEls[2], totalRevenue);
-  cuEls[3] && animateCountUp(cuEls[3], avgProjectValue);
 }
 
 function projectValueLeaderboard(){
