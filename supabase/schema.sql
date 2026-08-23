@@ -780,3 +780,24 @@ create policy "authenticated can delete calendar_events" on public.calendar_even
 create index calendar_events_date_idx on public.calendar_events (start_date, end_date);
 
 create index salary_entries_employee_idx on public.salary_entries (employee_id);
+
+
+-- ==== Phase 9: studio-wide high scores for the dashboard mini-games ====
+-- One row per (employee, game) holding that person's personal best — not a
+-- full attempt history, so this stays small regardless of how much anyone
+-- plays. The client only ever upserts when a new score actually beats the
+-- existing row (see reportGameScore() in darkroom-app.html), so achieved_at
+-- reflects when that best was actually set, not the last time played.
+
+create table public.game_scores (
+  employee_id uuid not null references public.team_members(id) on delete cascade,
+  game text not null,             -- 'dino' | 'mario'
+  best_score int not null,
+  achieved_at timestamptz not null default now(),
+  primary key (employee_id, game)
+);
+alter table public.game_scores enable row level security;
+
+create policy "authenticated can read game_scores" on public.game_scores for select to authenticated using (true);
+create policy "own can insert game_scores" on public.game_scores for insert to authenticated with check (employee_id = auth.uid());
+create policy "own can update game_scores" on public.game_scores for update to authenticated using (employee_id = auth.uid()) with check (employee_id = auth.uid());

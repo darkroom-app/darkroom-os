@@ -1706,7 +1706,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="panel-sub" id="dinoScoreSub">Skor: 0</div>
         </div>
         <div class="corner-tab-row">
-          <button type="button" class="corner-tab-btn active" data-corner-tab="game">Igrica</button>
+          <button type="button" class="corner-tab-btn active" data-corner-tab="game">Dino</button>
+          <button type="button" class="corner-tab-btn" data-corner-tab="mario">Mario</button>
           <button type="button" class="corner-tab-btn" data-corner-tab="breathe">Disanje</button>
         </div>
         <div class="corner-tab-panel" id="cornerPanelGame">
@@ -1715,12 +1716,19 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="dino-overlay" id="dinoOverlay">Klikni ili pritisni SPACE za start</div>
           </div>
         </div>
+        <div class="corner-tab-panel" id="cornerPanelMario" style="display:none;">
+          <div class="dino-wrap">
+            <canvas id="marioCanvas"></canvas>
+            <div class="dino-overlay" id="marioOverlay">Klikni ili pritisni SPACE za start</div>
+          </div>
+        </div>
         <div class="corner-tab-panel" id="cornerPanelBreathe" style="display:none;">
           <div class="breathe-wrap">
             <div class="breathe-circle" id="breatheCircle"></div>
             <div class="breathe-label" id="breatheLabel">Udahni...</div>
           </div>
         </div>
+        <div class="panel-sub" id="cornerStudioRecord" style="padding:0 18px 12px;"></div>
       </div>
     </div>
 
@@ -9519,6 +9527,34 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
   });
 })();
 
+/* Studio-wide high score (table: game_scores, employee_id+game primary key,
+   one row per person per game holding their personal best) — separate from
+   the per-browser localStorage "best" each game already keeps, which stays
+   as the instant-feedback fallback if the table isn't reachable/created
+   yet. Only ever upsert when the new score actually beats the person's
+   existing row, so this stays a leaderboard of bests, not a full history. */
+async function reportGameScore(game, score){
+  const me = currentUser();
+  if(!me || !sb) return;
+  try{
+    const { data: existing } = await sb.from('game_scores').select('best_score').eq('employee_id', me.authId).eq('game', game).maybeSingle();
+    if(existing && existing.best_score >= score) return;
+    await sb.from('game_scores').upsert({ employee_id: me.authId, game, best_score: score, achieved_at: new Date().toISOString() }, { onConflict: 'employee_id,game' });
+    refreshStudioRecord(game);
+  } catch(e){ /* table may not exist yet — local best still works regardless */ }
+}
+async function refreshStudioRecord(game){
+  const el = document.getElementById('cornerStudioRecord');
+  if(!el || !sb) return;
+  try{
+    const { data, error } = await sb.from('game_scores').select('employee_id, best_score').eq('game', game).order('best_score', { ascending:false }).limit(1);
+    if(error || !data || !data.length){ el.textContent = ''; return; }
+    const row = data[0];
+    const person = teamMembers.find(t=>t.authId===row.employee_id);
+    el.textContent = `🏆 Studio rekord: ${person ? person.name : 'Nepoznato'} — ${row.best_score}`;
+  } catch(e){ el.textContent = ''; }
+}
+
 /* ==== Dashboard "Dubai Corner" — mala Dino Runner igra (canvas, pixel-art
    sprite u google-dino stilu) + vežba disanja za smirenje, kao dva taba u
    istom boksu. Čisto vizuelna razonoda, ne čuva se nigde osim najboljeg
@@ -9580,6 +9616,7 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
     dead = true;
     best = Math.max(best, Math.floor(score));
     localStorage.setItem('dinoBest', String(best));
+    reportGameScore('dino', best);
     overlay.innerHTML = `Kraj — skor ${Math.floor(score)} · rekord ${best}<br>Klikni za restart`;
     overlay.style.display = 'flex';
   }
@@ -9618,6 +9655,7 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
 
   resize();
   scoreSub.textContent = `Skor: 0 · rekord ${best}`;
+  refreshStudioRecord('dino');
   overlay.addEventListener('click', jump);
   document.addEventListener('keydown', e=>{
     if(e.code !== 'Space' || !gameActive) return;
@@ -9645,26 +9683,152 @@ const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Work
     requestAnimationFrame(breatheTick);
   }
 
-  document.querySelectorAll('.corner-tab-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const tab = btn.dataset.cornerTab;
-      document.querySelectorAll('.corner-tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
-      document.getElementById('cornerPanelGame').style.display = tab==='game' ? '' : 'none';
-      document.getElementById('cornerPanelBreathe').style.display = tab==='breathe' ? '' : 'none';
-      scoreSub.style.display = tab==='game' ? '' : 'none';
-      if(tab==='game'){
-        gameActive = true;
-        breatheActive = false;
-        if(running) requestAnimationFrame(loop);
-      } else {
-        gameActive = false;
-        breatheActive = true;
-        breatheStart = null;
-        requestAnimationFrame(breatheTick);
-      }
-    });
-  });
+  window.__dinoGame = {
+    activate(){ gameActive = true; if(running) requestAnimationFrame(loop); },
+    deactivate(){ gameActive = false; },
+  };
+  window.__breatheGame = {
+    activate(){ breatheActive = true; breatheStart = null; requestAnimationFrame(breatheTick); },
+    deactivate(){ breatheActive = false; },
+  };
 })();
+
+/* Mario reskin of the exact same runner mechanic as Dino above (same
+   physics/obstacle-spawn/collision loop, different sprites/colors/score
+   key) rather than a real platformer — a side-scrolling jump-and-run
+   fits this dashboard-corner "quick break" slot the same way Dino does;
+   a true multi-level Mario would be a much bigger separate project. */
+(function(){
+  const canvas = document.getElementById('marioCanvas');
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const wrap = canvas.parentElement;
+  const overlay = document.getElementById('marioOverlay');
+  const scoreSub = document.getElementById('dinoScoreSub');
+  let running = false, dead = false, score = 0, gameActive = false;
+  let best = Number(localStorage.getItem('marioBest') || 0);
+  let mario, obstacles, groundY, speed, frame;
+  const gravity = 0.6;
+
+  const MARIO_A = ["001111000","001110000","011111100","111111110","011111100","001110000","011111100","010101010","011001100"];
+  const MARIO_B = ["001111000","001110000","011111100","111111110","011111100","001110000","011111100","001101000","011001100"];
+  const GOOMBA = ["01110","11111","11111","01110","01110","10001","10001","11011"];
+
+  function cssVar(name, fallback){
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function drawPixels(rows, x, y, w, h, color){
+    const cols = rows[0].length, rc = rows.length;
+    const cw = w/cols, ch = h/rc;
+    ctx.fillStyle = color;
+    for(let r=0;r<rc;r++){
+      for(let c=0;c<cols;c++){
+        if(rows[r][c]==='1') ctx.fillRect(x+c*cw, y+r*ch, cw+0.5, ch+0.5);
+      }
+    }
+  }
+  function resize(){
+    canvas.width = wrap.clientWidth;
+    canvas.height = wrap.clientHeight;
+    groundY = canvas.height - 18;
+  }
+  window.addEventListener('resize', resize);
+
+  function reset(){
+    resize();
+    mario = { x:20, y:groundY-24, w:20, h:24, vy:0, jumping:false };
+    obstacles = [];
+    speed = 4.2;
+    score = 0;
+    frame = 0;
+    dead = false;
+  }
+  function start(){
+    reset();
+    running = true;
+    overlay.style.display = 'none';
+    requestAnimationFrame(loop);
+  }
+  function endGame(){
+    running = false;
+    dead = true;
+    best = Math.max(best, Math.floor(score));
+    localStorage.setItem('marioBest', String(best));
+    reportGameScore('mario', best);
+    overlay.innerHTML = `Kraj — skor ${Math.floor(score)} · rekord ${best}<br>Klikni za restart`;
+    overlay.style.display = 'flex';
+  }
+  function jump(){
+    if(dead || !running){ start(); return; }
+    if(!mario.jumping){ mario.vy = -10; mario.jumping = true; }
+  }
+  function draw(){
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = cssVar('--border', '#ddd');
+    ctx.fillRect(0, groundY, canvas.width, 2);
+    const legFrame = mario.jumping ? MARIO_A : (Math.floor(frame/8)%2===0 ? MARIO_A : MARIO_B);
+    drawPixels(legFrame, mario.x, mario.y, mario.w, mario.h, cssVar('--coral', '#d97757'));
+    obstacles.forEach(o=> drawPixels(GOOMBA, o.x, groundY-o.h, o.w, o.h, cssVar('--gold-deep', '#8a5f13')));
+  }
+  function loop(){
+    if(!running || !gameActive) return;
+    frame++;
+    mario.vy += gravity;
+    mario.y += mario.vy;
+    if(mario.y > groundY-mario.h){ mario.y = groundY-mario.h; mario.vy = 0; mario.jumping = false; }
+    if(frame % Math.max(38, 85-Math.floor(speed*3)) === 0){
+      obstacles.push({ x:canvas.width, w:9+Math.random()*6, h:16+Math.random()*14 });
+    }
+    obstacles.forEach(o=> o.x -= speed);
+    obstacles = obstacles.filter(o=> o.x+o.w > 0);
+    for(const o of obstacles){
+      if(mario.x < o.x+o.w && mario.x+mario.w > o.x && mario.y+mario.h > groundY-o.h){ endGame(); break; }
+    }
+    score += speed*0.05;
+    speed += 0.0015;
+    scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`;
+    draw();
+    if(running && gameActive) requestAnimationFrame(loop);
+  }
+
+  resize();
+  overlay.addEventListener('click', jump);
+  document.addEventListener('keydown', e=>{
+    if(e.code !== 'Space' || !gameActive) return;
+    const tag = document.activeElement && document.activeElement.tagName;
+    if(tag === 'INPUT' || tag === 'TEXTAREA') return;
+    const pregled = document.getElementById('view-pregled');
+    if(!pregled || !pregled.classList.contains('active')) return;
+    e.preventDefault();
+    jump();
+  });
+
+  window.__marioGame = {
+    activate(){ gameActive = true; if(!running) resize(); scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`; if(running) requestAnimationFrame(loop); },
+    deactivate(){ gameActive = false; },
+  };
+})();
+
+/* Single shared tab-click handler drives all three corner-panel "games"
+   (dino/mario/breathe) via the activate()/deactivate() hooks each of
+   their own IIFEs exposed above — keeps the three games' internal state
+   fully independent while still coordinating which one is "live". */
+document.querySelectorAll('.corner-tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.dataset.cornerTab;
+    document.querySelectorAll('.corner-tab-btn').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('cornerPanelGame').style.display = tab==='game' ? '' : 'none';
+    document.getElementById('cornerPanelMario').style.display = tab==='mario' ? '' : 'none';
+    document.getElementById('cornerPanelBreathe').style.display = tab==='breathe' ? '' : 'none';
+    document.getElementById('dinoScoreSub').style.display = (tab==='game'||tab==='mario') ? '' : 'none';
+    window.__dinoGame?.[tab==='game' ? 'activate' : 'deactivate']();
+    window.__marioGame?.[tab==='mario' ? 'activate' : 'deactivate']();
+    window.__breatheGame?.[tab==='breathe' ? 'activate' : 'deactivate']();
+    if(tab==='breathe') document.getElementById('cornerStudioRecord').textContent = '';
+    else refreshStudioRecord(tab==='mario' ? 'mario' : 'dino');
+  });
+});
 
 pushChatMessage('bot', "Zdravo! 👋 Ja sam DR Asistent. Mogu da odgovorim na pitanja o projektima, klijentima, timu, rasporedu/odsustvima i DR Playbook pravilniku. Šta te zanima?");
 
