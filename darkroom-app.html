@@ -1224,6 +1224,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ic-comment{ background:var(--teal-soft); color:var(--teal); }
 .ic-render{ background:var(--gold-soft); color:var(--gold-deep); }
 .ic-warn{ background:var(--coral-soft); color:var(--coral); }
+.ic-leave{ background:var(--plum-soft); color:var(--plum); }
 .notif-text{ font-size:11.5px; line-height:1.4; }
 .notif-time{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:2px; display:block; }
 .notif-section-label{ font-family:var(--font-mono); font-size:8.5px; font-weight:700; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.05em; padding:10px 0 5px; }
@@ -1268,6 +1269,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 }
 .todo-row:hover .todo-delete{ opacity:1; }
 .todo-delete:hover{ background:var(--coral-soft); color:var(--coral); }
+.leave-request-row{ display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:6px; border-radius:10px; background:var(--plum-soft); }
+.leave-request-text{ font-size:11.5px; flex:1; min-width:0; color:var(--ink); }
+.leave-request-actions{ display:flex; gap:6px; flex-shrink:0; }
+.leave-approve-btn, .leave-reject-btn{ font-family:var(--font-mono); font-size:9.5px; padding:5px 9px; border-radius:8px; border:none; cursor:pointer; }
+.leave-approve-btn{ background:var(--plum); color:#fff; }
+.leave-reject-btn{ background:var(--card); color:var(--ink-dim); border:1px solid var(--border); }
 .todo-delete svg{ width:12px; height:12px; }
 .todo-add{ display:flex; gap:8px; margin-top:10px; flex:0 0 auto; }
 .todo-add input{ flex:1; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12px; outline:none; color:var(--ink); }
@@ -1699,6 +1706,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Zadaci &amp; Beleške</div>
           <div class="panel-sub" id="todoCount">2 stavke</div>
         </div>
+        <div id="pendingLeaveList"></div>
         <div class="todo-scroll" id="todoList"></div>
         <div class="todo-add">
           <input type="text" id="todoInput" placeholder="Novi zadatak...">
@@ -3716,6 +3724,7 @@ function calendarEventDbRow(ev){
     urgency: ev.urgency || null,
     leave_type: ev.leaveType || null,
     holiday_name: ev.holidayName || null,
+    approval_status: ev.approvalStatus || null,
   };
 }
 async function reassignZadatakPerson(evObj){
@@ -4206,7 +4215,8 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     if(!person || !startVal || !endVal) return;
     let start = fromISO(startVal), end = fromISO(endVal);
     if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
-    newEvent = { kind, person, initials: artistInitials[person] || person.slice(0,2).toUpperCase(), color:'leave', leaveType, start, end };
+    const approvalStatus = isSuperAdmin() ? 'odobreno' : 'na_cekanju';
+    newEvent = { kind, person, initials: artistInitials[person] || person.slice(0,2).toUpperCase(), color:'leave', leaveType, start, end, approvalStatus };
   } else {
     if(!isSuperAdmin() && currentAccess()!=='admin') return;
     const holidayName = document.getElementById('evpName').value.trim();
@@ -4234,6 +4244,10 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     const { data, error } = await sb.from('calendar_events').insert(calendarEventDbRow(newEvent)).select().single();
     if(error || !data){ await customAlert('Čuvanje nije uspelo: ' + (error?.message||'')); return; }
     events.push({ _id:nextId(), dbId:data.id, ...newEvent });
+    if(kind==='odsustvo' && newEvent.approvalStatus==='na_cekanju'){
+      const text = `${newEvent.person} traži odsustvo od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end)}.`;
+      teamMembers.filter(t=>t.access==='superadmin').forEach(sa=> pushNotification(sa._id, 'odsustvo_zahtev', text, null));
+    }
   }
   if(kind==='zadatak'){
     if(oldZadatakSnapshot) await pruneStaleTimeEntries(oldZadatakSnapshot, newEvent);
@@ -7283,6 +7297,63 @@ function renderWeekWidget(){
   });
   const todayIdx = days.findIndex(d=>sameDate(d,TODAY));
   renderAgendaForIdx(todayIdx>=0 ? todayIdx : 0);
+  renderPendingLeaveRequests();
+}
+/* Odsustvo zahtevi na čekanju — samo superadmin ih vidi/odobrava, u istom
+   "Zadaci & Beleške" panelu kao lične beleške ali drugačije obojeno (plum)
+   da se jasno razlikuju. Poziva se iz renderWeekWidget() da ostane u toku
+   sa events bez sopstvenog posebnog refresh-poziva na svakom mestu. */
+function renderPendingLeaveRequests(){
+  const wrap = document.getElementById('pendingLeaveList');
+  if(!wrap) return;
+  if(!isSuperAdmin()){ wrap.innerHTML = ''; return; }
+  const pending = events.filter(e=>e.kind==='odsustvo' && e.approvalStatus==='na_cekanju');
+  wrap.innerHTML = pending.map(e=>`
+    <div class="leave-request-row" data-id="${e._id}">
+      <div class="leave-request-text">🏖️ ${escapeHtml(e.person)} — ${escapeHtml(leaveLabels[e.leaveType]||e.leaveType)}<br>${formatDateHuman(e.start)} – ${formatDateHuman(e.end)}</div>
+      <div class="leave-request-actions">
+        <button class="leave-approve-btn" data-id="${e._id}">Odobri</button>
+        <button class="leave-reject-btn" data-id="${e._id}">Odbij</button>
+      </div>
+    </div>`).join('');
+  wrap.querySelectorAll('.leave-approve-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> approveLeaveRequest(Number(btn.dataset.id)));
+  });
+  wrap.querySelectorAll('.leave-reject-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> rejectLeaveRequest(Number(btn.dataset.id)));
+  });
+}
+async function approveLeaveRequest(eventId){
+  const ev = events.find(e=>e._id===eventId);
+  if(!ev || !sb) return;
+  const { error } = await sb.from('calendar_events').update({ approval_status:'odobreno' }).eq('id', ev.dbId);
+  if(error) return;
+  ev.approvalStatus = 'odobreno';
+  const emp = teamMembers.find(t=>t.name===ev.person);
+  const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end)}`;
+  if(emp) pushNotification(emp._id, 'odsustvo_odobreno', `Tvoj zahtev za odsustvo od ${rangeText} je odobren.`, null);
+  await sb.from('notifications').insert({
+    recipient_name: 'Discord — odsustva i remote',
+    kind: 'odsustvo_discord',
+    text: `${ev.person} odsustvo od ${rangeText}.`,
+    project_code: null,
+  });
+  renderPendingLeaveRequests();
+  renderCalendar();
+  persist();
+}
+async function rejectLeaveRequest(eventId){
+  const ev = events.find(e=>e._id===eventId);
+  if(!ev || !sb) return;
+  const { error } = await sb.from('calendar_events').update({ approval_status:'odbijeno' }).eq('id', ev.dbId);
+  if(error) return;
+  ev.approvalStatus = 'odbijeno';
+  const emp = teamMembers.find(t=>t.name===ev.person);
+  const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end)}`;
+  if(emp) pushNotification(emp._id, 'odsustvo_odbijeno', `Tvoj zahtev za odsustvo od ${rangeText} je odbijen.`, null);
+  renderPendingLeaveRequests();
+  renderCalendar();
+  persist();
 }
 renderWeekWidget();
 document.getElementById('agendaList').addEventListener('click', (e)=>{
@@ -9182,6 +9253,9 @@ const notifIconMap = {
   round:     { cls:'ic-render',  svg:'<rect x="2" y="5" width="14" height="14" rx="2"/><path d="m16 10 6-4v12l-6-4"/>' },
   approved:  { cls:'ic-check',   svg:'<path d="M20 6 9 17l-5-5"/>' },
   cancelled: { cls:'ic-warn',    svg:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.6 2.7h17.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/>' },
+  odsustvo_zahtev:   { cls:'ic-leave', svg:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>' },
+  odsustvo_odobreno: { cls:'ic-check', svg:'<path d="M20 6 9 17l-5-5"/>' },
+  odsustvo_odbijeno: { cls:'ic-warn',  svg:'<path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a1.8 1.8 0 0 0 1.6 2.7h17.2a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/>' },
 };
 function notifItemHtml(n){
   const meta = notifIconMap[n.kind] || notifIconMap.kadar;
@@ -10440,6 +10514,7 @@ async function loadEventsFromSupabase(){
         urgency: row.urgency,
         leaveType: row.leave_type,
         holidayName: row.holiday_name,
+        approvalStatus: row.approval_status,
         start: fromISO(row.start_date),
         end: fromISO(row.end_date),
       });

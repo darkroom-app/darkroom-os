@@ -801,3 +801,17 @@ alter table public.game_scores enable row level security;
 create policy "authenticated can read game_scores" on public.game_scores for select to authenticated using (true);
 create policy "own can insert game_scores" on public.game_scores for insert to authenticated with check (employee_id = auth.uid());
 create policy "own can update game_scores" on public.game_scores for update to authenticated using (employee_id = auth.uid()) with check (employee_id = auth.uid());
+
+
+-- ==== Phase 10: leave-request approval workflow ====
+-- calendar_events already covers kind='odsustvo'; this adds an approval
+-- gate on top instead of a separate table, since a leave request *is* a
+-- calendar_events row from creation — it just isn't confirmed yet. Only
+-- meaningful for kind='odsustvo'; left null for zadatak/praznik rows.
+-- Client sets it directly (superadmin submitting = auto 'odobreno', anyone
+-- else = 'na_cekanju'), and approveLeaveRequest()/rejectLeaveRequest() in
+-- darkroom-app.html flip it afterward — no DB trigger needed since the
+-- only two people who can approve (superadmins) already write directly
+-- through the authenticated client.
+
+alter table public.calendar_events add column if not exists approval_status text; -- 'na_cekanju' | 'odobreno' | 'odbijeno' | null (non-odsustvo rows)

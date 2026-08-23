@@ -18,8 +18,14 @@
 // configured silently posted into whatever channel that secret happened
 // to point at (surprising and confusing once there were dozens of
 // projects). A project with no webhook set now just gets skipped.
+// Phase 10: one specific non-project notification kind (leave-request
+// approvals) does get a fixed channel — the studio's own "remote i
+// odsustva" Discord group, via its own dedicated webhook secret. This is
+// deliberately narrow (checked by `kind`, not a general fallback) so it
+// doesn't reintroduce the Phase 3g problem for anything else.
 
 const DB_WEBHOOK_SECRET = Deno.env.get("DB_WEBHOOK_SECRET") ?? "";
+const DISCORD_WEBHOOK_LEAVE_URL = Deno.env.get("DISCORD_WEBHOOK_LEAVE_URL") ?? "";
 
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
@@ -51,19 +57,26 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: true, skipped: true }, 200);
   }
 
-  const targetUrl = typeof payload.webhook_url === "string" ? payload.webhook_url : "";
+  const row = payload.record as Record<string, unknown>;
+  const kind = typeof row.kind === "string" ? row.kind : "";
+  const text = typeof row.text === "string" ? row.text : "(bez teksta)";
+
+  let targetUrl = typeof payload.webhook_url === "string" ? payload.webhook_url : "";
+  let content: string;
+  if (kind === "odsustvo_discord" && DISCORD_WEBHOOK_LEAVE_URL) {
+    targetUrl = DISCORD_WEBHOOK_LEAVE_URL;
+    content = `🏖️ ${text}`;
+  } else {
+    const recipient = typeof row.recipient_name === "string" ? row.recipient_name : "Nepoznat";
+    const projectCode = typeof row.project_code === "string" ? row.project_code : null;
+    content = `🔔 **${recipient}** ${projectCode ? `(${projectCode}) ` : ""}— ${text}`;
+  }
+
   if (!targetUrl) {
     // This project has no Discord channel configured — skip rather than
     // posting into some unrelated shared channel (see Phase 3g note above).
     return jsonResponse({ ok: true, skipped: true, reason: "no webhook url" }, 200);
   }
-
-  const row = payload.record as Record<string, unknown>;
-  const recipient = typeof row.recipient_name === "string" ? row.recipient_name : "Nepoznat";
-  const text = typeof row.text === "string" ? row.text : "(bez teksta)";
-  const projectCode = typeof row.project_code === "string" ? row.project_code : null;
-
-  const content = `🔔 **${recipient}** ${projectCode ? `(${projectCode}) ` : ""}— ${text}`;
 
   const discordResp = await fetch(targetUrl, {
     method: "POST",
