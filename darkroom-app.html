@@ -128,6 +128,7 @@ body{
 }
 .brand{ display:flex; flex-direction:column; align-items:flex-start; gap:7px; padding:2px 6px 22px; cursor:pointer; }
 .brand-logo-img{ width:118px; height:auto; display:block; }
+[data-theme="dark"] .brand-logo-img{ filter:brightness(0) invert(1); }
 .brand-sub{ font-family:var(--font-mono); font-size:8.5px; color:var(--gold-deep); letter-spacing:0.09em; }
 
 .nav{ display:flex; flex-direction:column; gap:2px; }
@@ -2985,7 +2986,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
 
     <div class="ev-tab-panel" id="evPanelZadatak">
-      <div class="modal-field">
+      <div class="modal-field" id="evzEmployeeField">
         <label>Zaposleni</label>
         <select id="evzEmployee"></select>
       </div>
@@ -3024,7 +3025,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
 
     <div class="ev-tab-panel" id="evPanelOdsustvo" style="display:none;">
-      <div class="modal-field">
+      <div class="modal-field" id="evoEmployeeField">
         <label>Zaposleni</label>
         <select id="evoEmployee"></select>
       </div>
@@ -4037,16 +4038,18 @@ document.getElementById('evzEmployee').addEventListener('change', ()=>{ refreshZ
 document.getElementById('evzProject').addEventListener('change', ()=>{ refreshZadatakTasks(); renderEvzHours(currentEvzFormState()); });
 document.getElementById('evzTask').addEventListener('change', ()=>{ renderEvzHours(currentEvzFormState()); });
 
-function openEventModal(ev, prefillDateISO, prefillPerson){
+function openEventModal(ev, prefillDateISO, prefillPerson, selfOnly){
   const kind = ev ? ev.kind : 'zadatak';
   const readOnly = !!ev && kind!=='praznik' && !canEditCalendarFor(ev.person);
-  const canManagePraznik = isSuperAdmin() || currentAccess()==='admin';
+  const canManagePraznik = isSuperAdmin();
   const prazReadOnly = !!ev && kind==='praznik' && !canManagePraznik;
   const isReadOnly = readOnly || prazReadOnly;
-  const lockPerson = currentAccess()==='user';
+  const lockPerson = currentAccess()==='user' || !!selfOnly;
   editingEventId = ev ? ev._id : null;
 
-  document.getElementById('evTabPraznikBtn').style.display = canManagePraznik ? '' : 'none';
+  document.getElementById('evTabPraznikBtn').style.display = (canManagePraznik && !selfOnly) ? '' : 'none';
+  document.getElementById('evzEmployeeField').style.display = selfOnly ? 'none' : '';
+  document.getElementById('evoEmployeeField').style.display = selfOnly ? 'none' : '';
   document.querySelectorAll('.ev-tab-btn').forEach(b=>{ b.disabled = !!ev; });
   setEvTab(kind);
 
@@ -7291,7 +7294,7 @@ document.getElementById('agendaList').addEventListener('click', (e)=>{
 document.getElementById('weekAgendaAddBtn').addEventListener('click', ()=>{
   const idx = Number(document.querySelector('#weekDaysVert .wd-row.active')?.dataset.idx ?? 0);
   const d = addDays(mondayOf(TODAY), idx);
-  openEventModal(null, toISO(d));
+  openEventModal(null, toISO(d), null, true);
 });
 
 function fmtRSD(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' RSD'; }
