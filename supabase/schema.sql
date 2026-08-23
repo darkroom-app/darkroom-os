@@ -791,7 +791,7 @@ create index salary_entries_employee_idx on public.salary_entries (employee_id);
 
 create table public.game_scores (
   employee_id uuid not null references public.team_members(id) on delete cascade,
-  game text not null,             -- 'dino' | 'mario'
+  game text not null,             -- 'invaders' | 'mario' (was 'dino' before Space Invaders replaced it — old rows just stop showing on the leaderboard)
   best_score int not null,
   achieved_at timestamptz not null default now(),
   primary key (employee_id, game)

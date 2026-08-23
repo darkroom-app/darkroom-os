@@ -1724,14 +1724,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="panel-sub" id="dinoScoreSub">Skor: 0</div>
         </div>
         <div class="corner-tab-row">
-          <button type="button" class="corner-tab-btn active" data-corner-tab="game">Dino</button>
+          <button type="button" class="corner-tab-btn active" data-corner-tab="game">Space Invaders</button>
           <button type="button" class="corner-tab-btn" data-corner-tab="mario">Mario</button>
           <button type="button" class="corner-tab-btn" data-corner-tab="breathe">Disanje</button>
         </div>
         <div class="corner-tab-panel" id="cornerPanelGame">
           <div class="dino-wrap">
-            <canvas id="dinoCanvas"></canvas>
-            <div class="dino-overlay" id="dinoOverlay">Klikni ili pritisni SPACE za start</div>
+            <canvas id="invadersCanvas"></canvas>
+            <div class="dino-overlay" id="invadersOverlay">Strelice ⬅➡ + SPACE za pucanje · klikni za start</div>
           </div>
         </div>
         <div class="corner-tab-panel" id="cornerPanelMario" style="display:none;">
@@ -9658,25 +9658,26 @@ async function refreshStudioRecord(game){
   } catch(e){ el.textContent = ''; }
 }
 
-/* ==== Dashboard "Dubai Corner" — mala Dino Runner igra (canvas, pixel-art
-   sprite u google-dino stilu) + vežba disanja za smirenje, kao dva taba u
+/* ==== Dashboard "Dubai Corner" — mala Space Invaders igra (canvas, pixel-art
+   sprajtovi u retro-arkadnom stilu) + vežba disanja za smirenje, kao dva taba u
    istom boksu. Čisto vizuelna razonoda, ne čuva se nigde osim najboljeg
    skora u localStorage. ==== */
 (function(){
-  const canvas = document.getElementById('dinoCanvas');
+  const canvas = document.getElementById('invadersCanvas');
   if(!canvas) return;
   const ctx = canvas.getContext('2d');
   const wrap = canvas.parentElement;
-  const overlay = document.getElementById('dinoOverlay');
+  const overlay = document.getElementById('invadersOverlay');
   const scoreSub = document.getElementById('dinoScoreSub');
   let running = false, dead = false, score = 0, gameActive = true;
-  let best = Number(localStorage.getItem('dinoBest') || 0);
-  let dino, obstacles, groundY, speed, frame;
-  const gravity = 0.6;
+  let best = Number(localStorage.getItem('invadersBest') || 0);
+  let player, bullet, invaders, invaderDir, invaderStepDown, enemyBullets, wave, frame;
+  const keys = { left:false, right:false };
 
-  const DINO_A = ["000110000","000111000","000111100","011111100","111111100","111111110","111111000","011011000","011011000"];
-  const DINO_B = ["000110000","000111000","000111100","011111100","111111100","111111110","111111000","011000110","001100011"];
-  const CACTUS = ["00100","00100","01100","01111","01100","00100","00100","00100"];
+  const ALIEN_A = ["00100000100","00010001000","00111111100","01101110110","11111111111","10111111101","10100000101","00011011000"];
+  const ALIEN_B = ["00100000100","10010001001","10111111101","11101110111","11111111111","00111111100","01000000010","10000000001"];
+  const SHIP = ["0000010000000","0000111000000","0000111000000","0011111100000","0011111100000","1111111111100"];
+  const ROW_COLORS = ['--coral', '--gold', '--sky', '--sage', '--plum'];
 
   function cssVar(name, fallback){
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -9695,18 +9696,37 @@ async function refreshStudioRecord(game){
   function resize(){
     canvas.width = wrap.clientWidth;
     canvas.height = wrap.clientHeight;
-    groundY = canvas.height - 18;
+    if(player) player.y = canvas.height - 20;
   }
   window.addEventListener('resize', resize);
 
+  /* Rows grow with wave (up to 5) and invader speed ramps both with the
+     wave number and, classic-arcade style, as a wave itself thins out —
+     so difficulty rises across waves and visibly accelerates within one,
+     instead of a flat repeating pattern. */
+  function spawnWave(){
+    const cols = 6;
+    const rows = Math.min(5, 2+wave);
+    const cellW = (canvas.width-24)/cols;
+    invaders = [];
+    for(let r=0;r<rows;r++){
+      for(let c=0;c<cols;c++){
+        invaders.push({ x:12+c*cellW, y:20+r*18, w:cellW*0.7, h:14, alive:true, row:r });
+      }
+    }
+    invaderDir = 1;
+    invaderStepDown = 8 + wave*1.5;
+    enemyBullets = [];
+  }
   function reset(){
     resize();
-    dino = { x:20, y:groundY-24, w:20, h:24, vy:0, jumping:false };
-    obstacles = [];
-    speed = 4.2;
+    player = { x:canvas.width/2-13, y:canvas.height-20, w:26, h:12 };
+    bullet = null;
+    wave = 1;
     score = 0;
     frame = 0;
     dead = false;
+    spawnWave();
   }
   function start(){
     reset();
@@ -9718,51 +9738,84 @@ async function refreshStudioRecord(game){
     running = false;
     dead = true;
     best = Math.max(best, Math.floor(score));
-    localStorage.setItem('dinoBest', String(best));
-    reportGameScore('dino', best);
+    localStorage.setItem('invadersBest', String(best));
+    reportGameScore('invaders', best);
     overlay.innerHTML = `Kraj — skor ${Math.floor(score)} · rekord ${best}<br>Klikni za restart`;
     overlay.style.display = 'flex';
   }
-  function jump(){
+  function shoot(){
     if(dead || !running){ start(); return; }
-    if(!dino.jumping){ dino.vy = -10; dino.jumping = true; }
+    if(!bullet) bullet = { x:player.x+player.w/2-1, y:player.y };
   }
   function draw(){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = cssVar('--border', '#ddd');
-    ctx.fillRect(0, groundY, canvas.width, 2);
-    const legFrame = dino.jumping ? DINO_A : (Math.floor(frame/8)%2===0 ? DINO_A : DINO_B);
-    drawPixels(legFrame, dino.x, dino.y, dino.w, dino.h, cssVar('--ink', '#333'));
-    obstacles.forEach(o=> drawPixels(CACTUS, o.x, groundY-o.h, o.w, o.h, cssVar('--sage', '#7a9')));
-  }
-  /* Difficulty tier rises with score (not just the slow speed creep) so
-     obstacles visibly grow and start pairing up instead of it always
-     being "the same cactus, just a bit faster" — the direct complaint
-     that prompted this. */
-  function spawnObstacle(){
-    const tier = Math.min(4, Math.floor(score/12));
-    const w = 9 + tier*1.5 + Math.random()*5;
-    const h = 14 + tier*3 + Math.random()*10;
-    obstacles.push({ x:canvas.width, w, h });
-    if(tier>=2 && Math.random()<0.35){
-      obstacles.push({ x:canvas.width+w+16+Math.random()*10, w:9+Math.random()*5, h:14+Math.random()*8 });
-    }
+    ctx.fillRect(0, canvas.height-2, canvas.width, 2);
+    drawPixels(SHIP, player.x, player.y, player.w, player.h, cssVar('--ink', '#333'));
+    const alienFrame = Math.floor(frame/20)%2===0 ? ALIEN_A : ALIEN_B;
+    invaders.forEach(inv=>{
+      if(!inv.alive) return;
+      drawPixels(alienFrame, inv.x, inv.y, inv.w, inv.h, cssVar(ROW_COLORS[inv.row%ROW_COLORS.length], '#888'));
+    });
+    if(bullet){ ctx.fillStyle = cssVar('--gold-deep', '#c90'); ctx.fillRect(bullet.x, bullet.y, 2, 8); }
+    enemyBullets.forEach(b=>{ ctx.fillStyle = cssVar('--coral', '#c55'); ctx.fillRect(b.x, b.y, 2, 7); });
   }
   function loop(){
     if(!running || !gameActive) return;
     frame++;
-    dino.vy += gravity;
-    dino.y += dino.vy;
-    if(dino.y > groundY-dino.h){ dino.y = groundY-dino.h; dino.vy = 0; dino.jumping = false; }
-    const spawnGap = Math.max(30, 78 - Math.floor(score*0.5) - Math.floor(speed*2));
-    if(frame % spawnGap === 0) spawnObstacle();
-    obstacles.forEach(o=> o.x -= speed);
-    obstacles = obstacles.filter(o=> o.x+o.w > 0);
-    for(const o of obstacles){
-      if(dino.x < o.x+o.w && dino.x+dino.w > o.x && dino.y+dino.h > groundY-o.h){ endGame(); break; }
+    const moveSpeed = 3.2;
+    if(keys.left) player.x -= moveSpeed;
+    if(keys.right) player.x += moveSpeed;
+    player.x = Math.max(2, Math.min(canvas.width-player.w-2, player.x));
+
+    if(bullet){
+      bullet.y -= 6;
+      if(bullet.y < 0) bullet = null;
     }
-    score += speed*0.05;
-    speed += 0.004;
+
+    const alive = invaders.filter(i=>i.alive);
+    const aliveCount = alive.length;
+    const clearFactor = invaders.length>0 ? 1 + (1-(aliveCount/invaders.length))*2 : 1;
+    const invaderSpeed = (0.5 + wave*0.18) * clearFactor;
+    let hitWall = false;
+    alive.forEach(inv=>{
+      inv.x += invaderDir*invaderSpeed;
+      if(inv.x < 4 || inv.x+inv.w > canvas.width-4) hitWall = true;
+    });
+    if(hitWall){
+      invaderDir *= -1;
+      alive.forEach(inv=> inv.y += invaderStepDown);
+    }
+
+    if(aliveCount>0 && Math.random() < 0.006+wave*0.0025){
+      const shooter = alive[Math.floor(Math.random()*alive.length)];
+      enemyBullets.push({ x:shooter.x+shooter.w/2, y:shooter.y+shooter.h });
+    }
+    enemyBullets.forEach(b=> b.y += 3.2+wave*0.2);
+    enemyBullets = enemyBullets.filter(b=> b.y < canvas.height);
+
+    if(bullet){
+      for(const inv of alive){
+        if(bullet.x < inv.x+inv.w && bullet.x+2 > inv.x && bullet.y < inv.y+inv.h && bullet.y+8 > inv.y){
+          inv.alive = false;
+          bullet = null;
+          score += 10 + wave*2;
+          break;
+        }
+      }
+    }
+    for(const b of enemyBullets){
+      if(b.x < player.x+player.w && b.x+2 > player.x && b.y < player.y+player.h && b.y+7 > player.y){ endGame(); return; }
+    }
+    for(const inv of alive){
+      if(inv.y+inv.h >= player.y){ endGame(); return; }
+    }
+    if(aliveCount===0){
+      wave++;
+      score += 25;
+      spawnWave();
+    }
+
     scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`;
     draw();
     if(running && gameActive) requestAnimationFrame(loop);
@@ -9770,16 +9823,21 @@ async function refreshStudioRecord(game){
 
   resize();
   scoreSub.textContent = `Skor: 0 · rekord ${best}`;
-  refreshStudioRecord('dino');
-  overlay.addEventListener('click', jump);
+  refreshStudioRecord('invaders');
+  overlay.addEventListener('click', shoot);
   document.addEventListener('keydown', e=>{
-    if(e.code !== 'Space' || !gameActive) return;
+    if(!gameActive) return;
     const tag = document.activeElement && document.activeElement.tagName;
     if(tag === 'INPUT' || tag === 'TEXTAREA') return;
     const pregled = document.getElementById('view-pregled');
     if(!pregled || !pregled.classList.contains('active')) return;
-    e.preventDefault();
-    jump();
+    if(e.code === 'Space'){ e.preventDefault(); shoot(); return; }
+    if(e.code === 'ArrowLeft' || e.code === 'KeyA'){ e.preventDefault(); keys.left = true; }
+    if(e.code === 'ArrowRight' || e.code === 'KeyD'){ e.preventDefault(); keys.right = true; }
+  });
+  document.addEventListener('keyup', e=>{
+    if(e.code === 'ArrowLeft' || e.code === 'KeyA') keys.left = false;
+    if(e.code === 'ArrowRight' || e.code === 'KeyD') keys.right = false;
   });
 
   /* Vežba disanja: 4s udah / 4s zadrži / 6s izdah, u petlji. Krug se skalira
@@ -9798,9 +9856,9 @@ async function refreshStudioRecord(game){
     requestAnimationFrame(breatheTick);
   }
 
-  window.__dinoGame = {
+  window.__invadersGame = {
     activate(){ gameActive = true; if(running) requestAnimationFrame(loop); },
-    deactivate(){ gameActive = false; },
+    deactivate(){ gameActive = false; keys.left = false; keys.right = false; },
   };
   window.__breatheGame = {
     activate(){ breatheActive = true; breatheStart = null; requestAnimationFrame(breatheTick); },
@@ -9808,10 +9866,10 @@ async function refreshStudioRecord(game){
   };
 })();
 
-/* Mario reskin of the exact same runner mechanic as Dino above (same
-   physics/obstacle-spawn/collision loop, different sprites/colors/score
-   key) rather than a real platformer — a side-scrolling jump-and-run
-   fits this dashboard-corner "quick break" slot the same way Dino does;
+/* Mario: a side-scrolling jump-over-obstacle runner (own physics/obstacle-
+   spawn/collision loop, same shape as the old Dino game this corner used
+   to also have before it was replaced with Space Invaders above) rather
+   than a real platformer — fits this dashboard-corner "quick break" slot;
    a true multi-level Mario would be a much bigger separate project. */
 (function(){
   const canvas = document.getElementById('marioCanvas');
@@ -9948,7 +10006,7 @@ async function refreshStudioRecord(game){
 })();
 
 /* Single shared tab-click handler drives all three corner-panel "games"
-   (dino/mario/breathe) via the activate()/deactivate() hooks each of
+   (invaders/mario/breathe) via the activate()/deactivate() hooks each of
    their own IIFEs exposed above — keeps the three games' internal state
    fully independent while still coordinating which one is "live". */
 document.querySelectorAll('.corner-tab-btn').forEach(btn=>{
@@ -9959,11 +10017,11 @@ document.querySelectorAll('.corner-tab-btn').forEach(btn=>{
     document.getElementById('cornerPanelMario').style.display = tab==='mario' ? '' : 'none';
     document.getElementById('cornerPanelBreathe').style.display = tab==='breathe' ? '' : 'none';
     document.getElementById('dinoScoreSub').style.display = (tab==='game'||tab==='mario') ? '' : 'none';
-    window.__dinoGame?.[tab==='game' ? 'activate' : 'deactivate']();
+    window.__invadersGame?.[tab==='game' ? 'activate' : 'deactivate']();
     window.__marioGame?.[tab==='mario' ? 'activate' : 'deactivate']();
     window.__breatheGame?.[tab==='breathe' ? 'activate' : 'deactivate']();
     if(tab==='breathe') document.getElementById('cornerStudioRecord').textContent = '';
-    else refreshStudioRecord(tab==='mario' ? 'mario' : 'dino');
+    else refreshStudioRecord(tab==='mario' ? 'mario' : 'invaders');
   });
 });
 
