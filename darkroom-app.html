@@ -4245,7 +4245,7 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     if(error || !data){ await customAlert('Čuvanje nije uspelo: ' + (error?.message||'')); return; }
     events.push({ _id:nextId(), dbId:data.id, ...newEvent });
     if(kind==='odsustvo' && newEvent.approvalStatus==='na_cekanju'){
-      const text = `${newEvent.person} traži odsustvo od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end)}.`;
+      const text = `${newEvent.person} traži odsustvo od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end).replace(/\.$/,'')}.`;
       teamMembers.filter(t=>t.access==='superadmin').forEach(sa=> pushNotification(sa._id, 'odsustvo_zahtev', text, null));
     }
   }
@@ -7330,7 +7330,7 @@ async function approveLeaveRequest(eventId){
   if(error) return;
   ev.approvalStatus = 'odobreno';
   const emp = teamMembers.find(t=>t.name===ev.person);
-  const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end)}`;
+  const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end).replace(/\.$/,'')}`;
   if(emp) pushNotification(emp._id, 'odsustvo_odobreno', `Tvoj zahtev za odsustvo od ${rangeText} je odobren.`, null);
   await sb.from('notifications').insert({
     recipient_name: 'Discord — odsustva i remote',
@@ -7349,7 +7349,7 @@ async function rejectLeaveRequest(eventId){
   if(error) return;
   ev.approvalStatus = 'odbijeno';
   const emp = teamMembers.find(t=>t.name===ev.person);
-  const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end)}`;
+  const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end).replace(/\.$/,'')}`;
   if(emp) pushNotification(emp._id, 'odsustvo_odbijeno', `Tvoj zahtev za odsustvo od ${rangeText} je odbijen.`, null);
   renderPendingLeaveRequests();
   renderCalendar();
