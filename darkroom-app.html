@@ -1132,6 +1132,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 .week-agenda-panel{ flex:1; min-height:0; display:flex; flex-direction:column; border-left:1px solid var(--border); padding-left:16px; }
 .week-agenda-title{ font-family:var(--font-mono); font-size:9.5px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; flex:0 0 auto; }
+.week-agenda-add-btn{ width:20px; height:20px; border-radius:50%; border:none; background:var(--gold); color:#3a2704; font-size:13px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.week-agenda-add-btn:hover{ opacity:0.85; }
 #agendaList{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
 .agenda-item{ display:flex; gap:12px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); cursor:pointer; }
 .agenda-item:hover{ background:var(--card-soft); }
@@ -1682,8 +1684,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="wd-row" data-day="9"><span class="wd-name">NED</span><span class="wd-num">9</span><span class="wd-dot"></span></div>
           </div>
           <div class="week-agenda-panel">
-            <div class="week-agenda-title" id="agendaTitle">Raspored · Utorak, 4. avgust</div>
-            <div id="agendaList"></div>
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
+              <div class="week-agenda-title" id="agendaTitle" style="margin-bottom:0;">Raspored · Utorak, 4. avgust</div>
+              <button type="button" id="weekAgendaAddBtn" class="week-agenda-add-btn" title="Dodaj u kalendar">+</button>
+            </div>
+            <div id="agendaList" style="margin-top:10px;"></div>
           </div>
         </div>
       </div>
@@ -6609,7 +6614,6 @@ function renderProjectValueLeaderboard(){
         <div class="lb-name">${escapeHtml(p.name)} · ${escapeHtml(p.client)}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(p.value/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${fmtK(p.value)} RSD</div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka.</div>';
   setTimeout(()=>{
@@ -6672,7 +6676,6 @@ function renderClientLeaderboard(){
         <div class="lb-name">${escapeHtml(name)}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(val/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${fmtK(val)} RSD</div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka o cenovniku.</div>';
   setTimeout(()=>{
@@ -7284,6 +7287,11 @@ document.getElementById('agendaList').addEventListener('click', (e)=>{
   if(!item) return;
   const evObj = events.find(x=>x._id===Number(item.dataset.id));
   if(evObj) openEventModal(evObj, null);
+});
+document.getElementById('weekAgendaAddBtn').addEventListener('click', ()=>{
+  const idx = Number(document.querySelector('#weekDaysVert .wd-row.active')?.dataset.idx ?? 0);
+  const d = addDays(mondayOf(TODAY), idx);
+  openEventModal(null, toISO(d));
 });
 
 function fmtRSD(n){ return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') + ' RSD'; }
@@ -9632,22 +9640,34 @@ async function refreshStudioRecord(game){
     drawPixels(legFrame, dino.x, dino.y, dino.w, dino.h, cssVar('--ink', '#333'));
     obstacles.forEach(o=> drawPixels(CACTUS, o.x, groundY-o.h, o.w, o.h, cssVar('--sage', '#7a9')));
   }
+  /* Difficulty tier rises with score (not just the slow speed creep) so
+     obstacles visibly grow and start pairing up instead of it always
+     being "the same cactus, just a bit faster" — the direct complaint
+     that prompted this. */
+  function spawnObstacle(){
+    const tier = Math.min(4, Math.floor(score/12));
+    const w = 9 + tier*1.5 + Math.random()*5;
+    const h = 14 + tier*3 + Math.random()*10;
+    obstacles.push({ x:canvas.width, w, h });
+    if(tier>=2 && Math.random()<0.35){
+      obstacles.push({ x:canvas.width+w+16+Math.random()*10, w:9+Math.random()*5, h:14+Math.random()*8 });
+    }
+  }
   function loop(){
     if(!running || !gameActive) return;
     frame++;
     dino.vy += gravity;
     dino.y += dino.vy;
     if(dino.y > groundY-dino.h){ dino.y = groundY-dino.h; dino.vy = 0; dino.jumping = false; }
-    if(frame % Math.max(38, 85-Math.floor(speed*3)) === 0){
-      obstacles.push({ x:canvas.width, w:9+Math.random()*6, h:16+Math.random()*14 });
-    }
+    const spawnGap = Math.max(30, 78 - Math.floor(score*0.5) - Math.floor(speed*2));
+    if(frame % spawnGap === 0) spawnObstacle();
     obstacles.forEach(o=> o.x -= speed);
     obstacles = obstacles.filter(o=> o.x+o.w > 0);
     for(const o of obstacles){
       if(dino.x < o.x+o.w && dino.x+dino.w > o.x && dino.y+dino.h > groundY-o.h){ endGame(); break; }
     }
     score += speed*0.05;
-    speed += 0.0015;
+    speed += 0.004;
     scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`;
     draw();
     if(running && gameActive) requestAnimationFrame(loop);
@@ -9710,9 +9730,17 @@ async function refreshStudioRecord(game){
   let mario, obstacles, groundY, speed, frame;
   const gravity = 0.6;
 
-  const MARIO_A = ["001111000","001110000","011111100","111111110","011111100","001110000","011111100","010101010","011001100"];
-  const MARIO_B = ["001111000","001110000","011111100","111111110","011111100","001110000","011111100","001101000","011001100"];
-  const GOOMBA = ["01110","11111","11111","01110","01110","10001","10001","11011"];
+  /* Layered instead of single-color like Dino — cap+overalls in red, face
+     in a skin tone, drawn as three separate masks over the same grid so
+     the silhouette actually reads as "Mario" rather than a recolored dino. */
+  const MARIO_CAP  = ["000000000","001111000","011111100","111111111","000111000","000000000","000000000","000000000","000000000"];
+  const MARIO_FACE = ["000000000","000000000","000000000","000000000","011111100","011101100","001111000","000000000","000000000"];
+  const MARIO_BODY_A = ["000000000","000000000","000000000","000000000","000000000","000000000","000111000","011111110","011011010"];
+  const MARIO_BODY_B = ["000000000","000000000","000000000","000000000","000000000","000000000","000111000","011111110","110011011"];
+  const GOOMBA_BODY = ["01110","11111","11111","01110","01110","10001","10001","11011"];
+  const GOOMBA_EYES = ["00000","00000","01010","00000","00000","00000","00000","00000"];
+  const MARIO_RED = '#D6323C', MARIO_BLUE = '#2A5DB0', MARIO_SKIN = '#F2B786';
+  const GOOMBA_BROWN = '#8B5A2B', GOOMBA_DARK = '#3A2416';
 
   function cssVar(name, fallback){
     const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -9767,9 +9795,24 @@ async function refreshStudioRecord(game){
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.fillStyle = cssVar('--border', '#ddd');
     ctx.fillRect(0, groundY, canvas.width, 2);
-    const legFrame = mario.jumping ? MARIO_A : (Math.floor(frame/8)%2===0 ? MARIO_A : MARIO_B);
-    drawPixels(legFrame, mario.x, mario.y, mario.w, mario.h, cssVar('--coral', '#d97757'));
-    obstacles.forEach(o=> drawPixels(GOOMBA, o.x, groundY-o.h, o.w, o.h, cssVar('--gold-deep', '#8a5f13')));
+    const bodyFrame = mario.jumping ? MARIO_BODY_A : (Math.floor(frame/8)%2===0 ? MARIO_BODY_A : MARIO_BODY_B);
+    drawPixels(MARIO_CAP, mario.x, mario.y, mario.w, mario.h, MARIO_RED);
+    drawPixels(MARIO_FACE, mario.x, mario.y, mario.w, mario.h, MARIO_SKIN);
+    drawPixels(bodyFrame, mario.x, mario.y, mario.w, mario.h, MARIO_BLUE);
+    obstacles.forEach(o=>{
+      drawPixels(GOOMBA_BODY, o.x, groundY-o.h, o.w, o.h, GOOMBA_BROWN);
+      drawPixels(GOOMBA_EYES, o.x, groundY-o.h, o.w, o.h, GOOMBA_DARK);
+    });
+  }
+  /* Same tiered difficulty as Dino — see spawnObstacle() there for why. */
+  function spawnObstacle(){
+    const tier = Math.min(4, Math.floor(score/12));
+    const w = 9 + tier*1.5 + Math.random()*5;
+    const h = 14 + tier*3 + Math.random()*10;
+    obstacles.push({ x:canvas.width, w, h });
+    if(tier>=2 && Math.random()<0.35){
+      obstacles.push({ x:canvas.width+w+16+Math.random()*10, w:9+Math.random()*5, h:14+Math.random()*8 });
+    }
   }
   function loop(){
     if(!running || !gameActive) return;
@@ -9777,16 +9820,15 @@ async function refreshStudioRecord(game){
     mario.vy += gravity;
     mario.y += mario.vy;
     if(mario.y > groundY-mario.h){ mario.y = groundY-mario.h; mario.vy = 0; mario.jumping = false; }
-    if(frame % Math.max(38, 85-Math.floor(speed*3)) === 0){
-      obstacles.push({ x:canvas.width, w:9+Math.random()*6, h:16+Math.random()*14 });
-    }
+    const spawnGap = Math.max(30, 78 - Math.floor(score*0.5) - Math.floor(speed*2));
+    if(frame % spawnGap === 0) spawnObstacle();
     obstacles.forEach(o=> o.x -= speed);
     obstacles = obstacles.filter(o=> o.x+o.w > 0);
     for(const o of obstacles){
       if(mario.x < o.x+o.w && mario.x+mario.w > o.x && mario.y+mario.h > groundY-o.h){ endGame(); break; }
     }
     score += speed*0.05;
-    speed += 0.0015;
+    speed += 0.004;
     scoreSub.textContent = `Skor: ${Math.floor(score)} · rekord ${best}`;
     draw();
     if(running && gameActive) requestAnimationFrame(loop);
