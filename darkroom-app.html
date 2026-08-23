@@ -530,6 +530,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-proj-arrow{ display:flex; align-items:center; justify-content:center; width:26px; flex-shrink:0; color:var(--ink-faint); }
 .fin-proj-arrow svg{ width:16px; height:16px; }
 .fin-proj-step.capstone{ background:linear-gradient(135deg, var(--gold-soft), var(--card-soft)); border:1px dashed var(--gold-deep); margin-left:16px; }
+.fin-proj-step-sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); margin-top:8px; padding-top:8px; border-top:1px dashed var(--border); }
+.fin-proj-step-sub b{ color:var(--ink-dim); font-weight:600; }
+.fin-proj-step-sub-pct{ color:var(--ink-faint); }
 
 .recent-tx-list{ overflow-x:auto; }
 
@@ -7789,11 +7792,18 @@ function finMonthCost(m, year){
   if(year === undefined) year = TODAY.y;
   return allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===year && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, year);
 }
+function finMonthRevenue(m, year){
+  if(year === undefined) year = TODAY.y;
+  return allTransactions.filter(t=>t.type==='Priliv' && txYear(t.date)===year && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0);
+}
 function finProjectionData(){
   const lastM = TODAY.m - 2; // poslednji zavrseni mesec (0-indeksirano)
   const trailing = [];
-  for(let i=0;i<3;i++){ const m = lastM-i; if(m>=0) trailing.push(finMonthCost(m)); }
+  const trailingRevenue = [];
+  for(let i=0;i<3;i++){ const m = lastM-i; if(m>=0){ trailing.push(finMonthCost(m)); trailingRevenue.push(finMonthRevenue(m)); } }
   const lastMonthCost = lastM>=0 ? finMonthCost(lastM) : 0;
+  const lastMonthRevenue = lastM>=0 ? finMonthRevenue(lastM) : 0;
+  const lastQuarterRevenue = trailingRevenue.reduce((a,b)=>a+b,0);
   const avgMonthlyCost = trailing.length ? trailing.reduce((a,b)=>a+b,0)/trailing.length : 0;
   const margin = finProjectionMarginPct/100;
   const monthTarget = avgMonthlyCost*(1+margin);
@@ -7801,7 +7811,7 @@ function finProjectionData(){
   const quarterTarget = quarterCost*(1+margin);
   const pending = receivablesTotal();
   const pendingPct = monthTarget>0 ? Math.min(100, (pending/monthTarget)*100) : 0;
-  return { lastMonthCost, monthCost:avgMonthlyCost, monthTarget, quarterCost, quarterTarget, pending, pendingPct };
+  return { lastMonthCost, lastMonthRevenue, lastQuarterRevenue, monthCost:avgMonthlyCost, monthTarget, quarterCost, quarterTarget, pending, pendingPct };
 }
 const finProjArrow = `<div class="fin-proj-arrow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>`;
 function finProjStepHtml(c){
@@ -7809,18 +7819,23 @@ function finProjStepHtml(c){
       <div class="kpi-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">${c.icon}</svg></div>
       <div class="kpi-val" style="color:${c.color}"><span class="fcu" data-val="${c.val}">0</span></div>
       <div class="kpi-label">${c.label}</div>
+      ${c.sub ? `<div class="fin-proj-step-sub">${c.sub}</div>` : ''}
     </div>`;
 }
 function renderFinProjection(){
   document.getElementById('finMarginInput').value = finProjectionMarginPct;
   const d = finProjectionData();
   const lastMLabel = (TODAY.m-2)>=0 ? monthAbbrRS[TODAY.m-2] : '—';
+  const monthPct = d.monthTarget>0 ? (d.lastMonthRevenue/d.monthTarget)*100 : 0;
+  const quarterPct = d.quarterTarget>0 ? (d.lastQuarterRevenue/d.quarterTarget)*100 : 0;
   const steps = [
     { icon:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/>', label:`Prošli mesec (${lastMLabel}) — trošak`, val:d.lastMonthCost, color:'var(--ink)' },
     { icon:'<path d="M3 17l6-6 4 4 7-8"/><path d="M14 7h6v6"/>', label:'Projekcija troška — sledeći mesec', val:d.monthCost, color:'var(--coral)' },
-    { icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>', label:'Cilj prihoda — sledeći mesec', val:d.monthTarget, color:'#4C8A55' },
+    { icon:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.3" fill="currentColor"/>', label:'Cilj prihoda — sledeći mesec', val:d.monthTarget, color:'#4C8A55',
+      sub:`Prošli mesec: <b>${fmtRSD(d.lastMonthRevenue)}</b> <span class="fin-proj-step-sub-pct">(${monthPct.toFixed(0)}% cilja)</span>` },
   ];
-  const capstone = { icon:'<path d="M4 3v18"/><path d="M4 4h13l-3 4 3 4H4"/>', label:'Cilj prihoda — sledeći kvartal', val:d.quarterTarget, color:'var(--gold-deep)', capstone:true };
+  const capstone = { icon:'<path d="M4 3v18"/><path d="M4 4h13l-3 4 3 4H4"/>', label:'Cilj prihoda — sledeći kvartal', val:d.quarterTarget, color:'var(--gold-deep)', capstone:true,
+    sub:`Prošli kvartal: <b>${fmtRSD(d.lastQuarterRevenue)}</b> <span class="fin-proj-step-sub-pct">(${quarterPct.toFixed(0)}% cilja)</span>` };
   document.getElementById('finProjRow').innerHTML =
     steps.map(finProjStepHtml).join(finProjArrow) + finProjStepHtml(capstone);
   document.querySelectorAll('#finProjRow .fcu').forEach(el=>{
