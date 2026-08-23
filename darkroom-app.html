@@ -1204,10 +1204,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .mystat-donut .donut-hole{ inset:12px; }
 .mystat-donut .donut-hole-val{ font-size:15px; }
 .mystat-donut .donut-hole-label{ font-size:7.5px; }
-.mystat-donut-row .donut-legend{ gap:7px; }
+.mystat-donut-row .donut-legend{ gap:7px; max-height:112px; overflow-y:auto; }
 .mystat-donut-row .donut-legend-item{ font-size:10.5px; }
 .mystat-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; flex:0 0 auto; }
-.mystat-recent{ flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:8px; overflow:hidden; }
+.mystat-recent{ flex:1 1 auto; min-height:76px; display:flex; flex-direction:column; justify-content:center; gap:8px; overflow-y:auto; }
 .mystat-recent .task-name{ font-size:11.5px; }
 .mystat-recent .tag{ font-size:7.5px; padding:2.5px 6px; }
 .mystat-empty{ font-size:11px; color:var(--ink-faint); }
@@ -1281,7 +1281,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .todo-add input:focus{ border-color:var(--gold); }
 .todo-add button{ width:34px; height:34px; border-radius:10px; border:none; background:var(--ink-solid-bg); color:#FBF8F1; cursor:pointer; flex-shrink:0; font-size:16px; display:flex; align-items:center; justify-content:center; }
 
-.mystat-panel{ flex:1 1 180px; min-height:0; overflow-y:auto; }
+.mystat-panel{ flex:1.3 1 220px; min-height:0; overflow-y:auto; }
 
 /* ---- Finansije (locked) ---- */
 .fin-panel{ position:relative; display:flex; flex-direction:column; flex:1 1 180px; min-height:0; }
@@ -1294,6 +1294,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-hist-top b{ font-family:var(--font-body); font-weight:600; }
 .fin-hist-sub{ font-size:9px; color:var(--ink-faint); margin-top:2px; }
 .fin-lock-overlay{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px; background:rgba(255,255,255,0.35); backdrop-filter:blur(1px); border-radius:var(--r-lg); }
+[data-theme="dark"] .fin-lock-overlay{ background:rgba(20,18,14,0.55); }
 .lock-icon{ width:36px; height:36px; border-radius:50%; background:var(--card-soft); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; }
 .lock-icon svg{ width:15px; height:15px; color:var(--ink-dim); }
 .fin-lock-label{ font-family:var(--font-mono); font-size:10px; letter-spacing:0.06em; text-transform:uppercase; color:var(--ink-dim); }
@@ -1767,8 +1768,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
           <div class="mystat-stats" id="mystatStats"></div>
           <div class="mystat-donut-row">
-            <div class="donut-wrap mystat-donut" id="mystatDonutWrap">
-              <div class="donut-circle" id="mystatDonutCircle"></div>
+            <div class="donut-wrap mystat-donut modern" id="mystatDonutWrap">
+              <div class="modern-donut-ring" id="mystatDonutRing"></div>
               <div class="donut-hole"><div class="donut-hole-val" id="mystatDonutTotal">0</div><div class="donut-hole-label">zadataka</div></div>
             </div>
             <div class="donut-legend" id="mystatDonutLegend"></div>
@@ -7637,7 +7638,9 @@ function finCostComponents(){
    procentima kao plutajuce oznake direktno na prstenu — zamena za stari
    flat conic-gradient krug. Koristi se za svaki donut na Pregled stranici;
    legenda i centar (.donut-hole) ostaju netaknuti, menja se samo prsten. */
-function renderModernDonut(ringId, legendId, items){
+function renderModernDonut(ringId, legendId, items, opts){
+  const fmtTooltip = (opts && opts.fmtTooltip) || fmtRSD;
+  const fmtLegend = (opts && opts.fmtLegend) || fmtK;
   const total = items.reduce((s,i)=>s+i.value,0);
   const R = 74, CX = 100, CY = 100, SW = 22, GAP = 7;
   const circumference = 2*Math.PI*R;
@@ -7649,7 +7652,7 @@ function renderModernDonut(ringId, legendId, items){
     const arcLen = (drawDeg/360)*circumference;
     svgInner += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${it.color}" stroke-width="${SW}" stroke-linecap="round"
       stroke-dasharray="${arcLen.toFixed(1)} ${(circumference-arcLen).toFixed(1)}" stroke-dashoffset="${arcLen.toFixed(1)}"
-      transform="rotate(${cursor} ${CX} ${CY})" class="modern-donut-seg"><title>${escapeHtml(it.label)}: ${fmtRSD(it.value)}</title></circle>`;
+      transform="rotate(${cursor} ${CX} ${CY})" class="modern-donut-seg"><title>${escapeHtml(it.label)}: ${fmtTooltip(it.value)}</title></circle>`;
     if(pct >= 5){
       const midRad = (cursor+segDeg/2)*Math.PI/180;
       const bx = (CX+R*Math.cos(midRad)).toFixed(1), by = (CY+R*Math.sin(midRad)).toFixed(1);
@@ -7662,7 +7665,7 @@ function renderModernDonut(ringId, legendId, items){
   document.getElementById(legendId).innerHTML = items.map(i=>`
     <div class="donut-legend-item">
       <span class="donut-legend-left"><span class="donut-dot" style="background:${i.color}"></span>${escapeHtml(i.label)}</span>
-      <span class="donut-legend-right"><b>${fmtK(i.value)}</b><span class="donut-legend-pct">${(total>0 ? (i.value/total)*100 : 0).toFixed(1)}%</span></span>
+      <span class="donut-legend-right"><b>${fmtLegend(i.value)}</b><span class="donut-legend-pct">${(total>0 ? (i.value/total)*100 : 0).toFixed(1)}%</span></span>
     </div>`).join('');
   requestAnimationFrame(()=>{
     ring.querySelectorAll('.modern-donut-seg').forEach((seg,i)=>{
@@ -10071,7 +10074,6 @@ function renderMyStats(){
       <span class="tag ${kadarStatusTag[k.status]||'tag-hold'}">${k.status.toUpperCase()}</span>
     </div>`).join('') : `<div class="mystat-empty">Nema nedavnih zadataka</div>`;
 
-  const circle = document.getElementById('mystatDonutCircle');
   const legend = document.getElementById('mystatDonutLegend');
   const holeVal = document.getElementById('mystatDonutTotal');
   const wrap = document.getElementById('mystatDonutWrap');
@@ -10079,29 +10081,18 @@ function renderMyStats(){
   const counts = kadarTypeCounts(myKadrovi);
   const types = Object.keys(kadarTypeColorVar).filter(t=>counts[t]);
   if(!total){
-    circle.style.background = 'var(--border)';
+    document.getElementById('mystatDonutRing').innerHTML = '';
     legend.innerHTML = `<div class="mystat-empty">Još nemaš dodeljene zadatke</div>`;
     holeVal.textContent = '0';
     wrap.classList.add('shown');
     return;
   }
-  let acc = 0;
-  const stops = types.map(t=>{
-    const pct = (counts[t]/total)*100;
-    const seg = `${kadarTypeColorVar[t]} ${acc}% ${acc+pct}%`;
-    acc += pct;
-    return seg;
-  }).join(', ');
-  circle.style.background = `conic-gradient(${stops})`;
   const sortedTypes = types.slice().sort((a,b)=>counts[b]-counts[a]);
-  const shownTypes = sortedTypes.slice(0,2);
-  const extraTypesCount = sortedTypes.length - shownTypes.length;
-  legend.innerHTML = shownTypes.map(t=>`
-    <div class="donut-legend-item">
-      <span class="donut-legend-left"><span class="donut-dot" style="background:${kadarTypeColorVar[t]}"></span>${t}</span>
-      <b>${counts[t]}</b>
-    </div>`).join('') + (extraTypesCount>0 ? `
-    <div class="donut-legend-item" style="color:var(--ink-faint);">+${extraTypesCount} vrste</div>` : '');
+  const items = sortedTypes.map(t=>({ label:t, value:counts[t], color:kadarTypeColorVar[t] }));
+  renderModernDonut('mystatDonutRing', 'mystatDonutLegend', items, {
+    fmtTooltip: v => `${v} ${v===1 ? 'zadatak' : 'zadataka'}`,
+    fmtLegend: v => String(v),
+  });
   animateCountUp(holeVal, total, {duration:700});
   setTimeout(()=>wrap.classList.add('shown'), 80);
 }
