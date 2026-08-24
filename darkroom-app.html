@@ -6366,6 +6366,21 @@ function spawnWinnerConfetti(originEl){
 /* Reuses Statistika's real-data person card (personProductionCardHTML), fed with
    compareStats() (the filtered variant) instead of the plain empKadarStats — so the
    winner crown reflects the selected godina/tip/klijent filters, not raw all-time totals. */
+/* Grid's default align-items:stretch only equalizes items sharing a row —
+   at the narrow-viewport breakpoint (.compare-grid collapses to a single
+   column, see the max-width:1000px rule) the two cards stack into separate
+   rows and stretch no longer applies, so one card can end up visibly
+   longer than the other depending on how much data each person has.
+   Measuring both and pinning min-height to the taller one works in both
+   the side-by-side and stacked layouts. */
+function equalizeCompareCardHeights(){
+  const wraps = document.querySelectorAll('#compareGrid .cc-card-wrap');
+  if(wraps.length < 2) return;
+  wraps.forEach(w=>{ w.style.minHeight = ''; });
+  const max = Math.max(...Array.from(wraps).map(w=>w.offsetHeight));
+  wraps.forEach(w=>{ w.style.minHeight = max+'px'; });
+}
+window.addEventListener('resize', ()=>{ if(compareSelection.length) equalizeCompareCardHeights(); });
 function renderCompare(){
   const [a,b] = compareSelection;
   const sa = a ? compareStats(a) : null;
@@ -6381,6 +6396,7 @@ function renderCompare(){
     ${cardWrap(a, sa)}
     <div class="compare-vs">VS</div>
     ${cardWrap(b, sb)}`;
+  equalizeCompareCardHeights();
   renderCompareRenders();
   if(winner){
     setTimeout(()=>spawnWinnerConfetti(document.querySelector('.cc-crown')), 550);
