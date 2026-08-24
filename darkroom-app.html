@@ -544,6 +544,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-mini-stat-val{ font-family:var(--font-display); font-weight:700; font-size:22px; }
 .fin-mini-stat-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; }
 
+.expense-inbox-row{ background:var(--card-soft); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+.expense-inbox-row:last-child{ margin-bottom:0; }
+.expense-inbox-file{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px; }
+.expense-inbox-file-link{ font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--ink); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.expense-inbox-file-link:hover{ color:var(--gold-deep); }
+.expense-inbox-note{ font-family:var(--font-mono); font-size:9.5px; color:var(--coral); flex-shrink:0; }
+.expense-inbox-fields{ display:grid; grid-template-columns:130px 110px 1fr 150px; gap:8px; margin-bottom:8px; }
+.expense-inbox-fields input, .expense-inbox-fields select{ font-family:var(--font-body); font-size:11.5px; border:1px solid var(--border); background:var(--card); border-radius:8px; padding:6px 8px; color:var(--ink); width:100%; }
+.expense-inbox-actions{ display:flex; gap:8px; justify-content:flex-end; }
+.expense-inbox-confirm{ font-family:var(--font-mono); font-size:10.5px; background:#4C8A55; color:#fff; border:none; border-radius:8px; padding:6px 12px; cursor:pointer; }
+.expense-inbox-reject{ font-family:var(--font-mono); font-size:10.5px; background:var(--card); color:var(--ink-dim); border:1px solid var(--border); border-radius:8px; padding:6px 12px; cursor:pointer; }
 
 .tx-head{ display:grid; grid-template-columns:0.8fr 0.7fr 1fr 1.6fr 1fr 1fr; gap:10px; padding:12px 18px; border-bottom:1px solid var(--border); }
 .tx-head span{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; }
@@ -2345,6 +2356,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
       <!-- TAB 2: TRANSAKCIJE -->
       <div class="stat-tab-panel" id="finTabTransakcije">
+        <div class="stat-panel" id="expenseInboxPanel" style="display:none; margin-bottom:16px;">
+          <div class="stat-panel-head">
+            <div class="stat-panel-title">📥 Na čekanju iz Dropbox-a</div>
+            <div class="panel-sub" id="expenseInboxCount"></div>
+          </div>
+          <div id="expenseInboxList"></div>
+        </div>
         <div class="proj-toolbar">
           <div class="proj-filters">
             <div class="client-search">
@@ -7922,6 +7940,98 @@ function bindCalFilter(id, onSelect){
   });
 }
 
+/* Phase 12: pending Dropbox receipts. Nothing here is a real transaction
+   yet — Potvrdi writes the (possibly hand-corrected) fields into
+   `transactions` and marks the inbox row 'potvrdjeno'; Odbaci just marks it
+   'odbijeno'. Either way the row drops out of `expenseInbox` (loaded
+   status='na_cekanju' only) so the list doesn't need a full reload. */
+async function renderExpenseInbox(){
+  const panel = document.getElementById('expenseInboxPanel');
+  if(!expenseInbox.length){ panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  document.getElementById('expenseInboxCount').textContent = `${expenseInbox.length} ${expenseInbox.length===1?'stavka':'stavke'}`;
+
+  let signedUrls = {};
+  const paths = expenseInbox.filter(e=>e.receiptStoragePath).map(e=>e.receiptStoragePath);
+  if(sb && paths.length){
+    try {
+      const { data } = await sb.storage.from('expense-receipts').createSignedUrls(paths, 3600);
+      (data||[]).forEach(d=>{ if(d.signedUrl) signedUrls[d.path] = d.signedUrl; });
+    } catch(e){ /* receipt link just won't be clickable if this fails */ }
+  }
+
+  const categoryOptions = Object.keys(categoryColorVar);
+  document.getElementById('expenseInboxList').innerHTML = expenseInbox.map(item=>{
+    const url = signedUrls[item.receiptStoragePath];
+    return `
+    <div class="expense-inbox-row" data-id="${item._id}">
+      <div class="expense-inbox-file">
+        ${url ? `<a class="expense-inbox-file-link" href="${url}" target="_blank" rel="noopener">📄 ${escapeHtml(item.fileName)}</a>` : `<span class="expense-inbox-file-link">📄 ${escapeHtml(item.fileName)}</span>`}
+        ${item.note ? `<span class="expense-inbox-note">⚠️ ${escapeHtml(item.note)}</span>` : ''}
+      </div>
+      <div class="expense-inbox-fields">
+        <input type="date" class="ei-date" value="${item.date||''}">
+        <input type="number" class="ei-amount" placeholder="Iznos" value="${item.amount!=null?item.amount:''}">
+        <input type="text" class="ei-desc" placeholder="Opis" value="${escapeHtml(item.description||'')}">
+        <select class="ei-category">
+          <option value="">Bez kategorije</option>
+          ${categoryOptions.map(c=>`<option value="${c}" ${c===item.category?'selected':''}>${c}</option>`).join('')}
+        </select>
+      </div>
+      <div class="expense-inbox-actions">
+        <button class="expense-inbox-reject" data-id="${item._id}">Odbaci</button>
+        <button class="expense-inbox-confirm" data-id="${item._id}">Potvrdi</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.querySelectorAll('#expenseInboxList .expense-inbox-confirm').forEach(btn=>{
+    btn.addEventListener('click', ()=>confirmExpenseInboxItem(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll('#expenseInboxList .expense-inbox-reject').forEach(btn=>{
+    btn.addEventListener('click', ()=>rejectExpenseInboxItem(Number(btn.dataset.id)));
+  });
+}
+async function confirmExpenseInboxItem(id){
+  const item = expenseInbox.find(e=>e._id===id);
+  if(!item || !sb) return;
+  const row = document.querySelector(`.expense-inbox-row[data-id="${id}"]`);
+  const date = row.querySelector('.ei-date').value;
+  const amount = parseFloat(row.querySelector('.ei-amount').value);
+  const description = row.querySelector('.ei-desc').value.trim();
+  const category = row.querySelector('.ei-category').value;
+  if(!date || isNaN(amount) || !description || !category){
+    await customAlert('Popuni datum, iznos, opis i kategoriju pre potvrde.');
+    return;
+  }
+  const { data, error } = await sb.from('transactions').insert({
+    date, type:'Odliv', category, description, amount,
+  }).select().single();
+  if(error){ await customAlert('Upis transakcije nije uspeo: ' + error.message); return; }
+  const me = currentUser();
+  await sb.from('expense_inbox').update({
+    status:'potvrdjeno', linked_transaction_id:data.id, reviewed_at:new Date().toISOString(), reviewed_by: me ? me.authId : null,
+  }).eq('id', item.dbId);
+  allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:null, kadarDbId:null });
+  expenseInbox.splice(expenseInbox.indexOf(item), 1);
+  renderExpenseInbox();
+  renderTxList();
+  renderFinHero();
+  buildTxCategoryMenu();
+}
+async function rejectExpenseInboxItem(id){
+  const item = expenseInbox.find(e=>e._id===id);
+  if(!item || !sb) return;
+  if(!confirm(`Odbaciti "${item.fileName}"? Neće postati transakcija.`)) return;
+  const me = currentUser();
+  const { error } = await sb.from('expense_inbox').update({
+    status:'odbijeno', reviewed_at:new Date().toISOString(), reviewed_by: me ? me.authId : null,
+  }).eq('id', item.dbId);
+  if(error){ await customAlert('Odbacivanje nije uspelo: ' + error.message); return; }
+  expenseInbox.splice(expenseInbox.indexOf(item), 1);
+  renderExpenseInbox();
+}
+
 function renderTxList(){
   const q = txState.search.trim().toLowerCase();
   const list = allTransactions.filter(t=>
@@ -9180,6 +9290,7 @@ function initFinansije(){
   buildTxMonthMenu();
   buildTxYearMenu();
   renderTxList();
+  renderExpenseInbox();
   buildPriceClientMenu();
   renderPricingList();
   renderSalMonthMenu();
@@ -10684,6 +10795,27 @@ async function loadExtraChargesFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+/* Phase 12: receipts the dropbox-expense-sync Edge Function read off
+   Dropbox and staged here — 'na_cekanju' rows only, confirmed/rejected ones
+   don't need to sit in memory. RLS already restricts this to superadmin, so
+   the unconditional fetch just returns empty for anyone else. */
+let expenseInbox = [];
+async function loadExpenseInboxFromSupabase(){
+  if(!sb) return false;
+  try {
+    const { data, error } = await sb.from('expense_inbox').select('*').eq('status', 'na_cekanju').order('created_at', { ascending:true });
+    if(error || !data) return false;
+    expenseInbox.length = 0;
+    data.forEach(row=>{
+      expenseInbox.push({
+        _id: nextId(), dbId: row.id, dropboxPath: row.dropbox_path, fileName: row.file_name,
+        receiptStoragePath: row.receipt_storage_path, amount: row.extracted_amount, date: row.extracted_date,
+        description: row.extracted_description, category: row.extracted_category, note: row.ai_note,
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
 let allTransactions = [];
 async function loadTransactionsFromSupabase(){
   if(!sb) return false;
@@ -10745,6 +10877,7 @@ async function resolveSessionLogin(session){
     await loadTimeEntriesFromSupabase();
     await loadExtraChargesFromSupabase();
     await loadTransactionsFromSupabase();
+    await loadExpenseInboxFromSupabase();
     await loadSalaryEntriesFromSupabase();
     await loadEventsFromSupabase();
     buildCalFilterMenus();

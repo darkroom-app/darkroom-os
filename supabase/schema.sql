@@ -950,3 +950,77 @@ where base_price is not null;
 alter table public.kadrovi drop column base_price;
 alter table public.kadrovi drop column price_status;
 alter table public.kadrovi drop column price_updated_at;
+
+
+-- ==== Phase 12: Dropbox receipt intake (expense_inbox) ====
+-- (run as a twenty-first query)
+--
+-- Watches the studio's Dropbox for new receipt/invoice files and has Gemini
+-- read each one (amount/date/description/category), but never writes
+-- straight into `transactions` — everything lands here first as
+-- 'na_cekanju' for a superadmin to confirm or correct in the app before it
+-- becomes a real ledger row. An OCR/AI misread silently entering the books
+-- unreviewed is exactly the kind of mistake that already happened once by
+-- hand (see the Phase 11-era manual balance correction) — this table exists
+-- so automation doesn't reintroduce that risk. Same superadmin-only RLS
+-- shape as salary_entries/Phase 11.
+--
+-- The watched Dropbox path isn't hardcoded here — the dropbox-expense-sync
+-- Edge Function lists the direct children of "/Darkroom" itself and only
+-- descends into ones matching "<year> Arhiva" (e.g. "2026 Arhiva"), so next
+-- year's "2027 Arhiva" is picked up automatically with no config change and
+-- no unrelated project/render folders under Darkroom ever get scanned.
+-- `cursors` holds one Dropbox list_folder cursor per watched year-folder —
+-- when a folder is seen for the first time, the function seeds its cursor
+-- from the current state WITHOUT emitting any expense_inbox rows for what's
+-- already sitting in Dropbox, so only files added from that point forward
+-- ever get processed (existing 2026 receipts were entered by hand already).
+create table public.dropbox_sync_state (
+  id int primary key default 1,
+  cursors jsonb not null default '{}'::jsonb,
+  updated_at timestamptz not null default now()
+);
+insert into public.dropbox_sync_state (id) values (1);
+alter table public.dropbox_sync_state enable row level security;
+
+create policy "superadmin can read dropbox_sync_state" on public.dropbox_sync_state for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+-- No insert/update/delete policy for regular clients — only the Edge
+-- Function (via the service-role key, which bypasses RLS entirely) ever
+-- writes this row.
+
+create table public.expense_inbox (
+  id uuid primary key default gen_random_uuid(),
+  dropbox_path text not null unique,
+  file_name text not null,
+  receipt_storage_path text,
+  extracted_amount numeric,
+  extracted_date date,
+  extracted_description text,
+  extracted_category text,
+  ai_note text,                -- Gemini's own plain-language flag when it's unsure about something (blurry scan, ambiguous amount) — shown to the reviewer as a hint, not enforced
+  status text not null default 'na_cekanju', -- 'na_cekanju' | 'potvrdjeno' | 'odbijeno'
+  linked_transaction_id uuid references public.transactions(id) on delete set null,
+  created_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references public.team_members(id) on delete set null
+);
+alter table public.expense_inbox enable row level security;
+
+create policy "superadmin can read expense_inbox" on public.expense_inbox for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+create policy "superadmin can update expense_inbox" on public.expense_inbox for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+create policy "superadmin can delete expense_inbox" on public.expense_inbox for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+-- No insert policy for regular clients — only the Edge Function inserts new
+-- receipts. Confirming/rejecting from the app only ever needs update.
+
+insert into storage.buckets (id, name, public) values ('expense-receipts', 'expense-receipts', false);
+-- Unlike client-avatars/project-thumbnails/round-images/team-avatars
+-- (Phase 3c, all public:true), receipts are confidential financial
+-- documents — bucket is private and only superadmin can read; only the
+-- Edge Function (service-role) uploads.
+create policy "Superadmin read expense-receipts" on storage.objects for select to authenticated
+  using (bucket_id = 'expense-receipts' and (select access from public.team_members where id = auth.uid()) = 'superadmin');
