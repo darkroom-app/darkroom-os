@@ -829,7 +829,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .task-emp-card-avail.free{ color:#4C8A55; }
 .task-emp-card-avail.busy{ color:var(--ink-faint); }
 
-.compare-grid{ display:grid; grid-template-columns:1fr auto 1fr; gap:24px; align-items:start; }
+.compare-grid{ display:grid; grid-template-columns:1fr auto 1fr; gap:24px; }
 .compare-vs{ font-family:var(--font-display); font-weight:700; font-size:13px; color:var(--ink-faint); align-self:center; }
 .cc-artist-head{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
 .cc-artist-avatar{ width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:14px; color:#fff; flex-shrink:0; }
@@ -7655,7 +7655,11 @@ function renderModernDonut(ringId, legendId, items, opts){
     if(pct >= 5){
       const midRad = (cursor+segDeg/2)*Math.PI/180;
       const bx = (CX+R*Math.cos(midRad)).toFixed(1), by = (CY+R*Math.sin(midRad)).toFixed(1);
-      svgInner += `<g class="modern-donut-badge"><circle cx="${bx}" cy="${by}" r="15" fill="var(--ink)" stroke="var(--card)" stroke-width="2.5"/><text x="${bx}" y="${(+by+3.4).toFixed(1)}" text-anchor="middle" font-family="var(--font-mono)" font-weight="700" font-size="9.5" fill="#fff">${pct.toFixed(0)}%</text></g>`;
+      /* Badge radius kept within SW/2 (the ring's own half-width) so the
+         chip sits flush inside the ring band instead of poking past its
+         inner/outer edge — a larger radius here used to leave a crescent of
+         the badge circle hanging outside the ring's colored stroke. */
+      svgInner += `<g class="modern-donut-badge"><circle cx="${bx}" cy="${by}" r="${SW/2}" fill="var(--ink)" stroke="var(--card)" stroke-width="2"/><text x="${bx}" y="${(+by+2.8).toFixed(1)}" text-anchor="middle" font-family="var(--font-mono)" font-weight="700" font-size="8" fill="#fff">${pct.toFixed(0)}%</text></g>`;
     }
     cursor += segDeg;
   });
