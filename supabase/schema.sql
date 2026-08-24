@@ -1024,3 +1024,130 @@ insert into storage.buckets (id, name, public) values ('expense-receipts', 'expe
 -- Edge Function (service-role) uploads.
 create policy "Superadmin read expense-receipts" on storage.objects for select to authenticated
   using (bucket_id = 'expense-receipts' and (select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+
+-- ==== Phase 13: close the calendar_events write-access gap ====
+-- (run as a twenty-second query)
+--
+-- Found during a full-app intrusion-surface review. Phase 8 deliberately
+-- left calendar_events fully open ("the client has never gated calendar
+-- create/edit/delete behind a role check"), which was true at the time —
+-- but Phase 10 later added the leave-approval workflow (approval_status) on
+-- top of that same wide-open table without anyone revisiting whether "wide
+-- open" was still the right shape once there was something worth gating.
+-- Today, any authenticated employee can call
+--   supabase.from('calendar_events').update({approval_status:'odobreno'})
+-- directly and self-approve their own leave request, or edit/delete anyone
+-- else's zadatak/odsustvo/praznik entries — none of that requires the UI at
+-- all, RLS was the only thing that could have stopped it and didn't.
+--
+-- This migration does NOT invent new restrictions — it encodes exactly what
+-- the client already enforces and has enforced since Phase 8/10:
+--   canEditCalendarFor() (darkroom-app.html): admin/superadmin can edit any
+--     zadatak/odsustvo; a 'user' account only their own (person = own name).
+--   canManagePraznik = isSuperAdmin(): only superadmin ever touches 'praznik'
+--     rows — admin does not get a praznik exception.
+--   approveLeaveRequest()/rejectLeaveRequest(): only superadmin ever changes
+--     approval_status, and a non-superadmin's own insert always starts at
+--     'na_cekanju', never self-set to 'odobreno'.
+-- A 'user' can still freely edit their own pending request's dates/type
+-- without tripping the approval guard below, since that only fires when
+-- approval_status itself is the field actually changing.
+
+drop policy "authenticated can read calendar_events" on public.calendar_events;
+drop policy "authenticated can insert calendar_events" on public.calendar_events;
+drop policy "authenticated can update calendar_events" on public.calendar_events;
+drop policy "authenticated can delete calendar_events" on public.calendar_events;
+
+-- Read stays fully open — the team swimlane/calendar showing everyone's
+-- schedule at once is intentional, not a confidentiality gap.
+create policy "authenticated can read calendar_events" on public.calendar_events for select to authenticated using (true);
+
+create policy "role-scoped insert calendar_events" on public.calendar_events for insert to authenticated
+  with check (
+    (select access from public.team_members where id = auth.uid()) = 'superadmin'
+    or (
+      (select access from public.team_members where id = auth.uid()) = 'admin'
+      and kind in ('zadatak', 'odsustvo')
+    )
+    or (
+      kind in ('zadatak', 'odsustvo')
+      and person = (select name from public.team_members where id = auth.uid())
+    )
+  );
+
+-- Same condition on USING and WITH CHECK is deliberate: a 'user' can only
+-- ever touch rows already assigned to them (USING) and can never change
+-- `person` to someone else (WITH CHECK re-evaluates against the new row),
+-- which is exactly how task-reassignment already being admin/superadmin-only
+-- client-side (canReassign) falls out of this naturally.
+create policy "role-scoped update calendar_events" on public.calendar_events for update to authenticated
+  using (
+    (select access from public.team_members where id = auth.uid()) = 'superadmin'
+    or (
+      (select access from public.team_members where id = auth.uid()) = 'admin'
+      and kind in ('zadatak', 'odsustvo')
+    )
+    or (
+      kind in ('zadatak', 'odsustvo')
+      and person = (select name from public.team_members where id = auth.uid())
+    )
+  )
+  with check (
+    (select access from public.team_members where id = auth.uid()) = 'superadmin'
+    or (
+      (select access from public.team_members where id = auth.uid()) = 'admin'
+      and kind in ('zadatak', 'odsustvo')
+    )
+    or (
+      kind in ('zadatak', 'odsustvo')
+      and person = (select name from public.team_members where id = auth.uid())
+    )
+  );
+
+create policy "role-scoped delete calendar_events" on public.calendar_events for delete to authenticated
+  using (
+    (select access from public.team_members where id = auth.uid()) = 'superadmin'
+    or (
+      (select access from public.team_members where id = auth.uid()) = 'admin'
+      and kind in ('zadatak', 'odsustvo')
+    )
+    or (
+      kind in ('zadatak', 'odsustvo')
+      and person = (select name from public.team_members where id = auth.uid())
+    )
+  );
+
+-- Belt-and-suspenders on top of the RLS above: even if a future policy
+-- change accidentally widens who can UPDATE a row, approval_status itself
+-- stays locked to superadmin specifically, mirroring the
+-- prevent_self_access_escalation() trigger Phase 3h already uses for
+-- team_members.access. Handles both INSERT (a non-superadmin's own request
+-- must start at na_cekanju, never self-approved) and UPDATE (approval_status
+-- can only change via a superadmin's hand) in one place.
+create or replace function public.guard_calendar_approval_status()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  my_access text;
+begin
+  select access into my_access from public.team_members where id = auth.uid();
+  if TG_OP = 'INSERT' then
+    if NEW.approval_status is not null and NEW.approval_status <> 'na_cekanju' and my_access <> 'superadmin' then
+      raise exception 'Only a superadmin can set an approval status other than na_cekanju.';
+    end if;
+  elsif TG_OP = 'UPDATE' then
+    if NEW.approval_status is distinct from OLD.approval_status and my_access <> 'superadmin' then
+      raise exception 'Only a superadmin can change approval_status.';
+    end if;
+  end if;
+  return NEW;
+end;
+$$;
+
+create trigger guard_calendar_events_approval
+  before insert or update on public.calendar_events
+  for each row execute function public.guard_calendar_approval_status();

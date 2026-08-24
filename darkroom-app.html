@@ -3278,7 +3278,7 @@ function renderDashboardProjects(){
 
   projGridEl.innerHTML = list.map(p=>{
     const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
-    const thumbStyleAttr = p.thumbnail ? `background-image:url('${p.thumbnail}');background-size:cover;background-position:center;` : thumbStyle(p.seed, 180);
+    const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed, 180);
     return `
     <div class="proj-card" data-id="${p._id}" style="cursor:pointer;">
       <div class="proj-thumb" style="${thumbStyleAttr}"><div class="vfc tl"></div><div class="vfc br"></div></div>
@@ -3875,12 +3875,12 @@ function buildCalFilterMenus(){
   const people = uniqueSorted(teamMembers.filter(t=>t.status==='Aktivan').map(t=>t.name));
   renderCalFilterMenu(
     document.getElementById('filterProjektiMenu'),
-    codes.map(c=>({html:`<div class="cal-filter-item" data-val="${c}">${c}</div>`})),
+    codes.map(c=>({html:`<div class="cal-filter-item" data-val="${escapeHtml(c)}">${escapeHtml(c)}</div>`})),
     `<div class="cal-filter-item" data-val="Svi Projekti">Svi Projekti</div>`
   );
   renderCalFilterMenu(
     document.getElementById('filterTimMenu'),
-    people.map(p=>({html:`<div class="cal-filter-item" data-val="${p}"><span class="cal-filter-dot" style="background:${artistColors[p]||'var(--ink-faint)'}"></span>${p}</div>`})),
+    people.map(p=>({html:`<div class="cal-filter-item" data-val="${escapeHtml(p)}"><span class="cal-filter-dot" style="background:${artistColors[p]||'var(--ink-faint)'}"></span>${escapeHtml(p)}</div>`})),
     `<div class="cal-filter-item" data-val="Ceo Tim"><span class="cal-filter-dot" style="background:var(--ink-faint)"></span>Ceo Tim</div>`
   );
 
@@ -4051,7 +4051,7 @@ function refreshZadatakProjects(selected){
   const projects = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===employee));
   const el = document.getElementById('evzProject');
   el.innerHTML = projects.length
-    ? projects.map(p=>`<option value="${p.code}">${p.code} — ${escapeHtml(p.name)}</option>`).join('')
+    ? projects.map(p=>`<option value="${escapeHtml(p.code)}">${escapeHtml(p.code)} — ${escapeHtml(p.name)}</option>`).join('')
     : `<option value="">Nema projekata za ovog zaposlenog</option>`;
   if(selected && projects.some(p=>p.code===selected)) el.value = selected;
 }
@@ -5005,11 +5005,11 @@ function buildFilterMenus(){
 
   document.getElementById('filterKlijentMenu').innerHTML =
     `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
-    clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
+    clients.map(c=>`<div class="cal-filter-item" data-val="${escapeHtml(c)}">${escapeHtml(c)}</div>`).join('');
 
   document.getElementById('filterUmetnikMenu').innerHTML =
     `<div class="cal-filter-item" data-val="Svi umetnici">Svi umetnici</div>` +
-    artists.map(a=>`<div class="cal-filter-item" data-val="${a}"><span class="cal-filter-dot" style="background:${artistColors[a]||'var(--ink-faint)'}"></span>${a}</div>`).join('');
+    artists.map(a=>`<div class="cal-filter-item" data-val="${escapeHtml(a)}"><span class="cal-filter-dot" style="background:${artistColors[a]||'var(--ink-faint)'}"></span>${escapeHtml(a)}</div>`).join('');
 
   bindFilterClicks();
 }
@@ -5098,7 +5098,7 @@ function renderProjectsPage(){
 
   document.getElementById('projectsGrid').innerHTML = list.map(p=>{
     const s = projectStats(p);
-    const thumbStyleAttr = p.thumbnail ? `background-image:url('${p.thumbnail}');background-size:cover;background-position:center;` : thumbStyle(p.seed,320);
+    const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed,320);
     return `
     <div class="pg-card" data-id="${p._id}">
       ${projectEditBtn(p)}
@@ -5121,7 +5121,7 @@ function renderProjectsPage(){
 
   document.getElementById('projectsList').innerHTML = list.map(p=>{
     const s = projectStats(p);
-    const thumbStyleAttr = p.thumbnail ? `background-image:url('${p.thumbnail}');background-size:cover;background-position:center;` : thumbStyle(p.seed,80);
+    const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed,80);
     return `
     <div class="plist-row" data-id="${p._id}" style="cursor:pointer;">
       <div class="plist-name-wrap">
@@ -5350,7 +5350,7 @@ function pdAvatarHtml(name, size, fontSize){
   if(t){
     const { grad, initials, avatar } = avatarFor(t);
     return avatar
-      ? `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background-image:url('${avatar}');background-size:cover;background-position:center;"></span>`
+      ? `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;"></span>`
       : `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:${grad};">${initials}</span>`;
   }
   return `<span class="cb-avatar" style="width:${size}px;height:${size}px;font-size:${fontSize}px;background:var(--ink-faint);">${clientInitials(name)}</span>`;
@@ -5415,7 +5415,7 @@ function renderProjectDetailKadrovi(){
   });
 
   const roundPillHtml = (k)=> k.rounds.map(r=>{
-    const imgStyle = r.image ? `background-image:url('${r.image}');` : '';
+    const imgStyle = r.image ? `background-image:url('${escapeHtml(r.image)}');` : '';
     return `
       <button class="pd-round-pill ${r.billable ? 'billable' : 'internal'}" data-task-id="${k._id}" data-round-id="${r._id}" type="button">
         <span class="pd-round-pill-thumb" style="${imgStyle}"></span>
@@ -5428,7 +5428,7 @@ function renderProjectDetailKadrovi(){
     const items = groups.get(name);
     const t = teamMembers.find(m=>m.name===name);
     const { grad, initials, avatar } = t ? avatarFor(t) : { grad:'var(--ink-faint)', initials:clientInitials(name), avatar:null };
-    const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
+    const avatarStyle = avatar ? `background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;` : `background:${grad};`;
     return `
     <div class="price-project open">
       <div class="price-project-head">
@@ -5588,7 +5588,7 @@ function renderTaskEmployeeChips(selected){
   const sortedMembers = activeMembers.sort((a,b)=>a.name.localeCompare(b.name));
   document.getElementById('taskEmployeeChipRow').innerHTML = sortedMembers.map(t=>{
     const { grad, initials, avatar } = avatarFor(t);
-    const avatarStyle = avatar ? `background-image:url('${avatar}');background-size:cover;background-position:center;` : `background:${grad};`;
+    const avatarStyle = avatar ? `background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;` : `background:${grad};`;
     const avail = formatAvailability(weeklyFreeDays(t.key));
     return `
     <div class="task-emp-card ${t.name===selected ? 'selected' : ''}" data-name="${escapeHtml(t.name)}">
@@ -5859,7 +5859,7 @@ function renderClientsPage(){
 
   document.getElementById('clientsGrid').innerHTML = list.map((c,i)=>{
     const grad = clientAvatarColors[i % clientAvatarColors.length];
-    const avatarHtml = c.avatar ? `style="background-image:url('${c.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}"`;
+    const avatarHtml = c.avatar ? `style="background-image:url('${escapeHtml(c.avatar)}');background-size:cover;background-position:center;"` : `style="background:${grad}"`;
     const stats = clientProjectStats(c.name);
     const status = clientStatus(c.name);
     return `
@@ -5882,7 +5882,7 @@ function renderClientsPage(){
 
   document.getElementById('clientsList').innerHTML = list.map((c,i)=>{
     const grad = clientAvatarColors[i % clientAvatarColors.length];
-    const avatarHtml = c.avatar ? `style="background-image:url('${c.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}"`;
+    const avatarHtml = c.avatar ? `style="background-image:url('${escapeHtml(c.avatar)}');background-size:cover;background-position:center;"` : `style="background:${grad}"`;
     const stats = clientProjectStats(c.name);
     const status = clientStatus(c.name);
     return `
@@ -6173,11 +6173,11 @@ function buildPortFilterMenus(){
   document.getElementById('pfTipMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi tipovi">Svi tipovi</div>` +
     types.map(t=>`<div class="cal-filter-item" data-val="${t}"><span class="cal-filter-dot" style="background:${kadarTypeColorVar[t]||'var(--ink-faint)'}"></span>${t}</div>`).join('');
   document.getElementById('pfKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
-    clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
+    clients.map(c=>`<div class="cal-filter-item" data-val="${escapeHtml(c)}">${escapeHtml(c)}</div>`).join('');
   document.getElementById('pfProjekatMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi projekti">Svi projekti</div>` +
-    projects.map(p=>`<div class="cal-filter-item" data-val="${p}">${p}</div>`).join('');
+    projects.map(p=>`<div class="cal-filter-item" data-val="${escapeHtml(p)}">${escapeHtml(p)}</div>`).join('');
   document.getElementById('pfUmetnikMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi zaposleni">Svi zaposleni</div>` +
-    artists.map(a=>`<div class="cal-filter-item" data-val="${a}"><span class="cal-filter-dot" style="background:${artistColors[a]||'var(--ink-faint)'}"></span>${a}</div>`).join('');
+    artists.map(a=>`<div class="cal-filter-item" data-val="${escapeHtml(a)}"><span class="cal-filter-dot" style="background:${artistColors[a]||'var(--ink-faint)'}"></span>${escapeHtml(a)}</div>`).join('');
 
   document.querySelectorAll('#pfGodina, #pfTip, #pfKlijent, #pfProjekat, #pfUmetnik').forEach(f=>{
     const btn = f.querySelector('.cal-filter-btn');
@@ -6216,7 +6216,7 @@ function filteredPortfolio(){
 function portCardHTML(p){
   return `
     <div class="port-card" data-id="${p._id}">
-      <div class="port-thumb" style="background-image:url('${p.image}');background-size:cover;background-position:center;">
+      <div class="port-thumb" style="background-image:url('${escapeHtml(p.image)}');background-size:cover;background-position:center;">
         <div class="port-type-badge">${escapeHtml(p.type)}</div>
         <div class="port-thumb-zoom">🔍</div>
         <div class="vfc tl"></div><div class="vfc br"></div>
@@ -6225,7 +6225,7 @@ function portCardHTML(p){
         <div class="port-title">${escapeHtml(p.title)}</div>
         <div class="port-meta">${escapeHtml(p.code)} · ${escapeHtml(p.project)}</div>
         <div class="port-foot">
-          <div class="port-artist"><span class="port-avatar" style="${avatarBgInner(p.artist).bg}">${avatarBgInner(p.artist).inner}</span><span>${p.artist}</span></div>
+          <div class="port-artist"><span class="port-avatar" style="${avatarBgInner(p.artist).bg}">${avatarBgInner(p.artist).inner}</span><span>${escapeHtml(p.artist)}</span></div>
           <span class="port-year">${p.year}</span>
         </div>
       </div>
@@ -6333,7 +6333,7 @@ function buildCompareFilterMenus(){
   document.getElementById('cmpTipMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi tipovi">Svi tipovi</div>` +
     types.map(t=>`<div class="cal-filter-item" data-val="${t}"><span class="cal-filter-dot" style="background:${kadarTypeColorVar[t]||'var(--ink-faint)'}"></span>${t}</div>`).join('');
   document.getElementById('cmpKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
-    clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
+    clients.map(c=>`<div class="cal-filter-item" data-val="${escapeHtml(c)}">${escapeHtml(c)}</div>`).join('');
 
   document.querySelectorAll('#cmpGodina, #cmpTip, #cmpKlijent').forEach(f=>{
     const btn = f.querySelector('.cal-filter-btn');
@@ -7052,7 +7052,7 @@ function renderTeamPage(){
   const teamCard = (t,i)=>{
     const grad = artistGrad[t.key] || clientAvatarColors[i % clientAvatarColors.length];
     const initials = artistInitials[t.key] || clientInitials(t.name);
-    const avatarHtml = t.avatar ? `style="background-image:url('${t.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
+    const avatarHtml = t.avatar ? `style="background-image:url('${escapeHtml(t.avatar)}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
     const activeProj = teamActiveProjects(t.key);
     const output = typeof empYearTotal === 'function' ? empYearTotal(t.key) : 0;
     const inactive = t.status!=='Aktivan';
@@ -7086,7 +7086,7 @@ function renderTeamPage(){
   const teamRow = (t,i)=>{
     const grad = artistGrad[t.key] || clientAvatarColors[i % clientAvatarColors.length];
     const initials = artistInitials[t.key] || clientInitials(t.name);
-    const avatarHtml = t.avatar ? `style="background-image:url('${t.avatar}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
+    const avatarHtml = t.avatar ? `style="background-image:url('${escapeHtml(t.avatar)}');background-size:cover;background-position:center;"` : `style="background:${grad}; border-radius:50%;"`;
     const activeProj = teamActiveProjects(t.key);
     const inactive = t.status!=='Aktivan';
     return `
@@ -8163,7 +8163,7 @@ const priceState = { search:"", client:"Svi klijenti", sortDir:"desc", expandedI
 function buildPriceClientMenu(){
   const clients = uniqueSorted(allProjects.map(p=>p.client));
   document.getElementById('filterPriceKlijentMenu').innerHTML = `<div class="cal-filter-item" data-val="Svi klijenti">Svi klijenti</div>` +
-    clients.map(c=>`<div class="cal-filter-item" data-val="${c}">${c}</div>`).join('');
+    clients.map(c=>`<div class="cal-filter-item" data-val="${escapeHtml(c)}">${escapeHtml(c)}</div>`).join('');
   bindCalFilter('filterPriceKlijent', (val)=>{ priceState.client = val; renderPricingList(); });
 }
 document.querySelectorAll('#finTabProjekti .vt-btn[data-sortdir]').forEach(btn=>{
@@ -8273,7 +8273,7 @@ function renderPricingList(){
     <div class="price-project${priceState.expandedIds.has(p._id)?' open':''}" data-pid="${p._id}">
       <div class="price-project-head" data-pid="${p._id}">
         <div>
-          <div class="price-project-name">${p.code} — ${escapeHtml(p.name)}</div>
+          <div class="price-project-name">${escapeHtml(p.code)} — ${escapeHtml(p.name)}</div>
           <div class="price-project-meta">${escapeHtml(p.client)} · ${p.kadrovi.length} kadrova · ${formatDateHuman(fromISO(p.startDate))}</div>
         </div>
         <div class="price-project-right">
@@ -8770,7 +8770,7 @@ function renderSalTable(){
     const av = avatarBgInner(e.key);
     if(!entry){
       return `<div class="sal-row2" data-emp="${e.key}" style="cursor:pointer;">
-        <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
+        <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${escapeHtml(e.name)}</span></div>
         <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
         <div><span class="sal-status-badge missing">Nije uneto</span></div>
         <button class="sal-row-btn primary" data-emp="${e.key}">Unesi platu</button>
@@ -8781,7 +8781,7 @@ function renderSalTable(){
     const arrow = changed ? `<span class="sal-change ${up?'up':'down'}">${up?'▲':'▼'}</span>` : '';
     const paid = entry.status !== 'Na čekanju';
     return `<div class="sal-row2 entered" data-emp="${e.key}" style="cursor:pointer;" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
-      <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${e.name}</span></div>
+      <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${escapeHtml(e.name)}</span></div>
       <div class="sal-cell2">${fmtK(entry.osnovica)}${arrow}</div>
       <div class="sal-cell2">${entry.bonus ? fmtK(entry.bonus) : '—'}</div>
       <div class="sal-cell2">${entry.prekovremeno ? fmtK(entry.prekovremeno) : '—'}</div>
@@ -9214,7 +9214,7 @@ function renderSalSideHustleList(){
 }
 function refreshSideHustleProjects(selected){
   const el = document.getElementById('shProjectSelect');
-  el.innerHTML = allProjects.map(p=>`<option value="${p.code}">${p.code} — ${escapeHtml(p.name)}</option>`).join('');
+  el.innerHTML = allProjects.map(p=>`<option value="${escapeHtml(p.code)}">${escapeHtml(p.code)} — ${escapeHtml(p.name)}</option>`).join('');
   if(selected && allProjects.some(p=>p.code===selected)) el.value = selected;
   refreshSideHustleKadrovi();
 }
@@ -9602,7 +9602,7 @@ function renderChatMessages(){
       ${m.results && m.results.length ? `<div class="chat-results">${m.results.map((r,ri)=>`
         <div class="chat-result-card" data-msg="${i}" data-ri="${ri}">
           <span class="chat-result-icon">${r.icon}</span>
-          <div class="chat-result-text"><div class="chat-result-title">${r.title}</div><div class="chat-result-meta">${r.meta}</div></div>
+          <div class="chat-result-text"><div class="chat-result-title">${escapeHtml(r.title)}</div><div class="chat-result-meta">${escapeHtml(r.meta)}</div></div>
           <span class="chat-result-type">${r.type}</span>
         </div>`).join('')}</div>` : ''}
     </div>`).join('');
@@ -10176,7 +10176,7 @@ function avatarBgInner(key){
   if(t){
     const { grad, initials, avatar } = avatarFor(t);
     return avatar
-      ? { bg:`background-image:url('${avatar}');background-size:cover;background-position:center;`, inner:'' }
+      ? { bg:`background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;`, inner:'' }
       : { bg:`background:${grad};`, inner: initials };
   }
   return { bg:`background:${artistGrad[key] || clientAvatarColors[0]};`, inner: artistInitials[key] || clientInitials(key) };
@@ -10430,7 +10430,7 @@ function renderProfilePage(){
   const card = document.getElementById('profilePageCard');
   if(!u || !card) return;
   const { grad, initials, avatar } = avatarFor(u);
-  const avatarHtml = avatar ? `style="background-image:url('${avatar}');background-size:cover;background-position:center;"` : `style="background:${grad};"`;
+  const avatarHtml = avatar ? `style="background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;"` : `style="background:${grad};"`;
   const hireLabel = formatIsoDateHuman(u.hireDate);
   const birthLabel = formatIsoDateHuman(u.birthDate);
   const year = TODAY.y;
