@@ -3207,8 +3207,9 @@ function persist(){
       // portfolioItems removed (Phase 3g) — Portfolio is now derived live from
       // allProjects/kadrovi (see portfolioEntries()), nothing left to persist.
       // allTransactions/projectPricing removed (Phase 5) — the ledger and
-      // per-kadar pricing are now Supabase-backed the same way; kadrovi's
-      // base_price/price_status ride along with loadProjectsFromSupabase().
+      // per-kadar pricing are now Supabase-backed the same way; pricing comes
+      // from its own superadmin-only kadar_pricing table (Phase 11), loaded
+      // via loadKadarPricingFromSupabase().
       // salaryEntries removed (Phase 7) — real payroll now lives in Supabase's
       // salary_entries table, loaded via loadSalaryEntriesFromSupabase().
       // events removed (Phase 8) — the calendar is now Supabase-backed via
@@ -7373,8 +7374,9 @@ const monthAbbrRS = ["Jan","Feb","Mar","Apr","Maj","Jun","Jul","Avg"];
 
 /* allTransactions (the ledger) and per-kadar pricing are now Supabase-backed
    — see loadTransactionsFromSupabase()/loadExtraChargesFromSupabase() and
-   the base_price/price_status fields loadProjectsFromSupabase() attaches to
-   each kadar (Phase 5, schema.sql). The old local mock arrays (P001-P020
+   the basePrice/priceStatus fields loadKadarPricingFromSupabase() attaches to
+   each kadar (Phase 5, split into its own superadmin-only table in Phase 11 —
+   see schema.sql). The old local mock arrays (P001-P020
    phantom project codes, disconnected from real kadrovi) are gone; nothing
    left to seed here. */
 
@@ -8118,8 +8120,9 @@ function renderPriceOverview(){
     }).join('');
   }
 }
-/* Cenovnik now lists every project's real kadrovi (base_price/price_status
-   live on the kadar itself) plus that project's extra_charges — no more
+/* Cenovnik now lists every project's real kadrovi (basePrice/priceStatus are
+   attached to each kadar by loadKadarPricingFromSupabase(), Phase 11) plus
+   that project's extra_charges — no more
    freely-typed "kadar name" line items disconnected from real work. Each
    kadar row also shows how many of its billable rounds go past the 4
    included in the base price, purely as a nudge (see rounds.billable) —
@@ -8240,7 +8243,10 @@ wireOverlayClose(kadarModalOverlay, closeKadarModal);
 document.getElementById('kadarDelete').addEventListener('click', async ()=>{
   if(!activeKadar) return;
   if(!confirm('Ukloniti cenu za ovaj kadar?')) return;
-  const { error } = await sb.from('kadrovi').update({ base_price:null, price_status:null, price_updated_at:null }).eq('id', activeKadar.dbId);
+  // Phase 11: a missing kadar_pricing row *is* "unpriced" (same semantics the
+  // old `base_price is null` had), so clearing deletes the row instead of
+  // writing a row full of nulls.
+  const { error } = await sb.from('kadar_pricing').delete().eq('kadar_id', activeKadar.dbId);
   if(error) return;
   activeKadar.basePrice = null; activeKadar.priceStatus = null; activeKadar.priceUpdatedAt = null;
   closeKadarModal();
@@ -8259,7 +8265,9 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
     const dateVal = document.getElementById('kadarDateInput').value || toISO(TODAY);
     const priceUpdatedAt = new Date(dateVal + 'T12:00:00').toISOString();
 
-    const { error } = await sb.from('kadrovi').update({ base_price:price, price_status:status, price_updated_at:priceUpdatedAt }).eq('id', activeKadar.dbId);
+    // Phase 11: upsert — a kadar priced for the first time has no
+    // kadar_pricing row yet, one being re-priced already does.
+    const { error } = await sb.from('kadar_pricing').upsert({ kadar_id:activeKadar.dbId, base_price:price, price_status:status, price_updated_at:priceUpdatedAt }, { onConflict:'kadar_id' });
     if(error) return;
     activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = priceUpdatedAt;
     if(status==='Plaćeno' && !wasNaplaceno && price>0){
@@ -10463,9 +10471,14 @@ async function loadProjectsFromSupabase(){
           name: k.name,
           employee: k.employee_id ? (teamNameById[k.employee_id] || '') : '',
           status: k.status,
-          basePrice: k.base_price,
-          priceStatus: k.price_status,
-          priceUpdatedAt: k.price_updated_at,
+          // Phase 11: pricing no longer lives on the kadar row (moved to the
+          // superadmin-only kadar_pricing table, see schema.sql). Declared
+          // null here so every reader keeps the same field shape, then filled
+          // in by loadKadarPricingFromSupabase() right after this loader —
+          // and left null for anyone RLS returns no pricing rows to.
+          basePrice: null,
+          priceStatus: null,
+          priceUpdatedAt: null,
           billableRoundsCount: k.billable_rounds_count || 0,
           totalRoundsCount: k.total_rounds_count || 0,
           hasImage: !!k.has_image,
@@ -10476,6 +10489,48 @@ async function loadProjectsFromSupabase(){
         }))
       });
     });
+    return true;
+  } catch(e){ return false; }
+}
+/* Phase 11: per-kadar pricing moved out of `kadrovi` into its own
+   `kadar_pricing` table so RLS can lock it to superadmin — Postgres RLS is
+   row-level only, and kadrovi's other columns (type/name/status/round stats)
+   are legitimately readable by every employee, so the three price columns
+   had to leave the row entirely (see schema.sql, Phase 11).
+   Fetched as its own query and joined back onto the already-loaded kadar
+   objects by dbId — same byId-map shape loadKadarRoundsForProject() uses for
+   rounds — so renderPriceOverview/renderPricingList/openKadarModal/
+   projectPricedItems keep reading k.basePrice/k.priceStatus/k.priceUpdatedAt
+   unchanged; only where those fields originate changed. Nothing is kept in a
+   separate module-level array: the kadar objects stay the single source of
+   truth for pricing, exactly as before, so the write handlers' existing
+   in-place mutations remain correct with no second copy to keep in sync.
+   Called unconditionally on every login — RLS is the real gate, same as
+   salary_entries: a non-superadmin just gets zero rows and every price
+   stays null. */
+async function loadKadarPricingFromSupabase(){
+  if(!sb) return false;
+  try {
+    // PostgREST caps a single select() at 1000 rows — with 3,500+ kadrovi the
+    // priced subset can cross that on its own, so page through it like
+    // loadSalaryEntriesFromSupabase()/loadTransactionsFromSupabase() do.
+    const pageSize = 1000;
+    const data = [];
+    for(let from = 0; ; from += pageSize){
+      const { data: page, error } = await sb.from('kadar_pricing').select('*').order('kadar_id', { ascending:true }).range(from, from + pageSize - 1);
+      if(error) return false;
+      if(!page || !page.length) break;
+      data.push(...page);
+      if(page.length < pageSize) break;
+    }
+    const byKadar = {};
+    data.forEach(row=>{ byKadar[row.kadar_id] = row; });
+    allProjects.forEach(p=>p.kadrovi.forEach(k=>{
+      const row = byKadar[k.dbId];
+      k.basePrice = row ? row.base_price : null;
+      k.priceStatus = row ? row.price_status : null;
+      k.priceUpdatedAt = row ? row.price_updated_at : null;
+    }));
     return true;
   } catch(e){ return false; }
 }
@@ -10666,6 +10721,7 @@ async function resolveSessionLogin(session){
     await loadTeamMembersFromSupabase();
     await loadClientsFromSupabase();
     await loadProjectsFromSupabase();
+    await loadKadarPricingFromSupabase();
     await loadTimeEntriesFromSupabase();
     await loadExtraChargesFromSupabase();
     await loadTransactionsFromSupabase();

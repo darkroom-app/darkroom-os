@@ -815,3 +815,138 @@ create policy "own can update game_scores" on public.game_scores for update to a
 -- through the authenticated client.
 
 alter table public.calendar_events add column if not exists approval_status text; -- 'na_cekanju' | 'odobreno' | 'odbijeno' | null (non-odsustvo rows)
+
+
+-- ==== Phase 11: lock financial data down at the database, not just in the UI ====
+-- (run as a twentieth query)
+--
+-- Phase 5 deliberately shipped extra_charges/transactions (and kadrovi's
+-- price columns) fully open to any authenticated user, on the reasoning that
+-- "the app has no access gating on financial data today, so the migration
+-- shouldn't invent one." That reasoning has since expired: the client *is*
+-- gated now — canAccessFinance() is isSuperAdmin(), and every finance render
+-- path (Finansije in full, Cenovnik, the Projekti client-payment summary,
+-- the per-project price widgets) is behind it. Admins see no money either.
+--
+-- But that gate is client-side only. Until this migration, any authenticated
+-- employee could open devtools and run
+--   supabase.from('transactions').select('*')
+-- to pull the entire cash ledger, every extra charge, and every kadar's
+-- agreed price — the UI gating was cosmetic, not a security boundary. With
+-- real employees about to use this app daily, that gap gets closed here.
+--
+-- Shape follows Phase 7's salary_entries precedent exactly (superadmin-only
+-- select/insert/update/delete via the team_members.access subquery), which
+-- has been in production and works: the client loads such a table
+-- unconditionally on every login and simply gets zero rows back for anyone
+-- who isn't a superadmin, with the loader's existing try/catch treating that
+-- as "nothing to show" rather than an error.
+
+-- --- extra_charges: replace Phase 5's fully-open policies ---
+-- `create policy` doesn't replace a same-table policy, and policies on one
+-- command are OR'ed together — the old open ones must be dropped explicitly
+-- or the table stays wide open alongside the new superadmin ones.
+drop policy "authenticated can read extra_charges" on public.extra_charges;
+drop policy "authenticated can insert extra_charges" on public.extra_charges;
+drop policy "authenticated can update extra_charges" on public.extra_charges;
+drop policy "authenticated can delete extra_charges" on public.extra_charges;
+
+create policy "superadmin can read extra_charges"
+  on public.extra_charges for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can insert extra_charges"
+  on public.extra_charges for insert to authenticated
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can update extra_charges"
+  on public.extra_charges for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can delete extra_charges"
+  on public.extra_charges for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+-- --- transactions: same treatment ---
+drop policy "authenticated can read transactions" on public.transactions;
+drop policy "authenticated can insert transactions" on public.transactions;
+drop policy "authenticated can update transactions" on public.transactions;
+drop policy "authenticated can delete transactions" on public.transactions;
+
+create policy "superadmin can read transactions"
+  on public.transactions for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can insert transactions"
+  on public.transactions for insert to authenticated
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can update transactions"
+  on public.transactions for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can delete transactions"
+  on public.transactions for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+-- --- kadar pricing: split out of kadrovi into its own table ---
+-- kadrovi can NOT get the same treatment, because RLS in Postgres is
+-- row-level, not column-level: there's no policy that hides base_price while
+-- leaving type/name/employee_id/status/the Phase 6 round-stat columns
+-- readable on the same row — and those columns genuinely are needed by every
+-- access level (Kalendar, Statistika, Portfolio, the Projekti list and every
+-- project detail page all come from loadProjectsFromSupabase()'s single
+-- `projects -> kadrovi(*)` query). Column-level GRANTs aren't a way out
+-- either: a `select('*')` against a column the role can't read hard-errors
+-- instead of silently omitting it, which would break login for every
+-- non-superadmin employee.
+--
+-- So the three price columns move to a 1:1 side table that CAN be locked to
+-- superadmin wholesale, and the client fetches it as its own query (see
+-- loadKadarPricingFromSupabase() in darkroom-app.html, which joins the rows
+-- back onto the in-memory kadar objects by id — the app's read sites keep
+-- using k.basePrice/k.priceStatus/k.priceUpdatedAt exactly as before, only
+-- where those fields come from changed).
+--
+-- Column types/nullability are carried over verbatim from Phase 5/5b:
+-- base_price numeric, price_status text, price_updated_at timestamptz, all
+-- nullable. A missing row here means "unpriced", which is the same semantics
+-- Phase 5 gave `base_price is null` — so clearing a price deletes the row
+-- rather than writing nulls into it.
+create table public.kadar_pricing (
+  kadar_id uuid primary key references public.kadrovi(id) on delete cascade,
+  base_price numeric,
+  price_status text,       -- 'Neplaćeno' | 'Fakturisano' | 'Plaćeno' (the exact
+                           -- strings the app writes — Phase 5's comment claimed
+                           -- lowercase unaccented values, which was never true of
+                           -- what kadarStatusInput actually stores)
+  price_updated_at timestamptz
+);
+alter table public.kadar_pricing enable row level security;
+
+create policy "superadmin can read kadar_pricing" on public.kadar_pricing for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can insert kadar_pricing" on public.kadar_pricing for insert to authenticated
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can update kadar_pricing" on public.kadar_pricing for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can delete kadar_pricing" on public.kadar_pricing for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+-- Backfill existing prices before dropping the old columns. Only priced
+-- kadrovi get a row — an unpriced kadar is simply absent, matching the
+-- "missing row = unpriced" rule above.
+insert into public.kadar_pricing (kadar_id, base_price, price_status, price_updated_at)
+select id, base_price, price_status, price_updated_at
+from public.kadrovi
+where base_price is not null;
+
+alter table public.kadrovi drop column base_price;
+alter table public.kadrovi drop column price_status;
+alter table public.kadrovi drop column price_updated_at;
