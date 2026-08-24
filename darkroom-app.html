@@ -5065,7 +5065,7 @@ function clientSummaryHtml(clientName){
 }
 function renderClientPaymentSummary(){
   const wrap = document.getElementById('projClientSummary');
-  if(filters.klijent === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
+  if(!canAccessFinance() || filters.klijent === 'Svi klijenti'){ wrap.style.display = 'none'; return; }
   wrap.style.display = 'flex';
   wrap.innerHTML = clientSummaryHtml(filters.klijent);
 }
