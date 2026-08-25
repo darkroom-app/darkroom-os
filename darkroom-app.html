@@ -3685,9 +3685,11 @@ function renderCalStats(){
   document.getElementById('csPlaceno').innerHTML = `${leaveDays('placeno')} <span>dana</span>`;
   document.getElementById('csNeplaceno').innerHTML = `${leaveDays('neplaceno')} <span>dana</span>`;
 
-  const empIds = scopePerson==='Ceo Tim'
-    ? new Set(teamMembers.filter(t=>t.authId).map(t=>t.authId))
-    : new Set(teamMembers.filter(t=>t.name===scopePerson && t.authId).map(t=>t.authId));
+  // Sati/Prekovremeno su lični (uvek ulogovana osoba), nezavisno od filtera tima iznad —
+  // isti princip kao dashboard-ov "Nedeljni cilj", da se broj ne menja kad neko pregleda
+  // tuđi kalendar preko filtera.
+  const me = currentUser();
+  const empIds = new Set(me && me.authId ? [me.authId] : []);
   const monthKey = `${TODAY.y}-${String(TODAY.m).padStart(2,'0')}`;
   const monthHours = (overtime)=> timeEntries
     .filter(t=> t.overtime===overtime && empIds.has(t.employeeId) && t.date && t.date.startsWith(monthKey))
