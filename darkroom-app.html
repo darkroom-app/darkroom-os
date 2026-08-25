@@ -1366,6 +1366,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cal-nav button{ width:30px; height:30px; border-radius:9px; border:1px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-dim); }
 .cal-nav button:hover{ background:var(--gold-soft); color:var(--gold-deep); }
 .cal-nav svg{ width:14px; height:14px; }
+.cal-zoom-toggle{ display:flex; gap:6px; }
+.cal-zoom-toggle button{ width:30px; height:30px; border-radius:9px; border:1px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-dim); font-size:16px; font-weight:600; line-height:1; }
+.cal-zoom-toggle button:hover:not(:disabled){ background:var(--gold-soft); color:var(--gold-deep); }
+.cal-zoom-toggle button:disabled{ opacity:0.35; cursor:not-allowed; }
+.twg-current-week-band{ position:absolute; top:0; bottom:0; background:var(--sky-soft); opacity:0.4; pointer-events:none; z-index:0; }
 
 .cal-filters{ display:flex; gap:10px; }
 .cal-filter{ position:relative; }
@@ -1850,8 +1855,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         </div>
         <div class="cal-view-toggle">
           <button class="cvt-btn" data-viewmode="day">Dan</button>
-          <button class="cvt-btn" data-viewmode="week">Nedelja</button>
-          <button class="cvt-btn active" data-viewmode="month">Mesec</button>
+          <button class="cvt-btn active" data-viewmode="week">Nedelja</button>
+          <button class="cvt-btn" data-viewmode="month">Mesec</button>
+        </div>
+        <div class="cal-zoom-toggle" id="calZoomToggle">
+          <button id="calZoomOut" title="Odzumiraj na ceo mesec">−</button>
+          <button id="calZoomIn" title="Uzumiraj na nedelju" disabled>+</button>
         </div>
       </div>
       <div class="cal-filters">
@@ -3414,7 +3423,7 @@ function generateMonthCells(year, month){
   return cells;
 }
 
-let calViewMode = 'month';
+let calViewMode = 'week';
 let calCursor = {y:TODAY.y, m:TODAY.m, d:TODAY.d};
 
 const leaveIcon = {
@@ -3581,6 +3590,15 @@ function renderTeamSwimlane(days, opts){
   wrap.innerHTML = head + `<div class="twg-rows">${holidayRowsHtml}${rowsHtml}</div>`;
   calWeeks.appendChild(wrap);
 
+  if(opts.currentWeekRange){
+    const [wStart, wEnd] = opts.currentWeekRange;
+    const band = document.createElement('div');
+    band.className = 'twg-current-week-band';
+    band.style.left = `calc(190px + (100% - 190px) * ${wStart}/${n})`;
+    band.style.width = `calc((100% - 190px) * ${wEnd - wStart + 1}/${n})`;
+    wrap.querySelector('.twg-rows').appendChild(band);
+  }
+
   if(todayEpoch >= startEpoch && todayEpoch <= endEpoch){
     const col = todayEpoch - startEpoch;
     const overlay = document.createElement('div');
@@ -3626,10 +3644,17 @@ function renderCalendarMonth(){
 }
 
 function renderCalendarWeek(){
-  const monday = mondayOf(calCursor);
+  // Shows the week containing calCursor centered between the previous and
+  // next week, per the studio's feedback that a single isolated week (or
+  // the full month) made it hard to see what's coming up / just wrapped up
+  // at a glance. Prev/Next still step by 7 days (goToCursor), so the whole
+  // 3-week window slides one week at a time and the center week always
+  // matches calCursor.
+  const currentMonday = mondayOf(calCursor);
+  const monday = addDays(currentMonday, -7);
   const days = [];
-  for(let i=0;i<7;i++) days.push(addDays(monday, i));
-  renderTeamSwimlane(days, {showWeekday:true, colMin:80});
+  for(let i=0;i<21;i++) days.push(addDays(monday, i));
+  renderTeamSwimlane(days, {showWeekday:true, colMin:60, showWeeks:true, currentWeekRange:[7,13]});
 }
 
 function renderCalendarDay(){
@@ -4791,16 +4816,31 @@ document.getElementById('calMonthSelect').addEventListener('change', (e)=>{
 document.getElementById('calYearSelect').addEventListener('change', (e)=>{
   goToCursor({y:parseInt(e.target.value), m:calCursor.m, d:1});
 });
+function setCalViewMode(mode){
+  calViewMode = mode;
+  document.querySelectorAll('.cvt-btn').forEach(b=>b.classList.toggle('active', b.dataset.viewmode===mode));
+  // The zoom control is just a shortcut between Nedelja (zoomed in) and
+  // Mesec (zoomed out) — disable whichever direction is already active so
+  // it's clear +/- only ever move between those two, not past them.
+  document.getElementById('calZoomOut').disabled = mode==='month';
+  document.getElementById('calZoomIn').disabled = mode!=='month';
+  document.getElementById('calZoomToggle').style.display = mode==='day' ? 'none' : '';
+  renderCalendar();
+}
 document.querySelectorAll('.cvt-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.cvt-btn').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    calViewMode = btn.dataset.viewmode;
-    renderCalendar();
-  });
+  btn.addEventListener('click', ()=> setCalViewMode(btn.dataset.viewmode));
 });
+document.getElementById('calZoomOut').addEventListener('click', ()=> setCalViewMode('month'));
+document.getElementById('calZoomIn').addEventListener('click', ()=> setCalViewMode('week'));
 populateMonthYearSelects();
 syncMonthYearControls();
+// Sync the toggle/zoom buttons' visual state to match the default calViewMode
+// without calling renderCalendar() here — teamMembers (declared further down
+// the script with `let`) isn't initialized yet at this point in top-level
+// script execution, so an eager render would throw a TDZ ReferenceError.
+document.querySelectorAll('.cvt-btn').forEach(b=>b.classList.toggle('active', b.dataset.viewmode===calViewMode));
+document.getElementById('calZoomOut').disabled = calViewMode==='month';
+document.getElementById('calZoomIn').disabled = calViewMode!=='month';
 
 function mkRound(label, billable, date){ return { _id:nextId(), label, billable, date, image:null }; }
 function mkKadar(type, name, employee, status, rounds){
