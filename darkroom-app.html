@@ -9469,10 +9469,19 @@ async function pushNotification(recipientId, kind, text, projectId){
   const recipient = teamMembers.find(t=>t._id===recipientId);
   if(!recipient) return;
   const proj = projectId ? allProjects.find(p=>p._id===projectId) : null;
-  const { data, error } = await sb.from('notifications')
-    .insert({ recipient_name: recipient.name, kind, text, project_code: proj ? proj.code : null })
-    .select('id').single();
-  if(!error && data) local._remoteId = data.id;
+  const insertQuery = sb.from('notifications')
+    .insert({ recipient_name: recipient.name, kind, text, project_code: proj ? proj.code : null });
+  // The "read own notifications" RLS policy only allows recipient_name === your own
+  // name, and Postgres checks that policy against the RETURNING row of an INSERT too —
+  // so chaining .select() here fails with a 403 whenever recipientId isn't the current
+  // user (i.e. almost always, since this notifies someone else). Only request the row
+  // back when notifying yourself, where the SELECT policy actually passes.
+  if(recipient.name === currentUser()?.name){
+    const { data, error } = await insertQuery.select('id').single();
+    if(!error && data) local._remoteId = data.id;
+  } else {
+    await insertQuery;
+  }
 }
 const notifIconMap = {
   kadar:     { cls:'ic-comment', svg:'<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>' },
