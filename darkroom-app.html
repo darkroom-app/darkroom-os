@@ -1370,7 +1370,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cal-zoom-toggle button{ width:30px; height:30px; border-radius:9px; border:1px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-dim); font-size:16px; font-weight:600; line-height:1; }
 .cal-zoom-toggle button:hover:not(:disabled){ background:var(--gold-soft); color:var(--gold-deep); }
 .cal-zoom-toggle button:disabled{ opacity:0.35; cursor:not-allowed; }
-.twg-current-week-band{ position:absolute; top:0; bottom:0; background:var(--sky-soft); opacity:0.4; pointer-events:none; z-index:0; }
+.twg-current-week-band{ position:absolute; top:0; bottom:0; background:var(--sky-soft); opacity:0.55; border-left:2px solid var(--sky); border-right:2px solid var(--sky); pointer-events:none; z-index:0; box-sizing:border-box; }
 
 .cal-filters{ display:flex; gap:10px; }
 .cal-filter{ position:relative; }
@@ -1432,6 +1432,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .twg-weekrow{ display:grid; margin-bottom:4px; }
 .twg-week-spacer{ position:sticky; left:0; background:var(--card); z-index:4; }
 .twg-week-label{ font-family:var(--font-mono); font-size:8.5px; font-weight:600; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.06em; text-align:center; padding-bottom:4px; margin:0 2px; border-bottom:1.5px dashed var(--border); }
+.twg-week-label-current{ color:var(--sky); border-bottom:2px solid var(--sky); }
 .twg-head{ display:grid; padding-bottom:8px; margin-bottom:4px; border-bottom:1px solid var(--border); }
 .twg-head-label{ position:sticky; left:0; background:var(--card); z-index:4; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; align-self:end; padding-bottom:6px; }
 .twg-head-day{ text-align:center; }
@@ -3495,7 +3496,7 @@ function renderTeamSwimlane(days, opts){
       if(i===0 || dow===0){ groups.push({start:i, span:0}); }
       groups[groups.length-1].span++;
     });
-    const weekCellsHtml = groups.map((g,i)=>`<div class="twg-week-label" style="grid-column:${g.start+2} / span ${g.span};">Nedelja ${String(i+1).padStart(2,'0')}</div>`).join('');
+    const weekCellsHtml = groups.map((g,i)=>`<div class="twg-week-label${opts.currentWeekRange && opts.currentWeekRange[0]===g.start ? ' twg-week-label-current' : ''}" style="grid-column:${g.start+2} / span ${g.span};">Nedelja ${String(i+1).padStart(2,'0')}</div>`).join('');
     weekRow = `<div class="twg-weekrow" style="grid-template-columns:190px ${colTemplate};"><div class="twg-week-spacer"></div>${weekCellsHtml}</div>`;
   }
 
@@ -3649,7 +3650,20 @@ function renderCalendarMonth(){
   const daysInMonth = new Date(calCursor.y, calCursor.m, 0).getDate();
   const days = [];
   for(let d=1; d<=daysInMonth; d++) days.push({y:calCursor.y, m:calCursor.m, d});
-  renderTeamSwimlane(days, {showWeekday:false, colMin:26, showWeeks:true});
+  const opts = {showWeekday:false, colMin:26, showWeeks:true};
+  // Highlight the Mon-Sun week containing today, same band used in the
+  // 3-week Nedelja view — only when today actually falls in the month
+  // currently on screen (browsing a different month shows no band, same
+  // rule the .twg-today-col highlight already follows).
+  if(TODAY.y===calCursor.y && TODAY.m===calCursor.m){
+    const todayIdx = TODAY.d - 1;
+    let start = todayIdx;
+    while(start > 0 && (toJSDate(days[start]).getDay()+6)%7 !== 0) start--;
+    let end = todayIdx;
+    while(end < days.length-1 && (toJSDate(days[end]).getDay()+6)%7 !== 6) end++;
+    opts.currentWeekRange = [start, end];
+  }
+  renderTeamSwimlane(days, opts);
 }
 
 function renderCalendarWeek(){
