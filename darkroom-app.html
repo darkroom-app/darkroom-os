@@ -1470,6 +1470,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cb-status.done{ background:#4C8A55; }
 .cb-status.pending{ background:var(--coral); }
 .cb-status svg{ width:8px; height:8px; color:#fff; }
+.cb-status{ font-size:9px; line-height:1; }
 
 .cal-gold{ background:var(--gold-soft); border-color:var(--gold); color:var(--gold-deep); }
 .cal-gold .cb-avatar{ background:var(--gold-deep); }
@@ -1553,23 +1554,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 /* urgency + holiday */
 .cb-urgency{ width:9px; height:9px; border-radius:50%; margin-left:auto; flex-shrink:0; }
 .cb-urgency-icon{ display:inline-flex; align-items:center; justify-content:center; line-height:1; margin-left:auto; flex-shrink:0; }
-.cb-urgency-icon.fire{ transform-origin:center 85%; animation:flameFlicker 0.7s ease-in-out infinite; }
-.cb-urgency-icon.hourglass{ transform-origin:center; animation:hourglassTick 1.3s ease-in-out infinite; }
-.cb-urgency-icon.sprout{ transform-origin:center 90%; animation:plantSway 1.8s ease-in-out infinite; }
-@keyframes flameFlicker{
-  0%, 100%{ transform:scale(1) rotate(-4deg); }
-  35%{ transform:scale(1.15) rotate(3deg); }
-  70%{ transform:scale(0.9) rotate(-2deg); }
-}
-@keyframes hourglassTick{
-  0%, 15%{ transform:rotate(0deg); }
-  45%, 55%{ transform:rotate(180deg); }
-  85%, 100%{ transform:rotate(180deg); }
-}
-@keyframes plantSway{
-  0%, 100%{ transform:rotate(-7deg); }
-  50%{ transform:rotate(7deg); }
-}
 .cal-holiday{ background:repeating-linear-gradient(45deg, var(--coral-soft), var(--coral-soft) 6px, #f0c9ba 6px, #f0c9ba 12px); border-color:var(--coral); color:#8a4128; }
 .twg-holiday-row{ border-top:1px solid var(--border); }
 .twg-holiday-row .twg-person{ background:var(--card); }
@@ -1919,9 +1903,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <div class="cal-weeks" id="calWeeks"></div>
 
       <div class="cal-legend">
-        <div class="cal-legend-item"><span class="cb-urgency-icon sprout" style="font-size:12px;">🌱</span>Niska urgentnost</div>
-        <div class="cal-legend-item"><span class="cb-urgency-icon hourglass" style="font-size:12px;">⏳</span>Srednja urgentnost</div>
-        <div class="cal-legend-item"><span class="cb-urgency-icon fire" style="font-size:12px;">🔥</span>Visoka urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon" style="font-size:12px;">🌱</span>Niska urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon" style="font-size:12px;">⏳</span>Srednja urgentnost</div>
+        <div class="cal-legend-item"><span class="cb-urgency-icon" style="font-size:12px;">🔥</span>Visoka urgentnost</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--ink-faint)"></span>Odsustvo</div>
         <div class="cal-legend-item"><span class="cal-legend-dot" style="background:var(--coral)"></span>🎉 Praznik</div>
       </div>
@@ -3435,7 +3419,7 @@ let calViewMode = 'week';
 let calCursor = {y:TODAY.y, m:TODAY.m, d:TODAY.d};
 
 const leaveIcon = {
-  odmor: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3v2M4.2 10a7.8 7.8 0 0 1 15.6 0Z"/><path d="M2 10h20M4 10s2 8 8 8 8-8 8-8"/></svg>',
+  odmor: '🏖️',
   bolovanje: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 7v10M7 12h10"/><rect x="3" y="3" width="18" height="18" rx="3"/></svg>',
   placeno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M12 7v10M9 9.5a2.5 2.5 0 0 1 2.5-1.5h1a2 2 0 0 1 0 4h-1a2 2 0 0 0 0 4h1a2.5 2.5 0 0 0 2.5-1.5"/></svg>',
   neplaceno: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/><path d="M9 9v6M15 9v6"/></svg>'
@@ -3443,13 +3427,12 @@ const leaveIcon = {
 const urgencyColor = { niska:"var(--sage)", srednja:"var(--gold-deep)", visoka:"var(--coral)" };
 const urgencyLabels = { niska:"Niska", srednja:"Srednja", visoka:"Visoka" };
 const urgencyIcon = { niska:"🌱", srednja:"⏳", visoka:"🔥" };
-const urgencyAnimClass = { niska:"sprout", srednja:"hourglass", visoka:"fire" };
 function urgencyIndicatorHtml(urgency, size){
   size = size || 9;
   const label = urgencyLabels[urgency] || '';
   const icon = urgencyIcon[urgency];
   if(icon){
-    return `<span class="cb-urgency-icon ${urgencyAnimClass[urgency]}" style="font-size:${size+3}px;" title="Urgentnost: ${label}">${icon}</span>`;
+    return `<span class="cb-urgency-icon" style="font-size:${size+3}px;" title="Urgentnost: ${label}">${icon}</span>`;
   }
   return `<span class="cb-urgency" style="background:${urgencyColor[urgency]||'var(--ink-faint)'};width:${size}px;height:${size}px;" title="Urgentnost: ${label}"></span>`;
 }
