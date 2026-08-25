@@ -1159,3 +1159,36 @@ create trigger guard_calendar_events_approval
 -- Dashboard → Database → Replication → toggle "calendar_events" on for the
 -- supabase_realtime publication. Same one-time dashboard step Phase 1 used
 -- for `notifications`.
+
+
+-- ==== Phase 14: close the slobodni_dani self-edit gap (run this query) ====
+-- slobodni_dani (the annual paid-leave allotment) had the exact same hole
+-- `access` had before Phase 3h's guard trigger: the "Nivo pristupa" field is
+-- hidden in the Tim edit modal for anyone but a superadmin, but nothing
+-- stopped a plain user/admin from setting their own allotment via a direct
+-- update — the "self or superadmin can update team_members" RLS policy
+-- (Phase 3h) only checks *which row* is being touched, not *which columns*.
+-- Extends the existing guard_team_members_access trigger (by replacing the
+-- function it points to) rather than adding a second trigger, since it's
+-- the same "reject unless the caller is already superadmin" shape.
+
+create or replace function public.prevent_self_access_escalation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if NEW.access is distinct from OLD.access then
+    if (select access from public.team_members where id = auth.uid()) <> 'superadmin' then
+      raise exception 'Only a superadmin can change access level.';
+    end if;
+  end if;
+  if NEW.slobodni_dani is distinct from OLD.slobodni_dani then
+    if (select access from public.team_members where id = auth.uid()) <> 'superadmin' then
+      raise exception 'Only a superadmin can change the annual-leave allotment.';
+    end if;
+  end if;
+  return NEW;
+end;
+$$;

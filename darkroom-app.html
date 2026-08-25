@@ -291,7 +291,7 @@ select.native-select-hidden{ display:none; }
 .xsel-search:focus{ border-color:var(--gold); }
 .xsel-empty{ padding:10px; font-size:11.5px; color:var(--ink-faint); text-align:center; }
 .modal-actions{ display:flex; gap:10px; margin-top:18px; }
-.modal-actions button{ flex:1; padding:10px 0; border-radius:10px; border:none; font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; }
+.modal-actions button, .profile-page-actions button{ flex:1; padding:10px 0; border-radius:10px; border:none; font-family:var(--font-body); font-weight:600; font-size:12.5px; cursor:pointer; }
 .modal-cancel{ background:var(--card-soft); color:var(--ink-dim); }
 .modal-submit{ background:var(--gold); color:#3a2704; }
 .modal-delete{ background:var(--coral-soft); color:var(--coral); flex:0 0 auto !important; padding:10px 14px !important; }
@@ -2818,7 +2818,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <label>Datum rođenja</label>
       <input type="date" id="ntBirthDate">
     </div>
-    <div class="modal-field">
+    <div class="modal-field" id="ntSlobodniDaniField">
       <label>Broj slobodnih dana (godišnji odmor)</label>
       <input type="number" id="ntSlobodniDani" min="0" max="60" placeholder="npr. 20">
     </div>
@@ -7273,6 +7273,7 @@ function openTeamModal(member){
   document.getElementById('ntHireDate').value = member.hireDate || '';
   document.getElementById('ntBirthDate').value = member.birthDate || '';
   document.getElementById('ntSlobodniDani').value = member.slobodniDani != null ? member.slobodniDani : 20;
+  document.getElementById('ntSlobodniDani').disabled = !isSuperAdmin();
   document.getElementById('ntStatus').value = member.status;
   document.getElementById('ntAccess').value = member.access || 'user';
   document.getElementById('ntAccessField').style.display = isSuperAdmin() ? '' : 'none';
@@ -7289,6 +7290,7 @@ document.getElementById('newTeamBtn').addEventListener('click', ()=>{
   document.getElementById('ntName').disabled = false;
   ['ntName','ntRole','ntEmailBusiness','ntEmailPrivate','ntPhone','ntHireDate','ntBirthDate'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ntSlobodniDani').value = 20;
+  document.getElementById('ntSlobodniDani').disabled = false;
   document.getElementById('ntStatus').value = 'Aktivan';
   document.getElementById('ntAccess').value = 'user';
   document.getElementById('ntAccessField').style.display = '';
@@ -7317,10 +7319,10 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
       if(sb && member.authId){
         const payload = {
           role, email_business:emailBusiness, email_private:emailPrivate, phone,
-          hire_date:hireDate||null, birth_date:birthDate||null, slobodni_dani:slobodniDani,
+          hire_date:hireDate||null, birth_date:birthDate||null,
           status, avatar
         };
-        if(isSuperAdmin()) payload.access = access;
+        if(isSuperAdmin()){ payload.access = access; payload.slobodni_dani = slobodniDani; }
         const { data, error } = await sb.from('team_members').update(payload).eq('id', member.authId).select().single();
         if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
         Object.assign(member, {
@@ -7329,8 +7331,8 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
           slobodniDani:data.slobodni_dani, status:data.status, avatar:data.avatar, access:data.access
         });
       } else {
-        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, slobodniDani, status, avatar});
-        if(isSuperAdmin()) member.access = access;
+        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, status, avatar});
+        if(isSuperAdmin()){ member.access = access; member.slobodniDani = slobodniDani; }
       }
     }
   } else {
