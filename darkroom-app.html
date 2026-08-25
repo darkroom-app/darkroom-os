@@ -1498,10 +1498,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cal-leave.leave-odbijeno .cb-avatar{ background:var(--coral); }
 .cal-leave.leave-odbijeno .cb-phase{ text-decoration:line-through; }
 
-.cb-delete{ position:absolute; top:-7px; right:-7px; width:19px; height:19px; border-radius:50%; background:var(--coral); color:#fff; border:2px solid var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0.85; box-shadow:0 1px 4px rgba(0,0,0,0.3); transition:opacity .12s ease, transform .12s ease; z-index:3; }
+/* Sits fully inside the bar (not hanging over the edge like a notification
+   badge) — .twg-bar has overflow:hidden for text truncation, which was
+   silently clipping most of this circle down to an unrecognizable sliver
+   when it was positioned half outside the bar's box. */
+.cb-delete{ position:absolute; top:5px; right:4px; width:16px; height:16px; border-radius:50%; background:var(--coral); color:#fff; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0.85; box-shadow:0 1px 3px rgba(0,0,0,0.35); transition:opacity .12s ease, transform .12s ease; z-index:3; }
 .cal-bar:hover .cb-delete, .twg-bar:hover .cb-delete{ opacity:1; }
 .cb-delete:hover{ opacity:1; transform:scale(1.15); }
-.cb-delete svg{ width:11px; height:11px; }
+.cb-delete svg{ width:10px; height:10px; }
 
 .cal-legend{ display:flex; gap:16px; flex-wrap:wrap; padding:16px 2px 4px; }
 .cal-legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-dim); }
