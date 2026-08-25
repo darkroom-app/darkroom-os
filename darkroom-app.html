@@ -4856,6 +4856,21 @@ document.querySelectorAll('.cvt-btn').forEach(btn=>{
 });
 document.getElementById('calZoomOut').addEventListener('click', ()=> setCalViewMode('month'));
 document.getElementById('calZoomIn').addEventListener('click', ()=> setCalViewMode('week'));
+let calZoomWheelLock = false;
+calWeeks.addEventListener('wheel', (e)=>{
+  if(!e.ctrlKey || calViewMode==='day') return;
+  // Ctrl+scroll would otherwise zoom the whole browser page — hijack it here
+  // instead to move between the 3-week Nedelja view and Mesec, same two
+  // states the +/- buttons toggle. { passive:false } is required for
+  // preventDefault() to actually block the browser's own zoom.
+  e.preventDefault();
+  if(calZoomWheelLock) return;
+  if(e.deltaY < 0 && calViewMode !== 'week') setCalViewMode('week');
+  else if(e.deltaY > 0 && calViewMode !== 'month') setCalViewMode('month');
+  else return;
+  calZoomWheelLock = true;
+  setTimeout(()=>{ calZoomWheelLock = false; }, 350);
+}, { passive:false });
 populateMonthYearSelects();
 syncMonthYearControls();
 // Sync the toggle/zoom buttons' visual state to match the default calViewMode
