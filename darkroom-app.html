@@ -1894,7 +1894,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
     <div class="cal-card">
       <div class="cal-stats">
-        <div class="cal-stat"><div class="cs-label">Godišnji odmor</div><div class="cs-val" id="csOdmor">0 <span>dana</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Preostalo slobodnih</div><div class="cs-val" id="csOdmor">0 <span>dana</span></div></div>
         <div class="cal-stat"><div class="cs-label">Plaćeno odsustvo</div><div class="cs-val" id="csPlaceno">0 <span>dana</span></div></div>
         <div class="cal-stat"><div class="cs-label">Neplaćeno</div><div class="cs-val" id="csNeplaceno">0 <span>dana</span></div></div>
         <div class="cal-stat"><div class="cs-label">Sati (mesec)</div><div class="cs-val" id="csSati">0 <span>h</span></div></div>
@@ -3719,19 +3719,25 @@ function renderCalendarDay(){
    the calendar does — "Ceo Tim" aggregates everyone, a specific person
    shows just theirs. */
 function renderCalStats(){
-  const scopePerson = calFilters.osoba;
-  const leaveDays = (type)=> events
+  // Personal (always the logged-in user), same principle as Sati/Prekovremeno
+  // below — mirrors the dashboard's own "Preostalo slobodnih" pill so this
+  // number means the same thing everywhere, and browsing someone else's
+  // calendar via the team filter above doesn't change what looks like
+  // "your" balance.
+  const me = currentUser();
+  const leaveDaysApproved = (type)=> events
     .filter(e=>e.kind==='odsustvo' && e.leaveType===type && e.approvalStatus==='odobreno'
-      && e.start.y===TODAY.y && (scopePerson==='Ceo Tim' || e.person===scopePerson))
+      && e.start.y===TODAY.y && me && e.person===me.name)
     .reduce((s,e)=> s + (daysBetween(e.start,e.end)+1), 0);
-  document.getElementById('csOdmor').innerHTML = `${leaveDays('odmor')} <span>dana</span>`;
-  document.getElementById('csPlaceno').innerHTML = `${leaveDays('placeno')} <span>dana</span>`;
-  document.getElementById('csNeplaceno').innerHTML = `${leaveDays('neplaceno')} <span>dana</span>`;
+  const allotment = me && me.slobodniDani != null ? me.slobodniDani : 20;
+  const odmorPreostalo = Math.max(0, allotment - leaveDaysApproved('odmor'));
+  document.getElementById('csOdmor').innerHTML = `${odmorPreostalo} <span>dana</span>`;
+  document.getElementById('csPlaceno').innerHTML = `${leaveDaysApproved('placeno')} <span>dana</span>`;
+  document.getElementById('csNeplaceno').innerHTML = `${leaveDaysApproved('neplaceno')} <span>dana</span>`;
 
   // Sati/Prekovremeno su lični (uvek ulogovana osoba), nezavisno od filtera tima iznad —
   // isti princip kao dashboard-ov "Nedeljni cilj", da se broj ne menja kad neko pregleda
   // tuđi kalendar preko filtera.
-  const me = currentUser();
   const empIds = new Set(me && me.authId ? [me.authId] : []);
   const monthKey = `${TODAY.y}-${String(TODAY.m).padStart(2,'0')}`;
   const monthHours = (overtime)=> timeEntries
