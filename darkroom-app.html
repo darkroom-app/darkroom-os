@@ -1430,7 +1430,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .twg-head{ display:grid; padding-bottom:8px; margin-bottom:4px; border-bottom:1px solid var(--border); }
 .twg-head-label{ position:sticky; left:0; background:var(--card); z-index:4; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; align-self:end; padding-bottom:6px; }
 .twg-head-day{ text-align:center; }
-.twg-head-day.weekend{ background:var(--card-soft); border-radius:6px; }
+.twg-head-day.weekend{ background:var(--border); border-radius:6px; }
 .twg-head-day .twg-dow{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); letter-spacing:0.07em; text-transform:uppercase; }
 .twg-head-day .twg-num{ font-family:var(--font-display); font-weight:700; font-size:15px; margin-top:2px; }
 .twg-head-day.today .twg-num{ color:var(--gold-deep); }
@@ -1445,6 +1445,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .twg-track{ position:relative; display:grid; grid-template-rows:repeat(auto-fill,27px); gap:4px 0; padding:6px 0; }
 .twg-gridlines{ position:absolute; inset:0; pointer-events:none; }
 .twg-gridlines i{ position:absolute; top:0; bottom:0; width:1px; background:var(--border); }
+.twg-weekend-col{ position:absolute; top:0; bottom:0; background:var(--border); opacity:0.35; }
 .twg-bar{ display:flex; align-items:center; gap:6px; padding:0 9px 0 6px; height:27px; border-radius:9px; border:1.5px solid; margin:0 4px; overflow:hidden; cursor:grab; position:relative; user-select:none; }
 .twg-bar.dragging{ cursor:grabbing; opacity:0.85; z-index:5; }
 .twg-bar-locked{ cursor:pointer; opacity:0.72; }
@@ -1887,11 +1888,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
     <div class="cal-card">
       <div class="cal-stats">
-        <div class="cal-stat"><div class="cs-label">Godišnji odmor</div><div class="cs-val">0 <span>dana</span></div></div>
-        <div class="cal-stat"><div class="cs-label">Plaćeno odsustvo</div><div class="cs-val">0 <span>dana</span></div></div>
-        <div class="cal-stat"><div class="cs-label">Neplaćeno</div><div class="cs-val">0 <span>dana</span></div></div>
-        <div class="cal-stat"><div class="cs-label">Sati (mesec)</div><div class="cs-val">0 <span>h</span></div></div>
-        <div class="cal-stat"><div class="cs-label">Prekovremeno</div><div class="cs-val">0 <span>h</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Godišnji odmor</div><div class="cs-val" id="csOdmor">0 <span>dana</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Plaćeno odsustvo</div><div class="cs-val" id="csPlaceno">0 <span>dana</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Neplaćeno</div><div class="cs-val" id="csNeplaceno">0 <span>dana</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Sati (mesec)</div><div class="cs-val" id="csSati">0 <span>h</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Prekovremeno</div><div class="cs-val" id="csPrekovremeno">0 <span>h</span></div></div>
       </div>
 
       <div class="cal-weekday-header" id="calWeekdayHeader">
@@ -3381,6 +3382,13 @@ if(_topDateEl) _topDateEl.textContent = `${_dowNamesSr[_nowDate.getDay()]} · ${
    in place from the real calendar_events table, same pattern as every other
    migrated array. Starts empty; populated at boot. */
 const events = [];
+/* Declared here (not next to loadTimeEntriesFromSupabase() further down)
+   because renderCalStats() reads it and renderCalendar() — which calls
+   renderCalStats() — runs during initial page setup, before the script
+   reaches that later declaration; a `let` referenced before its own
+   declaration line throws (temporal dead zone), even though the variable
+   is only ever populated later regardless of where it's declared. */
+let timeEntries = [];
 
 function keyOf(o){ return o.y + "-" + o.m + "-" + o.d; }
 function toISO(o){ return `${o.y}-${String(o.m).padStart(2,'0')}-${String(o.d).padStart(2,'0')}`; }
@@ -3475,15 +3483,18 @@ function renderTeamSwimlane(days, opts){
     weekRow = `<div class="twg-weekrow" style="grid-template-columns:190px ${colTemplate};"><div class="twg-week-spacer"></div>${weekCellsHtml}</div>`;
   }
 
-  const headDays = days.map(c=>{
+  const weekendIdx = [];
+  const headDays = days.map((c,i)=>{
     const dow = (toJSDate(c).getDay()+6)%7;
     const weekend = dow >= 5;
+    if(weekend) weekendIdx.push(i);
     return `<div class="twg-head-day ${sameDate(c,TODAY)?'today':''} ${weekend?'weekend':''}">
       ${opts.showWeekday ? `<div class="twg-dow">${dowLabels[dow]}</div>` : ''}
       <div class="twg-num">${c.d}</div>
     </div>`;
   }).join('');
   const head = weekRow + `<div class="twg-head" style="grid-template-columns:190px ${colTemplate};"><div class="twg-head-label">Zaposleni</div>${headDays}</div>`;
+  const weekendColsHtml = weekendIdx.map(i=>`<div class="twg-weekend-col" style="left:${(i/n*100)}%; width:${(100/n)}%;"></div>`).join('');
 
   let people = calFilters.osoba === 'Ceo Tim' ? teamMembers.filter(t=>t.status==='Aktivan') : teamMembers.filter(t=>t.name===calFilters.osoba);
   if(calFilters.osoba === 'Ceo Tim'){
@@ -3499,6 +3510,7 @@ function renderTeamSwimlane(days, opts){
     <div class="twg-row twg-holiday-row">
       <div class="twg-person"><span class="twg-holiday-label">🎉 Praznik</span></div>
       <div class="twg-track" style="grid-template-columns:${colTemplate}; grid-template-rows:27px;">
+        <div class="twg-gridlines">${weekendColsHtml}</div>
         <div class="twg-holiday-bar" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2};" title="${escapeHtml(e.holidayName)}">🎉 ${escapeHtml(e.holidayName)} — ne radi se!</div>
       </div>
     </div>`).join('');
@@ -3525,7 +3537,7 @@ function renderTeamSwimlane(days, opts){
 
     const { bg: avBg, inner: avInner } = avatarBgInner(t.key);
 
-    let gridlines = '<div class="twg-gridlines">';
+    let gridlines = '<div class="twg-gridlines">' + weekendColsHtml;
     for(let i=1;i<n;i++){ gridlines += `<i style="left:${(i/n*100)}%"></i>`; }
     gridlines += '</div>';
 
@@ -3656,12 +3668,40 @@ function renderCalendarDay(){
   calWeeks.appendChild(wrap);
 }
 
+/* Stats row above the calendar grid — was 5 static "0" placeholders with no
+   render function ever wired to them. Leave-day counters are approved-only
+   (na_cekanju/odbijeno shouldn't count as used leave) and scoped to the
+   current year; hours/overtime are scoped to the current month, matching
+   the "(mesec)" label. Follows calFilters.osoba the same way the rest of
+   the calendar does — "Ceo Tim" aggregates everyone, a specific person
+   shows just theirs. */
+function renderCalStats(){
+  const scopePerson = calFilters.osoba;
+  const leaveDays = (type)=> events
+    .filter(e=>e.kind==='odsustvo' && e.leaveType===type && e.approvalStatus==='odobreno'
+      && e.start.y===TODAY.y && (scopePerson==='Ceo Tim' || e.person===scopePerson))
+    .reduce((s,e)=> s + (daysBetween(e.start,e.end)+1), 0);
+  document.getElementById('csOdmor').innerHTML = `${leaveDays('odmor')} <span>dana</span>`;
+  document.getElementById('csPlaceno').innerHTML = `${leaveDays('placeno')} <span>dana</span>`;
+  document.getElementById('csNeplaceno').innerHTML = `${leaveDays('neplaceno')} <span>dana</span>`;
+
+  const empIds = scopePerson==='Ceo Tim'
+    ? new Set(teamMembers.filter(t=>t.authId).map(t=>t.authId))
+    : new Set(teamMembers.filter(t=>t.name===scopePerson && t.authId).map(t=>t.authId));
+  const monthKey = `${TODAY.y}-${String(TODAY.m).padStart(2,'0')}`;
+  const monthHours = (overtime)=> timeEntries
+    .filter(t=> t.overtime===overtime && empIds.has(t.employeeId) && t.date && t.date.startsWith(monthKey))
+    .reduce((s,t)=>s+t.hours, 0);
+  document.getElementById('csSati').innerHTML = `${monthHours(false).toFixed(1)} <span>h</span>`;
+  document.getElementById('csPrekovremeno').innerHTML = `${monthHours(true).toFixed(1)} <span>h</span>`;
+}
 function renderCalendar(){
   calWeeks.innerHTML = '';
   document.getElementById('calWeekdayHeader').style.display = 'none';
   if(calViewMode === 'week') renderCalendarWeek();
   else if(calViewMode === 'day') renderCalendarDay();
   else renderCalendarMonth();
+  renderCalStats();
 }
 
 let barDragState = null;
@@ -4426,6 +4466,26 @@ async function saveOneHoursCell(dbId, employeeId, employeeName, kadarDbId, dateV
   }
   return null;
 }
+/* Regular hours are logged per (employee, kadar, date) independently across
+   however many zadatak entries someone has that day — with no cross-check,
+   8h logged here plus 8h logged on a different kadar the same day both save
+   fine, silently doubling up. Cap the CROSS-KADAR total at 8 regular h/day;
+   overtime is deliberately excluded from the cap since that's the field
+   meant to hold hours beyond the regular day. */
+function evzHoursOverLimit(employeeId, kadarDbId){
+  for(const row of document.querySelectorAll('#evzHoursList .ev-hours-row')){
+    const iso = row.dataset.date;
+    const regVal = parseFloat(row.querySelector('.ev-hours-reg').value) || 0;
+    if(regVal <= 0) continue;
+    const otherHours = timeEntries
+      .filter(t=>t.employeeId===employeeId && t.date===iso && !t.overtime && t.kadarDbId!==kadarDbId)
+      .reduce((s,t)=>s+t.hours, 0);
+    if(otherHours + regVal > 8){
+      return { dayLabel: row.querySelector('.ev-hours-date').textContent, otherHours, total: otherHours+regVal };
+    }
+  }
+  return null;
+}
 async function saveEvzHours(){
   const field = document.getElementById('evzHoursField');
   if(field.style.display === 'none' || !sb) return false;
@@ -4433,6 +4493,11 @@ async function saveEvzHours(){
   if(!kadarDbId || !employeeId) return false;
   const emp = teamMembers.find(t=>t.authId===employeeId);
   const employeeName = emp ? emp.name : '';
+  const overLimit = evzHoursOverLimit(employeeId, kadarDbId);
+  if(overLimit){
+    await customAlert(`${employeeName} već ima ${overLimit.otherHours}h redovnih sati unetih za ${overLimit.dayLabel} na drugom zadatku — ukupno bi bilo ${overLimit.total.toFixed(1)}h, a dnevni maksimum je 8h. Smanji broj sati ili unesi razliku kao prekovremeno.`);
+    return false;
+  }
   const errors = [];
   let savedAny = false;
   for(const row of document.querySelectorAll('#evzHoursList .ev-hours-row')){
@@ -10723,8 +10788,8 @@ function recomputeKadarRoundStats(kadar){
    kadrovi do, but kadar/project info is looked up on demand via
    findKadarByDbId() (below) rather than denormalized onto the row, since
    allProjects is already the single source of truth for kadar names and
-   re-resolving avoids a second place that can go stale. */
-let timeEntries = [];
+   re-resolving avoids a second place that can go stale. `timeEntries` itself
+   is declared much earlier (near `events`) — see the comment there. */
 async function loadTimeEntriesFromSupabase(){
   if(!sb) return false;
   try {
