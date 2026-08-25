@@ -10,6 +10,17 @@
 // send one):
 //   POST /functions/v1/pulse-webhook?secret=<shared secret>
 //
+// Phase 1b: RenderFlow's per-job "notify via webhook" checkbox (set in its
+// Submitter, per job, every time — confirmed with Pulze support) turned out
+// to be far too easy to forget, so real completions stopped arriving days
+// after initial testing. A local script on the RenderFlow server now polls
+// RenderFlow's own REST API (GET /jobs) instead and re-posts each newly
+// completed job here — same endpoint, same parsing, just a second caller.
+// It authenticates with its own separate BRIDGE_SECRET (not WEBHOOK_SECRET)
+// so the two credentials can be rotated independently — this one lives on a
+// shared studio machine, so it's scoped as narrowly as WEBHOOK_SECRET always
+// was rather than reusing it.
+//
 // Confirmed from a real "job-completed" payload: RenderFlow does NOT include
 // the submitter's name/email — only an internal `user_id` (its own Mongo-style
 // id). That id is resolved to a real person via team_members.renderflow_user_id
@@ -30,6 +41,7 @@
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const WEBHOOK_SECRET = Deno.env.get("WEBHOOK_SECRET") ?? "";
+const BRIDGE_SECRET = Deno.env.get("BRIDGE_SECRET") ?? "";
 // SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are auto-injected by the Supabase
 // Edge Functions runtime — no need to set them as custom secrets.
 const supabase = createClient(
@@ -91,7 +103,9 @@ Deno.serve(async (req) => {
 
   const url = new URL(req.url);
   const providedSecret = req.headers.get("x-webhook-secret") ?? url.searchParams.get("secret") ?? "";
-  if (!WEBHOOK_SECRET || providedSecret !== WEBHOOK_SECRET) {
+  const validSecret = (!!WEBHOOK_SECRET && providedSecret === WEBHOOK_SECRET)
+    || (!!BRIDGE_SECRET && providedSecret === BRIDGE_SECRET);
+  if (!validSecret) {
     return jsonResponse({ ok: false, error: "unauthorized" }, 401);
   }
 
