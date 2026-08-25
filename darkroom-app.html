@@ -3504,7 +3504,14 @@ function renderTeamSwimlane(days, opts){
   let people = calFilters.osoba === 'Ceo Tim' ? teamMembers.filter(t=>t.status==='Aktivan') : teamMembers.filter(t=>t.name===calFilters.osoba);
   if(calFilters.osoba === 'Ceo Tim'){
     const myName = currentUser() && currentUser().name;
-    people = [...people].sort((a,b)=> (a.name===myName ? -1 : 0) - (b.name===myName ? -1 : 0));
+    // People who aren't heavily active on day-to-day project work sink toward
+    // the bottom of the "Ceo Tim" swimlane, in this exact order, so PMs can
+    // spot the actively-working artists at a glance without scrolling past
+    // them first. Whoever's actually logged in still always sees themselves
+    // at the top, even if their own name is in this list.
+    const sinkOrder = ['Aleksandar Jovanović', 'Damjan Mitrović', 'Dalibor Mitić', 'Marija Todorović'];
+    const rank = t => t.name===myName ? -1 : (sinkOrder.includes(t.name) ? sinkOrder.indexOf(t.name)+1 : 0);
+    people = [...people].sort((a,b)=> rank(a) - rank(b));
   }
 
   const holidayEvents = events.filter(e=>e.kind==='praznik')
