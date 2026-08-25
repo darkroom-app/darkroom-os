@@ -1498,9 +1498,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cal-leave.leave-odbijeno .cb-avatar{ background:var(--coral); }
 .cal-leave.leave-odbijeno .cb-phase{ text-decoration:line-through; }
 
-.cb-delete{ position:absolute; top:-7px; right:-7px; width:19px; height:19px; border-radius:50%; background:var(--ink-solid-bg); color:#fff; border:2px solid var(--card); display:flex; align-items:center; justify-content:center; font-size:12px; line-height:1; cursor:pointer; opacity:0.75; box-shadow:0 1px 4px rgba(0,0,0,0.25); transition:opacity .12s ease, background .12s ease; z-index:3; }
+.cb-delete{ position:absolute; top:-7px; right:-7px; width:19px; height:19px; border-radius:50%; background:var(--coral); color:#fff; border:2px solid var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0.85; box-shadow:0 1px 4px rgba(0,0,0,0.3); transition:opacity .12s ease, transform .12s ease; z-index:3; }
 .cal-bar:hover .cb-delete, .twg-bar:hover .cb-delete{ opacity:1; }
-.cb-delete:hover{ background:var(--coral); opacity:1; }
+.cb-delete:hover{ opacity:1; transform:scale(1.15); }
+.cb-delete svg{ width:11px; height:11px; }
 
 .cal-legend{ display:flex; gap:16px; flex-wrap:wrap; padding:16px 2px 4px; }
 .cal-legend-item{ display:flex; align-items:center; gap:7px; font-size:11px; color:var(--ink-dim); }
@@ -3557,7 +3558,7 @@ function renderTeamSwimlane(days, opts){
         ${proj ? `<span class="cb-project">${escapeHtml(proj.name)}</span>` : ''}
         <span class="cb-phase">${escapeHtml(label)}</span>
         ${editable ? '<span class="cb-resize cb-resize-right"></span>' : ''}
-        ${editable ? `<span class="cb-delete" data-id="${e._id}" title="Obriši">×</span>` : ''}
+        ${editable ? `<span class="cb-delete" data-id="${e._id}" title="Obriši"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></span>` : ''}
       </div>`;
     }).join('');
 
