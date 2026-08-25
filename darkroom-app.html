@@ -1456,8 +1456,15 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .twg-bar-locked{ cursor:pointer; opacity:0.72; }
 .cb-avatar{ width:17px; height:17px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-size:7.5px; font-weight:700; color:#fff; flex-shrink:0; }
 .cb-person{ font-size:11px; font-weight:600; flex-shrink:0; white-space:nowrap; }
-.cb-code{ font-family:var(--font-mono); font-size:9px; flex-shrink:0; white-space:nowrap; opacity:0.85; }
-.cb-phase{ font-size:10.5px; color:var(--ink-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cb-code{ font-family:var(--font-mono); font-size:9px; font-weight:700; flex-shrink:0; white-space:nowrap; }
+.cb-project{ font-size:10.5px; font-weight:600; color:var(--ink); flex:0 3 auto; max-width:120px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cb-phase{ font-size:10.5px; color:var(--ink-dim); flex:1 1 auto; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+/* Urgency/leave-status indicators sit at the FRONT of a swimlane bar (right
+   after the resize handle) rather than the end — the base .cb-urgency and
+   .cb-status rules still push them to the far right (margin-left:auto) for
+   the other places they're reused (day-view-card, agenda rows), so it's
+   undone here specifically. */
+.twg-bar > .cb-urgency, .twg-bar > .cb-urgency-icon, .twg-bar > .cb-status{ margin-left:0; }
 .cb-status{ width:14px; height:14px; border-radius:50%; margin-left:auto; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
 .cb-status.done{ background:#4C8A55; }
 .cb-status.pending{ background:var(--coral); }
@@ -3554,15 +3561,17 @@ function renderTeamSwimlane(days, opts){
       const editable = canEditCalendarFor(e.person);
       const code = eventDisplayCode(e);
       const label = eventDisplayLabel(e);
-      const rightIndicator = e.kind==='zadatak'
+      const proj = e.kind==='zadatak' ? allProjects.find(p=>p.code===e.projectCode) : null;
+      const leadIndicator = e.kind==='zadatak'
         ? urgencyIndicatorHtml(e.urgency, 9)
         : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);">${leaveIcon[e.leaveType]||''}</span>` : '');
       return `
-      <div class="twg-bar cal-${e.color}${e.kind==='odsustvo' ? ` leave-${e.approvalStatus||'na_cekanju'}` : ''}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${code ? escapeHtml(code)+' · ' : ''}${escapeHtml(label)}">
+      <div class="twg-bar cal-${e.color}${e.kind==='odsustvo' ? ` leave-${e.approvalStatus||'na_cekanju'}` : ''}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${code ? escapeHtml(code)+' · ' : ''}${proj ? escapeHtml(proj.name)+' · ' : ''}${escapeHtml(label)}">
         ${editable ? '<span class="cb-resize cb-resize-left"></span>' : ''}
+        ${leadIndicator}
         ${code ? `<span class="cb-code">${escapeHtml(code)}</span>` : ''}
+        ${proj ? `<span class="cb-project">${escapeHtml(proj.name)}</span>` : ''}
         <span class="cb-phase">${escapeHtml(label)}</span>
-        ${rightIndicator}
         ${editable ? '<span class="cb-resize cb-resize-right"></span>' : ''}
         ${editable ? `<span class="cb-delete" data-id="${e._id}" title="Obriši">×</span>` : ''}
       </div>`;
