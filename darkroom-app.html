@@ -10228,6 +10228,7 @@ function applyCurrentUser(){
   renderDashboardNotifications();
   syncRemoteNotifications();
   subscribeRemoteNotifications();
+  subscribeRemoteCalendarEvents();
   renderTopPills();
   renderDashboardCollab();
   renderMyStats();
@@ -10391,6 +10392,7 @@ function login(id){
 function logout(){
   if(sb) sb.auth.signOut();
   unsubscribeRemoteNotifications();
+  unsubscribeRemoteCalendarEvents();
   _resolvedSessionUserId = null;
   currentUserId = null;
   localStorage.removeItem(CURRENT_USER_KEY);
@@ -10749,32 +10751,70 @@ async function loadTimeEntriesFromSupabase(){
    calendar_events, same pattern as every other load*FromSupabase() function.
    `initials` isn't a DB column — re-derived from `person` here rather than
    stored, so it can never go stale if someone's display name changes. */
+function mapCalendarEventRow(row){
+  return {
+    _id: nextId(),
+    dbId: row.id,
+    kind: row.kind,
+    person: row.person,
+    initials: row.person ? (artistInitials[row.person] || row.person.slice(0,2).toUpperCase()) : '',
+    color: row.color,
+    projectCode: row.project_code,
+    taskName: row.task_name,
+    urgency: row.urgency,
+    leaveType: row.leave_type,
+    holidayName: row.holiday_name,
+    approvalStatus: row.approval_status,
+    start: fromISO(row.start_date),
+    end: fromISO(row.end_date),
+  };
+}
 async function loadEventsFromSupabase(){
   if(!sb) return false;
   try {
     const { data, error } = await sb.from('calendar_events').select('*').order('start_date');
     if(error || !data) return false;
     events.length = 0;
-    data.forEach(row=>{
-      events.push({
-        _id: nextId(),
-        dbId: row.id,
-        kind: row.kind,
-        person: row.person,
-        initials: row.person ? (artistInitials[row.person] || row.person.slice(0,2).toUpperCase()) : '',
-        color: row.color,
-        projectCode: row.project_code,
-        taskName: row.task_name,
-        urgency: row.urgency,
-        leaveType: row.leave_type,
-        holidayName: row.holiday_name,
-        approvalStatus: row.approval_status,
-        start: fromISO(row.start_date),
-        end: fromISO(row.end_date),
-      });
-    });
+    data.forEach(row=> events.push(mapCalendarEventRow(row)));
     return true;
   } catch(e){ return false; }
+}
+/* Live pickup for calendar_events — without this, a leave request someone
+   else submits (or approves/rejects) only ever shows up after a manual
+   page reload, since loadEventsFromSupabase() only ever runs once at login.
+   Mirrors the notifications realtime channel below, but table-wide (no
+   recipient filter) since the calendar is a shared view — everyone's
+   zadatak/odsustvo/praznik rows are visible to everyone (see calendar_events'
+   read policy). Re-renders both the calendar and the dashboard week widget
+   (which is what actually shows the "na čekanju" leave-request list) so a
+   superadmin sees a new request the moment it's submitted, not on refresh. */
+function upsertLocalCalendarEvent(row){
+  const idx = events.findIndex(e=>e.dbId===row.id);
+  const mapped = mapCalendarEventRow(row);
+  if(idx>=0) events[idx] = mapped; else events.push(mapped);
+}
+function removeLocalCalendarEvent(dbId){
+  const idx = events.findIndex(e=>e.dbId===dbId);
+  if(idx>=0) events.splice(idx,1);
+}
+function rerenderAfterRemoteCalendarChange(){
+  renderCalendar();
+  renderWeekWidget();
+}
+let _remoteCalendarChannel = null;
+function subscribeRemoteCalendarEvents(){
+  if(!sb) return;
+  _remoteCalendarChannel = sb.channel('calendar_events-all')
+    .on('postgres_changes', { event:'INSERT', schema:'public', table:'calendar_events' },
+      (payload)=>{ upsertLocalCalendarEvent(payload.new); rerenderAfterRemoteCalendarChange(); })
+    .on('postgres_changes', { event:'UPDATE', schema:'public', table:'calendar_events' },
+      (payload)=>{ upsertLocalCalendarEvent(payload.new); rerenderAfterRemoteCalendarChange(); })
+    .on('postgres_changes', { event:'DELETE', schema:'public', table:'calendar_events' },
+      (payload)=>{ removeLocalCalendarEvent(payload.old.id); rerenderAfterRemoteCalendarChange(); })
+    .subscribe();
+}
+function unsubscribeRemoteCalendarEvents(){
+  if(sb && _remoteCalendarChannel){ sb.removeChannel(_remoteCalendarChannel); _remoteCalendarChannel = null; }
 }
 function findKadarByDbId(kadarDbId){
   for(const p of allProjects){

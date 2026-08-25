@@ -1151,3 +1151,11 @@ $$;
 create trigger guard_calendar_events_approval
   before insert or update on public.calendar_events
   for each row execute function public.guard_calendar_approval_status();
+
+-- Enable Realtime for this table (needed for subscribeRemoteCalendarEvents()
+-- in darkroom-app.html to actually receive live changes — without this the
+-- app only ever picks up new/changed/deleted calendar_events rows on the
+-- next full page reload, same as before this table had a subscription):
+-- Dashboard → Database → Replication → toggle "calendar_events" on for the
+-- supabase_realtime publication. Same one-time dashboard step Phase 1 used
+-- for `notifications`.
