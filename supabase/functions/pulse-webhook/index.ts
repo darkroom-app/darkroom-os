@@ -166,5 +166,36 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: error.message }, 500);
   }
 
+  // Flag the kind of thing that used to take a manual investigation to
+  // notice — a render path whose project code doesn't match any real
+  // project (typo'd/renamed folder), or a RenderFlow account never mapped
+  // to a team_members row (see team_members.renderflow_user_id) — as an
+  // immediate notification to every superadmin, instead of only surfacing
+  // once someone happens to notice a missing Discord message days later.
+  // Best-effort: any failure here must never affect the response below,
+  // since the actual render notification above already succeeded and the
+  // RenderFlow bridge only retries on a non-2xx response.
+  try {
+    const anomalies: string[] = [];
+    if (!projectCode) {
+      anomalies.push(`Render "${taskLabel}" — nije pronađen kod projekta (P####) u putanji fajla.`);
+    } else {
+      const { data: projMatch } = await supabase.from("projects").select("code").eq("code", projectCode).maybeSingle();
+      if (!projMatch) anomalies.push(`Render "${taskLabel}" — kod "${projectCode}" iz putanje ne odgovara nijednom postojećem projektu.`);
+    }
+    if (employee === "UNKNOWN_SUBMITTER") {
+      anomalies.push(`Render "${taskLabel}"${projectLabel} — izvršilac nije prepoznat (RenderFlow user_id: ${renderflowUserId ?? "nepoznat"}). Proveri mapiranje u Tim.`);
+    }
+    if (anomalies.length) {
+      const { data: superadmins } = await supabase.from("team_members").select("name").eq("access", "superadmin");
+      const names = (superadmins ?? []).map((r: { name: string }) => r.name);
+      if (names.length) {
+        await supabase.from("notifications").insert(
+          names.flatMap((name) => anomalies.map((text) => ({ recipient_name: name, kind: "renderflow_anomaly", text, project_code: null }))),
+        );
+      }
+    }
+  } catch { /* anomaly notification is best-effort, never blocks the main response */ }
+
   return jsonResponse({ ok: true, id: data.id, matchedEmployee: employee !== "UNKNOWN_SUBMITTER", projectCode }, 200);
 });

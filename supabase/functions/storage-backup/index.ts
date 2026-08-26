@@ -118,11 +118,13 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (newWatermark !== watermark) {
-    const { error: saveError } = await supabase
-      .from("backup_state").update({ last_object_created_at: newWatermark, updated_at: new Date().toISOString() }).eq("id", 1);
-    if (saveError) results.push({ ok: false, error: `watermark save failed: ${saveError.message}` });
-  }
+  // Always touch updated_at, even on a run with nothing new to back up --
+  // it's the only signal weekly-health-report has for "did this actually
+  // run today", and a run that legitimately found zero new files still
+  // ran successfully.
+  const { error: saveError } = await supabase
+    .from("backup_state").update({ last_object_created_at: newWatermark, updated_at: new Date().toISOString() }).eq("id", 1);
+  if (saveError) results.push({ ok: false, error: `watermark save failed: ${saveError.message}` });
 
   return jsonResponse({ ok: true, processed: results.length, remaining: rows.length === BATCH_LIMIT, watermark: newWatermark, results }, 200);
 });
