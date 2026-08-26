@@ -1192,3 +1192,32 @@ begin
   return NEW;
 end;
 $$;
+
+
+-- ==== Phase 15: Playbook synced from a published Google Doc (run this query) ====
+-- DR Playbook was 4 hardcoded articles in darkroom-app.html, editable only by
+-- touching code. The studio wants to edit it in a Google Doc instead (Heading
+-- 1 = article, Heading 2 = section within it) and have the app pick up
+-- changes automatically. The playbook-sync Edge Function fetches the doc's
+-- "Publish to web" HTML, parses it, and replaces every row here each time it
+-- runs (small dataset, full-refresh is simpler than diffing). It runs
+-- whenever anyone opens the Playbook view — see initPlaybook() — using the
+-- service_role key, so no write policy is needed for any client role at all;
+-- only the read policy below is required.
+
+create table public.playbook_articles (
+  id uuid primary key default gen_random_uuid(),
+  sort_order int not null,
+  icon text not null default 'layers',
+  nav_title text not null,
+  title text not null,
+  subtitle text,
+  sections jsonb not null default '[]',
+  updated_at timestamptz not null default now()
+);
+alter table public.playbook_articles enable row level security;
+
+create policy "authenticated can read playbook_articles"
+  on public.playbook_articles for select to authenticated using (true);
+-- Deliberately no insert/update/delete policy for any client role — only
+-- playbook-sync (service_role, bypasses RLS) ever writes this table.

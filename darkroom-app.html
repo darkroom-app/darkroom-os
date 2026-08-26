@@ -6284,6 +6284,36 @@ let activePlaybookId = "workflow";
 renderPlaybookNav();
 renderPlaybookContent();
 
+let playbookInited = false;
+// Wipes and rebuilds playbookArticles in place from Supabase (same pattern
+// as every other load*FromSupabase() function) — the hand-written seed
+// above stays as the fallback shown until this succeeds at least once, and
+// stays showing if Google/the sync function is ever briefly unreachable.
+async function loadPlaybookFromSupabase(){
+  if(!sb) return false;
+  const { data, error } = await sb.from('playbook_articles').select('*').order('sort_order');
+  if(error || !data || !data.length) return false;
+  playbookArticles.length = 0;
+  data.forEach(row=>{
+    playbookArticles.push({
+      id: row.id, icon: row.icon, navTitle: row.nav_title, title: row.title,
+      subtitle: row.subtitle || '', sections: row.sections || []
+    });
+  });
+  return true;
+}
+async function initPlaybook(){
+  if(sb){
+    try { await sb.functions.invoke('playbook-sync', { method:'POST' }); } catch(e){ /* keep last-known content */ }
+    await loadPlaybookFromSupabase();
+  }
+  if(!playbookArticles.find(a=>a.id===activePlaybookId)){
+    activePlaybookId = playbookArticles[0] ? playbookArticles[0].id : activePlaybookId;
+  }
+  renderPlaybookNav();
+  renderPlaybookContent();
+}
+
 const artistInitials = {
   "Dušan Stević":"DS", "Stefana Ristić":"SR", "Radoslav Milanović":"RM", "Dalibor Mitić":"DM",
   "Katarina Đorđević":"KĐ", "Aleksandra Vukašinović":"AV", "Mihajlo Nagradić":"MN", "Nikola Jovanović":"NJ",
@@ -9488,6 +9518,7 @@ function showView(name){
   document.getElementById('view-profil').classList.toggle('active', name==='profil');
   if(name==='statistika' && !statistikaInited){ statistikaInited = true; initStatistika(); }
   if(name==='finansije' && !finansijeInited){ finansijeInited = true; initFinansije(); }
+  if(name==='playbook' && !playbookInited){ playbookInited = true; initPlaybook(); }
   setActiveNav(name);
   if(!_histSyncing && (!history.state || history.state.view !== name)){
     history.pushState({view:name}, '', location.href);
