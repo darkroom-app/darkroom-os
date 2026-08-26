@@ -48,10 +48,21 @@ const supabase = createClient(
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
 );
 
+// Called directly from the browser (initPlaybook() in darkroom-app.html via
+// sb.functions.invoke), so it needs CORS headers on every response and must
+// answer the browser's OPTIONS preflight — without this the request never
+// even reaches the POST handler below (same pattern gemini-chat uses, the
+// other function this app calls straight from the client).
+const CORS_HEADERS = {
+  "access-control-allow-origin": "*",
+  "access-control-allow-headers": "authorization, x-client-info, apikey, content-type",
+  "access-control-allow-methods": "POST, OPTIONS",
+};
+
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...CORS_HEADERS },
   });
 }
 
@@ -206,6 +217,9 @@ function parseDoc(html: string): Article[] {
 }
 
 Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: CORS_HEADERS });
+  }
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method not allowed" }, 405);
   }
