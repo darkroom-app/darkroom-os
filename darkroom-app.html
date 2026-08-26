@@ -707,6 +707,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .pb-list{ display:flex; flex-direction:column; gap:9px; }
 .pb-list-item{ display:flex; gap:11px; font-size:13px; color:var(--ink-dim); line-height:1.5; }
 .pb-list-num{ font-family:var(--font-display); font-weight:700; font-size:12px; color:var(--gold-deep); flex-shrink:0; width:16px; }
+.pb-images{ display:flex; flex-wrap:wrap; gap:10px; margin-top:12px; }
+.pb-image{ width:220px; max-width:100%; border-radius:10px; border:1px solid var(--border); display:block; cursor:zoom-in; }
 
 @media (max-width:1000px){ .playbook-layout{ grid-template-columns:1fr; } }
 
@@ -6275,9 +6277,13 @@ function renderPlaybookContent(){
           <div class="pb-section-body">
             ${s.body ? s.body.map(p=>`<p>${p}</p>`).join('') : ''}
             ${s.list ? `<div class="pb-list">${s.list.map((li,i)=>`<div class="pb-list-item"><span class="pb-list-num">${i+1}.</span><span>${li}</span></div>`).join('')}</div>` : ''}
+            ${s.images ? `<div class="pb-images">${s.images.map(src=>`<img class="pb-image" src="${escapeHtml(src)}" loading="lazy">`).join('')}</div>` : ''}
           </div>
         </div>`).join('')}
     </div>`;
+  document.querySelectorAll('#pbContent .pb-image').forEach(img=>{
+    img.addEventListener('click', ()=> openLightbox(img.src));
+  });
 }
 
 let activePlaybookId = "workflow";
