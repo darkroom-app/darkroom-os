@@ -1268,3 +1268,20 @@ as $$
   limit limit_count;
 $$;
 grant execute on function public.list_new_storage_objects(timestamptz, int) to service_role;
+
+
+-- ==== Phase 17: automatic foreign-currency conversion on Dropbox receipts (run this query) ====
+-- dropbox-expense-sync used to leave extracted_amount null whenever a
+-- receipt was in USD/EUR/etc with no rate printed on it (e.g. Supabase's
+-- own USD invoice), forcing a superadmin to look up and type in the RSD
+-- amount by hand every time. It now converts automatically using the NBS
+-- (Narodna banka Srbije) official daily middle exchange rate for the
+-- invoice's own date — the same rate figure Serbian bookkeeping already
+-- treats as authoritative, not a generic market rate. fx_note carries the
+-- original amount/currency/rate used so the conversion stays auditable in
+-- the review panel instead of just silently replacing the number; it's
+-- kept separate from ai_note (Gemini's own uncertainty flag) since the two
+-- have different meanings and today's UI renders ai_note with a ⚠️ warning
+-- icon, which would misleadingly flag a normal, successful conversion.
+
+alter table public.expense_inbox add column if not exists fx_note text;

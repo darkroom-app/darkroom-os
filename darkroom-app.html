@@ -550,6 +550,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .expense-inbox-file-link{ font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--ink); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .expense-inbox-file-link:hover{ color:var(--gold-deep); }
 .expense-inbox-note{ font-family:var(--font-mono); font-size:9.5px; color:var(--coral); flex-shrink:0; }
+.expense-inbox-fx-note{ font-family:var(--font-mono); font-size:9.5px; color:var(--sky); flex-shrink:0; }
 .expense-inbox-fields{ display:grid; grid-template-columns:130px 110px 1fr 150px; gap:8px; margin-bottom:8px; }
 .expense-inbox-fields input, .expense-inbox-fields select{ font-family:var(--font-body); font-size:11.5px; border:1px solid var(--border); background:var(--card); border-radius:8px; padding:6px 8px; color:var(--ink); width:100%; }
 .expense-inbox-actions{ display:flex; gap:8px; justify-content:flex-end; }
@@ -8163,6 +8164,7 @@ async function renderExpenseInbox(){
       <div class="expense-inbox-file">
         ${url ? `<a class="expense-inbox-file-link" href="${url}" target="_blank" rel="noopener">📄 ${escapeHtml(item.fileName)}</a>` : `<span class="expense-inbox-file-link">📄 ${escapeHtml(item.fileName)}</span>`}
         ${item.note ? `<span class="expense-inbox-note">⚠️ ${escapeHtml(item.note)}</span>` : ''}
+        ${item.fxNote ? `<span class="expense-inbox-fx-note">💱 ${escapeHtml(item.fxNote)}</span>` : ''}
       </div>
       <div class="expense-inbox-fields">
         <input type="date" class="ei-date" value="${item.date||''}">
@@ -11062,7 +11064,7 @@ async function loadExpenseInboxFromSupabase(){
       expenseInbox.push({
         _id: nextId(), dbId: row.id, dropboxPath: row.dropbox_path, fileName: row.file_name,
         receiptStoragePath: row.receipt_storage_path, amount: row.extracted_amount, date: row.extracted_date,
-        description: row.extracted_description, category: row.extracted_category, note: row.ai_note,
+        description: row.extracted_description, category: row.extracted_category, note: row.ai_note, fxNote: row.fx_note,
       });
     });
     return true;

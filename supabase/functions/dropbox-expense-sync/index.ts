@@ -26,14 +26,22 @@
 //     backfill of existing receipts) — otherwise, continue from the stored
 //     cursor and pick up only files added since last run.
 //  4. For every new receipt file (pdf/jpg/jpeg/png/heic): download it, ask
-//     Gemini to read amount/date/description/category off it, copy the file
-//     into Supabase Storage (expense-receipts bucket, superadmin-only), and
-//     insert one `expense_inbox` row — status 'na_cekanju', NOT a real
-//     transaction yet. A human confirms or corrects each one in the app
-//     before it becomes a transactions row (see the app's Finansije →
-//     Transakcije "Na čekanju iz Dropbox-a" panel). Every superadmin also
-//     gets a real notification (bell icon) pointing at that panel, so this
-//     no longer relies on someone happening to check it.
+//     Gemini to read amount/currency/date/description/category off it. If
+//     the currency isn't RSD, convert automatically using the NBS (Narodna
+//     banka Srbije) official daily middle rate for the invoice's own date
+//     (fetched from kurs.resenje.org, a free mirror of NBS's own feed) —
+//     the rate Serbian bookkeeping already treats as authoritative, not a
+//     generic market rate. The original amount/currency/rate used is kept
+//     in fx_note for auditability; if the rate lookup fails, falls back to
+//     the old behavior (amount left null, ai_note explains why). Then
+//     copies the file into Supabase Storage (expense-receipts bucket,
+//     superadmin-only), and inserts one `expense_inbox` row — status
+//     'na_cekanju', NOT a real transaction yet. A human confirms or
+//     corrects each one in the app before it becomes a transactions row
+//     (see the app's Finansije → Transakcije "Na čekanju iz Dropbox-a"
+//     panel). Every superadmin also gets a real notification (bell icon)
+//     pointing at that panel, so this no longer relies on someone happening
+//     to check it.
 //  5. Persist the updated cursor(s) so the next run picks up where this one
 //     left off.
 //
@@ -169,16 +177,37 @@ function extOf(name: string): string {
 
 interface ExtractedReceipt {
   amount: number | null;
+  currency: string | null;
   date: string | null;
   description: string;
   category: string | null;
   note: string | null;
 }
 
+/* NBS (Narodna banka Srbije) publishes an official daily middle exchange
+   rate for RSD against every currency it tracks — the figure Serbian
+   bookkeeping treats as authoritative for converting a foreign invoice,
+   not a generic market rate. kurs.resenje.org mirrors that feed as a free,
+   no-auth JSON API. Looked up by the invoice's own date when known (falls
+   back to "today" otherwise) so the conversion matches what would have
+   applied on the actual invoice date, not whenever the sync happens to run. */
+async function fetchNbsMiddleRate(currency: string, date: string | null): Promise<{ rate: number; usedDate: string } | null> {
+  const path = date ? `${currency.toLowerCase()}/rates/${date}` : `${currency.toLowerCase()}/rates/today`;
+  try {
+    const resp = await fetch(`https://kurs.resenje.org/api/v1/currencies/${path}`);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    if (typeof data.exchange_middle !== "number") return null;
+    return { rate: data.exchange_middle, usedDate: data.date };
+  } catch {
+    return null;
+  }
+}
+
 async function extractReceiptWithGemini(bytes: Uint8Array, mimeType: string, fileName: string): Promise<ExtractedReceipt> {
   const prompt = `Ovo je slika ili PDF računa/fakture troška za 3D vizuelizacioni studio "Darkroom". Pročitaj sa dokumenta i vrati ISKLJUČIVO validan JSON (bez markdown ograde, bez teksta pre/posle) u ovom obliku:
-{"amount": <broj u RSD, bez separatora, ili null ako ne možeš da pročitaš>, "date": "<datum računa u YYYY-MM-DD formatu, ili null>", "description": "<kratak opis — ko je izdao račun i za šta, na srpskom>", "category": "<jedna od: ${VALID_CATEGORIES.join(", ")}, ili null ako ništa ne odgovara>", "note": "<kratka napomena SAMO ako nešto nije jasno/pouzdano pročitano (npr. mutan skener, dva moguća iznosa) — inače null>"}
-Ako je iznos u drugoj valuti, pretvori u RSD samo ako je kurs eksplicitno naveden na dokumentu, inače stavi amount:null i objasni u note. Naziv fajla je "${fileName}", može da pomogne kao kontekst ali ne veruj mu više nego samom dokumentu.`;
+{"amount": <IZVORNI broj sa računa, u valuti u kojoj je i ispisan (ne pretvaraj sam u RSD), bez separatora, ili null ako ne možeš da pročitaš>, "currency": "<troslovni ISO kod valute sa računa, npr. RSD, USD, EUR — ako račun ne navodi valutu eksplicitno ali je sve ostalo na srpskom/za srpsku firmu, pretpostavi RSD>", "date": "<datum računa u YYYY-MM-DD formatu, ili null>", "description": "<kratak opis — ko je izdao račun i za šta, na srpskom>", "category": "<jedna od: ${VALID_CATEGORIES.join(", ")}, ili null ako ništa ne odgovara>", "note": "<kratka napomena SAMO ako nešto nije jasno/pouzdano pročitano (npr. mutan skener, dva moguća iznosa) — inače null>"}
+Ne pretvaraj iznos u RSD sam — to radi kod posle tebe, na osnovu zvaničnog kursa NBS za datum računa. Tvoj posao je samo da vratiš tačan izvorni iznos i valutu sa dokumenta. Naziv fajla je "${fileName}", može da pomogne kao kontekst ali ne veruj mu više nego samom dokumentu.`;
 
   const body = {
     contents: [{
@@ -214,6 +243,7 @@ Ako je iznos u drugoj valuti, pretvori u RSD samo ako je kurs eksplicitno navede
   const category = typeof parsed.category === "string" && VALID_CATEGORIES.includes(parsed.category) ? parsed.category : null;
   return {
     amount: typeof parsed.amount === "number" ? parsed.amount : null,
+    currency: typeof parsed.currency === "string" && /^[A-Za-z]{3}$/.test(parsed.currency) ? parsed.currency.toUpperCase() : null,
     date: typeof parsed.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(parsed.date) ? parsed.date : null,
     description: typeof parsed.description === "string" ? parsed.description : fileName,
     category,
@@ -290,6 +320,22 @@ Deno.serve(async (req) => {
           const mimeType = RECEIPT_EXT_MIME[extOf(file.name)];
           const extracted = await extractReceiptWithGemini(bytes, mimeType, file.name);
 
+          let finalAmount = extracted.amount;
+          let aiNote = extracted.note;
+          let fxNote: string | null = null;
+          if (extracted.currency && extracted.currency !== "RSD" && extracted.amount != null) {
+            const fx = await fetchNbsMiddleRate(extracted.currency, extracted.date);
+            if (fx) {
+              const converted = Math.round(extracted.amount * fx.rate);
+              fxNote = `Originalno: ${extracted.amount.toLocaleString("sr-RS")} ${extracted.currency}, kurs NBS za ${fx.usedDate}: 1 ${extracted.currency} = ${fx.rate.toFixed(4)} RSD → ${converted.toLocaleString("sr-RS")} RSD.`;
+              finalAmount = converted;
+            } else {
+              finalAmount = null;
+              const fxFailNote = `Iznos je u ${extracted.currency}, kurs NBS za konverziju trenutno nije dostupan.`;
+              aiNote = aiNote ? `${aiNote} ${fxFailNote}` : fxFailNote;
+            }
+          }
+
           const dateForPath = extracted.date ?? new Date().toISOString().slice(0, 10);
           const storagePath = `${dateForPath.slice(0, 4)}/${dateForPath.slice(5, 7)}/${crypto.randomUUID()}-${file.name}`;
           const { error: uploadError } = await supabase.storage
@@ -300,17 +346,18 @@ Deno.serve(async (req) => {
             dropbox_path: file.path_lower,
             file_name: file.name,
             receipt_storage_path: storagePath,
-            extracted_amount: extracted.amount,
+            extracted_amount: finalAmount,
             extracted_date: extracted.date,
             extracted_description: extracted.description,
             extracted_category: extracted.category,
-            ai_note: extracted.note,
+            ai_note: aiNote,
+            fx_note: fxNote,
           });
           if (insertError) throw new Error(`expense_inbox insert failed: ${insertError.message}`);
 
           if (superadminNames.length) {
             try {
-              const amountText = extracted.amount != null ? `${extracted.amount.toLocaleString("sr-RS")} RSD` : "iznos nepoznat";
+              const amountText = finalAmount != null ? `${finalAmount.toLocaleString("sr-RS")} RSD` : "iznos nepoznat";
               const notifText = `Novi račun iz Dropbox-a: ${extracted.description} (${amountText}) čeka potvrdu.`;
               await supabase.from("notifications").insert(
                 superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
