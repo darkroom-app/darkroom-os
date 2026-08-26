@@ -1221,3 +1221,35 @@ create policy "authenticated can read playbook_articles"
   on public.playbook_articles for select to authenticated using (true);
 -- Deliberately no insert/update/delete policy for any client role — only
 -- playbook-sync (service_role, bypasses RLS) ever writes this table.
+
+
+-- ==== Phase 16: Storage backup (run this query) ====
+-- Supabase's Database Backups (Pro plan) cover the Postgres database only —
+-- the dashboard says so explicitly: "Storage objects are not included ...
+-- the database only includes metadata about these objects." Round images,
+-- project thumbnails, avatars, playbook images, and Dropbox receipts all
+-- live in Storage, so a DB restore alone wouldn't bring any of those files
+-- back. storage-backup (Edge Function, daily Cron) mirrors every new
+-- Storage object into a private "storage-backups" bucket, keyed by
+-- <original bucket>/<original path>, so a file deleted or overwritten in
+-- its live bucket still exists untouched here.
+--
+-- Walking every bucket's folder tree via the Storage list() API doesn't
+-- scale here — round-images alone can hold thousands of per-round
+-- subfolders — so this queries storage.objects directly instead (bucket_id,
+-- name, created_at in one flat, indexed query regardless of folder depth).
+-- That requires "storage" to be added under Settings → API → Exposed
+-- schemas (one-time, alongside the default "public") so the service-role
+-- client can reach it as a normal table.
+
+insert into storage.buckets (id, name, public) values ('storage-backups', 'storage-backups', false);
+
+create table public.backup_state (
+  id int primary key default 1,
+  last_object_created_at timestamptz not null default '1970-01-01T00:00:00Z',
+  updated_at timestamptz not null default now()
+);
+insert into public.backup_state (id) values (1);
+alter table public.backup_state enable row level security;
+-- No policies at all — only storage-backup (service_role, bypasses RLS)
+-- ever touches this table.
