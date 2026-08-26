@@ -13,15 +13,14 @@
 // set this secret: STORAGE_BACKUP_SECRET — any random string you choose,
 // must match the header the Cron job sends.
 //
-// One-time setup this function depends on (see schema.sql's Phase 16 block
-// for the table/bucket creation):
-//   1. Settings → API → Exposed schemas → add "storage" alongside "public".
-//      This lets the service-role client query storage.objects directly
-//      (bucket_id, name, created_at) in one flat query instead of walking
-//      every bucket's folder tree with the Storage list() API — round-images
-//      alone can hold thousands of per-round subfolders, so a recursive
-//      listing approach wouldn't finish inside an Edge Function's time
-//      limit, and would get slower every day as the dataset grows.
+// One-time setup this function depends on (see schema.sql's Phase 16 block,
+// which also creates the storage-backups bucket, backup_state table, and
+// the list_new_storage_objects() function this calls via .rpc() below —
+// walking every bucket's folder tree with the Storage list() API doesn't
+// scale here, round-images alone can hold thousands of per-round
+// subfolders, so this reads storage.objects through that function instead
+// of the Storage API):
+//   1. Run schema.sql's Phase 16 SQL block once, in the SQL Editor.
 //   2. Schedule it: Database → Cron Jobs (or Integrations → Cron) → New job
 //      → HTTP request → this function's URL, POST, header
 //      `x-storage-backup-secret: <same value>`, once a day.
@@ -87,14 +86,8 @@ Deno.serve(async (req) => {
   const watermark: string = stateRow?.last_object_created_at ?? "1970-01-01T00:00:00Z";
 
   const { data: objects, error: listError } = await supabase
-    .schema("storage")
-    .from("objects")
-    .select("id, bucket_id, name, created_at")
-    .neq("bucket_id", BACKUP_BUCKET)
-    .gt("created_at", watermark)
-    .order("created_at", { ascending: true })
-    .limit(BATCH_LIMIT);
-  if (listError) return jsonResponse({ ok: false, error: `storage.objects query failed: ${listError.message}` }, 500);
+    .rpc("list_new_storage_objects", { after: watermark, limit_count: BATCH_LIMIT });
+  if (listError) return jsonResponse({ ok: false, error: `list_new_storage_objects failed: ${listError.message}` }, 500);
 
   const rows = (objects ?? []) as StorageObjectRow[];
   let newWatermark = watermark;

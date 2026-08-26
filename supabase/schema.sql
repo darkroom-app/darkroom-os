@@ -1238,9 +1238,10 @@ create policy "authenticated can read playbook_articles"
 -- scale here — round-images alone can hold thousands of per-round
 -- subfolders — so this queries storage.objects directly instead (bucket_id,
 -- name, created_at in one flat, indexed query regardless of folder depth).
--- That requires "storage" to be added under Settings → API → Exposed
--- schemas (one-time, alongside the default "public") so the service-role
--- client can reach it as a normal table.
+-- storage.objects isn't reachable directly through the Data API (Supabase
+-- doesn't offer it as an exposable schema), so this goes through a small
+-- SECURITY DEFINER function in `public` instead — that's exposed exactly
+-- like any other function, no dashboard schema config needed.
 
 insert into storage.buckets (id, name, public) values ('storage-backups', 'storage-backups', false);
 
@@ -1253,3 +1254,17 @@ insert into public.backup_state (id) values (1);
 alter table public.backup_state enable row level security;
 -- No policies at all — only storage-backup (service_role, bypasses RLS)
 -- ever touches this table.
+
+create or replace function public.list_new_storage_objects(after timestamptz, limit_count int)
+returns table(id uuid, bucket_id text, name text, created_at timestamptz)
+language sql
+security definer
+set search_path = public
+as $$
+  select id, bucket_id, name, created_at
+  from storage.objects
+  where created_at > after and bucket_id <> 'storage-backups'
+  order by created_at asc
+  limit limit_count;
+$$;
+grant execute on function public.list_new_storage_objects(timestamptz, int) to service_role;
