@@ -13,7 +13,7 @@
 //   GEMINI_API_KEY — already set for gemini-chat; reused here as-is.
 // Schedule it: Database → Cron Jobs → New job → HTTP request → this
 // function's URL, POST, header `x-dropbox-sync-secret: <same value>`, every
-// 15 minutes is a reasonable interval.
+// 5 minutes.
 //
 // What it does, each run:
 //  1. Mint a fresh Dropbox access token from the refresh token (access
@@ -31,7 +31,9 @@
 //     insert one `expense_inbox` row — status 'na_cekanju', NOT a real
 //     transaction yet. A human confirms or corrects each one in the app
 //     before it becomes a transactions row (see the app's Finansije →
-//     Transakcije "Na čekanju iz Dropbox-a" panel).
+//     Transakcije "Na čekanju iz Dropbox-a" panel). Every superadmin also
+//     gets a real notification (bell icon) pointing at that panel, so this
+//     no longer relies on someone happening to check it.
 //  5. Persist the updated cursor(s) so the next run picks up where this one
 //     left off.
 //
@@ -241,6 +243,15 @@ Deno.serve(async (req) => {
   if (stateError) return jsonResponse({ ok: false, error: `dropbox_sync_state read failed: ${stateError.message}` }, 500);
   const cursors: Record<string, string> = stateRow?.cursors ?? {};
 
+  // Recipients for the "new receipt waiting for confirmation" notification
+  // below — fetched once per run, not per file. A failure here shouldn't
+  // stop receipt processing, just skip the notification for this run.
+  let superadminNames: string[] = [];
+  try {
+    const { data: superadmins } = await supabase.from("team_members").select("name").eq("access", "superadmin");
+    superadminNames = (superadmins ?? []).map((r: { name: string }) => r.name);
+  } catch { /* notifications are best-effort */ }
+
   const rootListing = await dbxListFolder(token, WATCH_ROOT, false);
   const yearFolders: DbxEntry[] = rootListing.entries.filter(
     (e: DbxEntry) => e[".tag"] === "folder" && YEAR_FOLDER_RE.test(e.name),
@@ -296,6 +307,16 @@ Deno.serve(async (req) => {
             ai_note: extracted.note,
           });
           if (insertError) throw new Error(`expense_inbox insert failed: ${insertError.message}`);
+
+          if (superadminNames.length) {
+            try {
+              const amountText = extracted.amount != null ? `${extracted.amount.toLocaleString("sr-RS")} RSD` : "iznos nepoznat";
+              const notifText = `Novi račun iz Dropbox-a: ${extracted.description} (${amountText}) čeka potvrdu.`;
+              await supabase.from("notifications").insert(
+                superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
+              );
+            } catch { /* notifications are best-effort, receipt is already safely in the inbox */ }
+          }
 
           fileResults.push({ file: file.name, ok: true });
         } catch (e) {
