@@ -14,13 +14,24 @@
 //     here — the doc becomes viewable by anyone with that link once published.
 //
 // What it does, each call:
-//  1. Fetches the published HTML.
-//  2. Walks it top to bottom: an <h1> starts a new article, an <h2> (or <h3>,
-//     treated the same) starts a new section within the current article, a
-//     <p> before the first section heading becomes that article's subtitle,
-//     later <p>s become that section's body paragraphs, and <li>s under a
-//     section become its list instead (matches the { label, body } /
-//     { label, list } shape darkroom-app.html's playbookArticles already use).
+//  1. Fetches the published HTML and parses it with a real DOM parser
+//     (deno-dom) rather than regex — tested against a real studio doc that
+//     had a Heading-1-styled line nested inside a numbered-list <li> (an
+//     easy accident when restructuring an outline in Google Docs); a
+//     regex-based tag matcher using a backreference for the closing tag
+//     swallows a nested heading like that as the enclosing <li>'s own text
+//     and never sees it as a heading at all, silently dropping the whole
+//     article. A DOM parser finds every <h1> regardless of what it's
+//     nested inside.
+//  2. Walks the parsed body in document order: an <h1> starts a new
+//     article, an <h2> (or <h3>, treated the same) starts a new section
+//     within it, text before the first section heading becomes that
+//     article's subtitle if short (a one-line tagline, like the original
+//     hand-written articles) or its own lead-in section if long (e.g. a
+//     multi-paragraph legal preamble), later paragraphs become that
+//     section's body, and list items become its list instead — matching
+//     the { label, body } / { label, list } shape darkroom-app.html's
+//     playbookArticles already use.
 //  3. Replaces every row in playbook_articles with the freshly parsed set —
 //     small dataset, so a full refresh is simpler than diffing row by row.
 //
@@ -29,6 +40,7 @@
 // ever going blank because Google was briefly unreachable.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
+import { DOMParser, Element } from "jsr:@b-fuze/deno-dom";
 
 const PLAYBOOK_DOC_URL = Deno.env.get("PLAYBOOK_DOC_URL") ?? "";
 const supabase = createClient(
@@ -60,76 +72,96 @@ interface Article {
 // decorative in the nav list, same four glyphs the hand-written seed used.
 const ICON_ROTATION = ["layers", "coffee", "shield", "settings"];
 
-// Strips real HTML tags but deliberately leaves &lt; / &gt; / &quot; / &#39;
-// entity-encoded rather than decoding them back to raw characters. This
-// content now comes from a Google Doc anyone with edit access can change
-// (unlike the original hand-authored seed, where a raw <code> tag in the
-// source was safe because a developer wrote it) and is rendered straight
-// into innerHTML client-side with no further escaping — so whatever escaping
-// survives this function IS the only thing standing between a doc editor
-// and a working <script>/<img onerror> tag. Only `backtick text` gets
-// turned into real markup, via formatInline() below, and only as a tag this
-// function itself constructs around already-safe text.
-// Numeric character refs (&#381; / &#x17D;) decode to their Unicode
-// character — EXCEPT the five that could reconstruct markup (< > " ' &),
-// which stay entity-encoded for the same reason &lt;/&gt;/&quot;/&#39; are
-// never decoded below.
-const DANGEROUS_CODEPOINTS = new Set([60, 62, 34, 39, 38]);
-function decodeSafeNumericEntities(s: string): string {
-  return s.replace(/&#(x[0-9a-f]+|\d+);/gi, (whole, digits) => {
-    const codePoint = digits[0] === "x" || digits[0] === "X"
-      ? parseInt(digits.slice(1), 16)
-      : parseInt(digits, 10);
-    if (!Number.isFinite(codePoint) || DANGEROUS_CODEPOINTS.has(codePoint)) return whole;
-    try { return String.fromCodePoint(codePoint); } catch { return whole; }
-  });
-}
-
-function stripTags(html: string): string {
-  return decodeSafeNumericEntities(
-    html
-      .replace(/<[^>]+>/g, "")
-      .replace(/&nbsp;/g, " ")
-      .replace(/&amp;/g, "&")
-      .replace(/\s+/g, " ")
-      .trim(),
-  );
+// This content is now editable by anyone with Doc access rather than
+// hand-authored by a developer (the original seed's raw <code> tags in
+// source were safe because a developer wrote them), and it's rendered
+// straight into innerHTML client-side with no further escaping — so this
+// escaping is the only thing standing between a doc editor and a working
+// <script>/<img onerror> tag. .textContent already gives fully-decoded
+// plain text (a DOM parser, unlike regex, can't be tricked by entities
+// into producing a live tag), so escaping it here is what makes it safe to
+// store and later interpolate unescaped.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 // The one bit of inline formatting doc editors get: `backtick text` becomes
 // a real <code> tag, matching the style the original hand-written seed used
 // for file paths/naming examples. Safe because the tag itself is ours, not
-// passed through from the document, and the text it wraps went through
-// stripTags() first.
+// passed through from the document, and it wraps already-escaped text.
 function formatInline(text: string): string {
   return text.replace(/`([^`]+)`/g, (_m, code) => `<code>${code}</code>`);
 }
 
-function parseDoc(html: string): Article[] {
-  // Google's published export wraps everything in <body>...</body> with
-  // headings as real <h1>/<h2>/<h3> tags and paragraphs as <p>. Slice out
-  // just the body first so a stray <head><style> block can't get swept up
-  // by the block matcher below.
-  const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-  const body = bodyMatch ? bodyMatch[1] : html;
+function cleanText(raw: string): string {
+  const collapsed = raw.replace(/\s+/g, " ").trim();
+  return formatInline(escapeHtml(collapsed));
+}
 
-  const blockRe = /<(h1|h2|h3|p|li)[^>]*>([\s\S]*?)<\/\1>/gi;
+// True when this <li>'s only meaningful content is a single nested heading —
+// the "heading style applied to a numbered-list line" artifact confirmed in
+// a real studio doc (Google represents it as <li><h1 style="display:inline">
+// ...</h1></li> when someone applies Heading 1 to one line of an outline
+// list). Such an <li> should be skipped entirely and the heading handled on
+// its own when the walk reaches it as a separate node — otherwise it's
+// double-counted as both a stray list item and the next article/section.
+function liWrapsHeading(node: Element): boolean {
+  const elementChildren = Array.from(node.children).filter((c) => (c.textContent ?? "").trim());
+  if (elementChildren.length !== 1) return false;
+  const tag = elementChildren[0].tagName.toLowerCase();
+  return tag === "h1" || tag === "h2" || tag === "h3";
+}
+
+function parseDoc(html: string): Article[] {
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const body = doc?.body;
+  if (!body) return [];
+
+  const nodes = Array.from(body.querySelectorAll("h1, h2, h3, p, li")) as Element[];
+
   const articles: Article[] = [];
   let current: Article | null = null;
   let currentSection: Section | null = null;
   let sawHeadingInArticle = false;
+  // Paragraphs between an H1 and that article's first H2/H3. A short one
+  // (the original hand-written articles' style — a single tagline sentence)
+  // becomes the subtitle; a real one-off document dropped in wholesale
+  // (e.g. a Pravilnik's multi-paragraph legal preamble) is too long to sit
+  // under the title as a subtitle, so it becomes an ordinary lead-in section
+  // instead.
+  let preamble: string[] = [];
+  const SUBTITLE_MAX_CHARS = 220;
 
-  let match: RegExpExecArray | null;
-  while ((match = blockRe.exec(body)) !== null) {
-    const tag = match[1].toLowerCase();
-    const text = stripTags(match[2]);
+  function finalizePreamble(article: Article) {
+    if (!preamble.length) return;
+    const joined = preamble.join(" ");
+    if (preamble.length === 1 && joined.length <= SUBTITLE_MAX_CHARS) {
+      article.subtitle = joined;
+    } else {
+      article.sections.unshift({ label: "", body: preamble });
+    }
+    preamble = [];
+  }
+
+  for (const node of nodes) {
+    const tag = node.tagName.toLowerCase();
+    if (tag === "li" && liWrapsHeading(node)) continue;
+    const rawText = node.textContent ?? "";
+    const text = cleanText(rawText);
     if (!text) continue;
 
     if (tag === "h1") {
+      if (current) finalizePreamble(current);
+      const plainUpper = rawText.replace(/\s+/g, " ").trim().toUpperCase();
       current = {
         icon: ICON_ROTATION[articles.length % ICON_ROTATION.length],
         navTitle: text,
-        title: text.toUpperCase(),
+        title: escapeHtml(plainUpper),
         subtitle: "",
         sections: [],
       };
@@ -141,23 +173,24 @@ function parseDoc(html: string): Article[] {
     if (!current) continue; // text before the first H1 (title page, stray notes) — ignore
 
     if (tag === "h2" || tag === "h3") {
+      if (!sawHeadingInArticle) finalizePreamble(current);
       currentSection = { label: text };
       current.sections.push(currentSection);
       sawHeadingInArticle = true;
       continue;
     }
     if (tag === "li") {
+      if (!sawHeadingInArticle) { preamble.push(text); continue; }
       if (!currentSection) {
         currentSection = { label: "" };
         current.sections.push(currentSection);
       }
-      (currentSection.list ??= []).push(formatInline(text));
+      (currentSection.list ??= []).push(text);
       continue;
     }
     // <p>
     if (!sawHeadingInArticle) {
-      const withInline = formatInline(text);
-      current.subtitle = current.subtitle ? `${current.subtitle} ${withInline}` : withInline;
+      preamble.push(text);
       continue;
     }
     if (!currentSection) {
@@ -165,8 +198,9 @@ function parseDoc(html: string): Article[] {
       current.sections.push(currentSection);
     }
     if (currentSection.list) continue; // a stray paragraph inside a list section — drop rather than mixing shapes
-    (currentSection.body ??= []).push(formatInline(text));
+    (currentSection.body ??= []).push(text);
   }
+  if (current) finalizePreamble(current);
 
   return articles;
 }
