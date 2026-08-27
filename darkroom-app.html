@@ -1429,6 +1429,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .msati-ot{ border-color:var(--coral); color:var(--coral); }
 .msati-add-task{ margin-top:auto; text-align:center; font-size:10px; font-weight:600; color:var(--ink-faint); padding:5px; border-radius:7px; border:1.5px dashed var(--border); cursor:pointer; }
 .msati-add-task:hover{ border-color:var(--gold); color:var(--gold-deep); }
+.msati-leave{ font-size:10px; font-weight:600; color:var(--ink-dim); background:var(--card); border:1px solid var(--border); border-radius:6px; padding:3px 6px; display:flex; align-items:center; gap:4px; }
+.msati-leave-bday{ background:var(--gold-soft); border-color:var(--gold); color:var(--gold-deep); }
 
 .cal-lanes{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px 0; padding:4px 0 10px; position:relative; z-index:1; }
 .cal-bar{
@@ -3806,6 +3808,16 @@ function renderCalendarMySati(){
         const iso = toISO(d);
         const inMonth = d.m===calCursor.m && d.y===calCursor.y;
         const isToday = d.y===TODAY.y && d.m===TODAY.m && d.d===TODAY.d;
+        // Leave days (odmor/bolovanje/placeno/neplaceno/rodjendan) have no
+        // hours to log, but a day left blank here otherwise looks exactly
+        // like a day someone simply forgot to fill in — the whole point of
+        // this tab was making that distinction obvious at a glance.
+        const myLeave = events.find(e=> e.kind==='odsustvo' && e.person===me.name && e.approvalStatus!=='odbijeno'
+          && daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0);
+        const leaveRow = myLeave ? `
+          <div class="msati-leave${myLeave.leaveType==='rodjendan'?' msati-leave-bday':''}">
+            <span>${leaveIcon[myLeave.leaveType]||''}</span> ${escapeHtml(leaveLabels[myLeave.leaveType]||myLeave.leaveType)}${myLeave.approvalStatus==='na_cekanju'?' (na čekanju)':''}
+          </div>` : '';
         const myTasks = events.filter(e=> e.kind==='zadatak' && e.person===me.name
           && daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0);
         const seenKadar = new Set();
@@ -3828,6 +3840,7 @@ function renderCalendarMySati(){
         return `
         <div class="msati-day${inMonth?'':' out-month'}">
           <div class="msati-daynum${isToday?' dn-today':''}">${d.d}</div>
+          ${leaveRow}
           ${rows}
           <div class="msati-add-task" data-date="${iso}">+ Zadatak</div>
         </div>`;
