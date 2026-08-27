@@ -437,6 +437,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .nc-avatar-preview{ width:52px; height:52px; border-radius:50%; background:var(--card-soft); background-size:cover; background-position:center; border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--ink-faint); }
 .np-thumb-preview{ width:100px; height:66px; border-radius:var(--r-sm); }
 .nc-avatar-row input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
+.round-dropzone{ display:flex; align-items:center; gap:14px; padding:10px; border:1.5px dashed var(--border); border-radius:var(--r-sm); transition:border-color .15s, background .15s; }
+.round-dropzone.dragover{ border-color:var(--gold); background:var(--card-soft); }
+.round-dropzone-text{ display:flex; flex-direction:column; gap:4px; }
+.round-dropzone-text span{ font-size:11px; color:var(--ink-faint); }
+.round-dropzone-text input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
 .team-section-divider{ grid-column:1/-1; display:flex; align-items:center; gap:10px; margin:8px 0 2px; font-family:var(--font-display); font-weight:700; font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-faint); }
 .team-section-divider::after{ content:""; flex:1; height:1px; background:var(--border); }
 .team-card-inactive{ opacity:0.55; filter:grayscale(0.6); }
@@ -3039,9 +3044,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field">
       <label>Render/slika</label>
-      <div class="nc-avatar-row">
+      <div class="round-dropzone" id="roundDropzone">
         <div class="nc-avatar-preview np-thumb-preview" id="roundImgPreview"></div>
-        <input type="file" id="roundImgInput" accept="image/*">
+        <div class="round-dropzone-text">
+          <span id="roundDropzoneHint">Prevuci sliku ovde ili</span>
+          <input type="file" id="roundImgInput" accept="image/*">
+        </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -6129,15 +6137,24 @@ document.getElementById('roundChoiceRev').addEventListener('click', ()=>{
   document.getElementById('roundChoiceRev').classList.add('active');
   document.getElementById('roundChoiceRound').classList.remove('active');
 });
-document.getElementById('roundImgInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
+async function handleRoundImageFile(file){
+  if(!file || !file.type.startsWith('image/')) return;
   const url = await processImageUpload(file, 'round-images');
   if(url){
     pendingRoundImage = url;
     document.getElementById('roundImgPreview').style.backgroundImage = `url('${url}')`;
   }
+}
+document.getElementById('roundImgInput').addEventListener('change', (e)=> handleRoundImageFile(e.target.files[0]));
+
+const roundDropzone = document.getElementById('roundDropzone');
+['dragenter','dragover'].forEach(evt=>{
+  roundDropzone.addEventListener(evt, (e)=>{ e.preventDefault(); roundDropzone.classList.add('dragover'); });
 });
+['dragleave','dragend','drop'].forEach(evt=>{
+  roundDropzone.addEventListener(evt, (e)=>{ e.preventDefault(); roundDropzone.classList.remove('dragover'); });
+});
+roundDropzone.addEventListener('drop', (e)=> handleRoundImageFile(e.dataTransfer.files[0]));
 document.getElementById('roundCancel').addEventListener('click', closeRoundModal);
 wireOverlayClose(roundModalOverlay, closeRoundModal);
 document.getElementById('roundSubmit').addEventListener('click', async ()=>{
