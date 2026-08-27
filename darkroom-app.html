@@ -437,11 +437,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .nc-avatar-preview{ width:52px; height:52px; border-radius:50%; background:var(--card-soft); background-size:cover; background-position:center; border:1px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--ink-faint); }
 .np-thumb-preview{ width:100px; height:66px; border-radius:var(--r-sm); }
 .nc-avatar-row input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
-.round-dropzone{ display:flex; align-items:center; gap:14px; padding:10px; border:1.5px dashed var(--border); border-radius:var(--r-sm); transition:border-color .15s, background .15s; }
-.round-dropzone.dragover{ border-color:var(--gold); background:var(--card-soft); }
-.round-dropzone-text{ display:flex; flex-direction:column; gap:4px; }
-.round-dropzone-text span{ font-size:11px; color:var(--ink-faint); }
-.round-dropzone-text input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
+.upload-dropzone{ display:flex; align-items:center; gap:14px; padding:10px; border:1.5px dashed var(--border); border-radius:var(--r-sm); transition:border-color .15s, background .15s; }
+.upload-dropzone.dragover{ border-color:var(--gold); background:var(--card-soft); }
+.upload-dropzone-text{ display:flex; flex-direction:column; gap:4px; }
+.upload-dropzone-text span{ font-size:11px; color:var(--ink-faint); }
+.upload-dropzone-text input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
 .team-section-divider{ grid-column:1/-1; display:flex; align-items:center; gap:10px; margin:8px 0 2px; font-family:var(--font-display); font-weight:700; font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-faint); }
 .team-section-divider::after{ content:""; flex:1; height:1px; background:var(--border); }
 .team-card-inactive{ opacity:0.55; filter:grayscale(0.6); }
@@ -1812,7 +1812,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="panel panel-flex grow">
           <div class="panel-head">
             <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7 12 2l9 5-9 5-9-5Z"/><path d="M3 12l9 5 9-5"/></svg>Aktivni Projekti</div>
-            <div class="panel-sub">6 projekata</div>
+            <div class="panel-sub" id="projGridSub">6 projekata</div>
+          </div>
+          <div class="cal-view-toggle" id="dashProjTabs" style="display:none; margin:0 18px 10px;">
+            <button class="cvt-btn active" data-projtab="vodim">Projekti koje vodim</button>
+            <button class="cvt-btn" data-projtab="radim">Projekti na kojima radim</button>
           </div>
           <div class="proj-grid" id="projGrid"></div>
         </div>
@@ -2863,9 +2867,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field">
       <label>Profilna slika</label>
-      <div class="nc-avatar-row">
+      <div class="upload-dropzone" id="ntAvatarDropzone">
         <div class="nc-avatar-preview" id="ntAvatarPreview"></div>
-        <input type="file" id="ntAvatarInput" accept="image/*">
+        <div class="upload-dropzone-text">
+          <span>Prevuci sliku ovde ili</span>
+          <input type="file" id="ntAvatarInput" accept="image/*">
+        </div>
       </div>
     </div>
     <div class="modal-field">
@@ -2915,9 +2922,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field">
       <label>Profilna slika</label>
-      <div class="nc-avatar-row">
+      <div class="upload-dropzone" id="ncAvatarDropzone">
         <div class="nc-avatar-preview" id="ncAvatarPreview"></div>
-        <input type="file" id="ncAvatarInput" accept="image/*">
+        <div class="upload-dropzone-text">
+          <span>Prevuci sliku ovde ili</span>
+          <input type="file" id="ncAvatarInput" accept="image/*">
+        </div>
       </div>
     </div>
     <div class="modal-actions">
@@ -3044,9 +3054,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field">
       <label>Render/slika</label>
-      <div class="round-dropzone" id="roundDropzone">
+      <div class="upload-dropzone" id="roundDropzone">
         <div class="nc-avatar-preview np-thumb-preview" id="roundImgPreview"></div>
-        <div class="round-dropzone-text">
+        <div class="upload-dropzone-text">
           <span id="roundDropzoneHint">Prevuci sliku ovde ili</span>
           <input type="file" id="roundImgInput" accept="image/*">
         </div>
@@ -3319,15 +3329,40 @@ function thumbStyle(seed, w){
   return `background-image:url('${url}'); background-size:cover; background-position:center;`;
 }
 
+let dashProjTab = 'vodim'; // only relevant for admin/superadmin — see renderDashboardProjects()
+
 function renderDashboardProjects(){
   const u = currentUser();
   const projGridEl = document.getElementById('projGrid');
+  const tabsEl = document.getElementById('dashProjTabs');
   if(!u || !projGridEl) return;
-  let list = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===u.key && (k.status==='aktivan' || k.status==='na čekanju')));
-  const personal = list.length > 0;
-  if(!personal) list = allProjects.filter(p=>p.status!=='Završeno');
+
+  // Regular members only ever see one implicit view (their own active tasks,
+  // or every non-finished project if they have none) — the split into
+  // "koje vodim"/"na kojima radim" only makes sense once someone can
+  // actually manage projects, i.e. admin/superadmin. A project can
+  // legitimately land in both tabs (e.g. a manager who also has a kadar
+  // assigned to themselves on their own project) — that's intentional,
+  // not deduplicated.
+  let list, personal;
+  if(currentAccess() !== 'user'){
+    tabsEl.style.display = '';
+    document.querySelectorAll('#dashProjTabs .cvt-btn').forEach(b=>b.classList.toggle('active', b.dataset.projtab===dashProjTab));
+    if(dashProjTab === 'vodim'){
+      list = allProjects.filter(p=>p.managerName===u.name && p.status!=='Završeno');
+      personal = false; // show a general sample of the project's kadrovi, not just the manager's own
+    } else {
+      list = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===u.key && (k.status==='aktivan' || k.status==='na čekanju')));
+      personal = true;
+    }
+  } else {
+    tabsEl.style.display = 'none';
+    list = allProjects.filter(p=>p.kadrovi.some(k=>k.employee===u.key && (k.status==='aktivan' || k.status==='na čekanju')));
+    personal = list.length > 0;
+    if(!personal) list = allProjects.filter(p=>p.status!=='Završeno');
+  }
   list = list.slice(0, 6);
-  document.querySelector('#projGrid').closest('.panel').querySelector('.panel-sub').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
+  document.getElementById('projGridSub').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
 
   projGridEl.innerHTML = list.map(p=>{
     const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
@@ -3350,6 +3385,12 @@ function renderDashboardProjects(){
     });
   });
 }
+document.querySelectorAll('#dashProjTabs .cvt-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    dashProjTab = btn.dataset.projtab;
+    renderDashboardProjects();
+  });
+});
 
 /* Radna Nedelja widget je povezan sa events (kalendar) — pogledaj renderWeekWidget() niže,
    pošto zavisi od teamMembers/currentUserId koji se definišu kasnije u fajlu. */
@@ -5607,6 +5648,24 @@ async function processImageUpload(file, bucket){
   });
 }
 
+/* Shared drag-and-drop wiring for every image-upload dropzone (round render,
+   client avatar, team avatar) — highlights the zone while a file is
+   dragged over it and hands the dropped file to the same callback each
+   spot already uses for its <input type=file> change handler. */
+function wireImageDropzone(zone, onFile){
+  if(!zone) return;
+  ['dragenter','dragover'].forEach(evt=>{
+    zone.addEventListener(evt, (e)=>{ e.preventDefault(); zone.classList.add('dragover'); });
+  });
+  ['dragleave','dragend','drop'].forEach(evt=>{
+    zone.addEventListener(evt, (e)=>{ e.preventDefault(); zone.classList.remove('dragover'); });
+  });
+  zone.addEventListener('drop', (e)=>{
+    const file = e.dataTransfer.files[0];
+    if(file && file.type.startsWith('image/')) onFile(file);
+  });
+}
+
 document.getElementById('npThumbInput').addEventListener('change', async (e)=>{
   const file = e.target.files[0];
   if(!file) return;
@@ -6146,15 +6205,7 @@ async function handleRoundImageFile(file){
   }
 }
 document.getElementById('roundImgInput').addEventListener('change', (e)=> handleRoundImageFile(e.target.files[0]));
-
-const roundDropzone = document.getElementById('roundDropzone');
-['dragenter','dragover'].forEach(evt=>{
-  roundDropzone.addEventListener(evt, (e)=>{ e.preventDefault(); roundDropzone.classList.add('dragover'); });
-});
-['dragleave','dragend','drop'].forEach(evt=>{
-  roundDropzone.addEventListener(evt, (e)=>{ e.preventDefault(); roundDropzone.classList.remove('dragover'); });
-});
-roundDropzone.addEventListener('drop', (e)=> handleRoundImageFile(e.dataTransfer.files[0]));
+wireImageDropzone(document.getElementById('roundDropzone'), handleRoundImageFile);
 document.getElementById('roundCancel').addEventListener('click', closeRoundModal);
 wireOverlayClose(roundModalOverlay, closeRoundModal);
 document.getElementById('roundSubmit').addEventListener('click', async ()=>{
@@ -6343,15 +6394,16 @@ function setAvatarPreview(name, avatar){
     el.textContent = name ? clientInitials(name) : '';
   }
 }
-document.getElementById('ncAvatarInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
+async function handleClientAvatarFile(file){
   if(!file) return;
   const url = await processImageUpload(file, 'client-avatars');
   if(url){
     pendingClientAvatar = url;
     setAvatarPreview(document.getElementById('ncName').value, url);
   }
-});
+}
+document.getElementById('ncAvatarInput').addEventListener('change', (e)=> handleClientAvatarFile(e.target.files[0]));
+wireImageDropzone(document.getElementById('ncAvatarDropzone'), handleClientAvatarFile);
 
 function closeClientModal(){
   clientModalOverlay.classList.remove('open');
@@ -7596,15 +7648,16 @@ function setTeamAvatarPreview(name, avatar){
     el.textContent = name ? clientInitials(name) : '';
   }
 }
-document.getElementById('ntAvatarInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
+async function handleTeamAvatarFile(file){
   if(!file) return;
   const url = await processImageUpload(file, 'team-avatars');
   if(url){
     pendingTeamAvatar = url;
     setTeamAvatarPreview(document.getElementById('ntName').value, url);
   }
-});
+}
+document.getElementById('ntAvatarInput').addEventListener('change', (e)=> handleTeamAvatarFile(e.target.files[0]));
+wireImageDropzone(document.getElementById('ntAvatarDropzone'), handleTeamAvatarFile);
 
 function closeTeamModal(){
   teamModalOverlay.classList.remove('open');
