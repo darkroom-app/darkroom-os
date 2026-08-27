@@ -1919,6 +1919,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="cal-stat"><div class="cs-label">Preostalo slobodnih</div><div class="cs-val" id="csOdmor">0 <span>dana</span></div></div>
         <div class="cal-stat"><div class="cs-label">Plaćeno odsustvo</div><div class="cs-val" id="csPlaceno">0 <span>dana</span></div></div>
         <div class="cal-stat"><div class="cs-label">Neplaćeno</div><div class="cs-val" id="csNeplaceno">0 <span>dana</span></div></div>
+        <div class="cal-stat"><div class="cs-label">Bolovanje</div><div class="cs-val" id="csBolovanje">0 <span>dana</span></div></div>
         <div class="cal-stat"><div class="cs-label">Sati (mesec)</div><div class="cs-val" id="csSati">0 <span>h</span></div></div>
         <div class="cal-stat"><div class="cs-label">Prekovremeno</div><div class="cs-val" id="csPrekovremeno">0 <span>h</span></div></div>
       </div>
@@ -3877,22 +3878,19 @@ function renderCalendarMySati(){
 /* Stats row above the calendar grid — was 5 static "0" placeholders with no
    render function ever wired to them. Leave-day counters are approved-only
    (na_cekanju/odbijeno shouldn't count as used leave) and scoped to the
-   current year; hours/overtime are scoped to the current month, matching
-   the "(mesec)" label. Follows calFilters.osoba the same way the rest of
-   the calendar does — "Ceo Tim" aggregates everyone, a specific person
-   shows just theirs. */
+   current year. The leave tiles (Preostalo/Plaćeno/Neplaćeno/Bolovanje) now
+   genuinely follow calFilters.osoba — picking a specific person in the team
+   filter above shows THEIR balance, so a superadmin/admin can check anyone's
+   leave usage without opening their profile page; "Ceo Tim" falls back to
+   your own, since a summed "remaining" across different people's allotments
+   wouldn't mean anything. */
 function renderCalStats(){
-  // Personal (always the logged-in user), same principle as Sati/Prekovremeno
-  // below — mirrors the dashboard's own "Preostalo slobodnih" pill so this
-  // number means the same thing everywhere, and browsing someone else's
-  // calendar via the team filter above doesn't change what looks like
-  // "your" balance.
-  const me = currentUser();
+  const target = calFilters.osoba==='Ceo Tim' ? currentUser() : teamMembers.find(t=>t.name===calFilters.osoba);
   const leaveDaysApproved = (type)=> {
-    const bday = type==='odmor' && me ? personRodjendanDates(me.name, TODAY.y) : null;
+    const bday = type==='odmor' && target ? personRodjendanDates(target.name, TODAY.y) : null;
     return events
       .filter(e=>e.kind==='odsustvo' && e.leaveType===type && e.approvalStatus==='odobreno'
-        && e.start.y===TODAY.y && me && e.person===me.name)
+        && e.start.y===TODAY.y && target && e.person===target.name)
       .reduce((s,e)=>{
         if(!bday) return s + (daysBetween(e.start,e.end)+1);
         let count = 0, cur = e.start;
@@ -3900,11 +3898,17 @@ function renderCalStats(){
         return s + count;
       }, 0);
   };
-  const allotment = me && me.slobodniDani != null ? me.slobodniDani : 20;
+  const allotment = target && target.slobodniDani != null ? target.slobodniDani : 20;
   const odmorPreostalo = Math.max(0, allotment - leaveDaysApproved('odmor'));
   document.getElementById('csOdmor').innerHTML = `${odmorPreostalo} <span>dana</span>`;
   document.getElementById('csPlaceno').innerHTML = `${leaveDaysApproved('placeno')} <span>dana</span>`;
   document.getElementById('csNeplaceno').innerHTML = `${leaveDaysApproved('neplaceno')} <span>dana</span>`;
+  document.getElementById('csBolovanje').innerHTML = `${leaveDaysApproved('bolovanje')} <span>dana</span>`;
+
+  // me kept separate from target -- Sati/Prekovremeno stay personal on
+  // purpose (see below), independent of whichever person the leave tiles
+  // above are now showing.
+  const me = currentUser();
 
   // Sati/Prekovremeno su lični (uvek ulogovana osoba), nezavisno od filtera tima iznad —
   // isti princip kao dashboard-ov "Nedeljni cilj", da se broj ne menja kad neko pregleda
