@@ -1416,15 +1416,19 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cal-daynum:hover .dn-add{ opacity:0.85; }
 
 /* ---- Kalendar: Moji sati (personal month grid) ---- */
-.msati-week{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:6px 0; border-top:1px solid var(--border); }
-.msati-day{ min-height:64px; padding:6px 7px; border-radius:9px; background:var(--card-soft); display:flex; flex-direction:column; gap:4px; }
+.msati-week{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:6px 0; border-top:1px solid var(--border); align-items:stretch; }
+.msati-day{ min-height:150px; padding:8px; border-radius:10px; background:var(--card-soft); display:flex; flex-direction:column; gap:6px; }
 .msati-day.out-month{ opacity:0.4; }
-.msati-daynum{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); align-self:flex-end; }
+.msati-daynum{ font-family:var(--font-mono); font-size:11.5px; color:var(--ink-dim); align-self:flex-end; }
 .msati-daynum.dn-today{ background:var(--gold); color:#3a2704; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; align-self:flex-end; }
-.msati-row{ display:flex; align-items:center; gap:4px; }
-.msati-tag{ flex:1; min-width:0; font-size:10px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:var(--gold-soft); border:1px solid var(--gold); color:var(--gold-deep); border-radius:6px; padding:2px 6px; }
-.msati-reg, .msati-ot{ width:34px; font-family:var(--font-mono); font-size:10.5px; border:1px solid var(--border); border-radius:6px; padding:2px 3px; text-align:center; background:var(--card); color:var(--ink); }
+.msati-row{ display:flex; flex-direction:column; gap:5px; padding:7px 8px; border-radius:8px; background:var(--card); border:1px solid var(--border); }
+.msati-tag{ font-size:11px; font-weight:600; line-height:1.3; background:var(--gold-soft); color:var(--gold-deep); border-radius:6px; padding:2px 6px; }
+.msati-inputs{ display:flex; gap:6px; }
+.msati-inputs label{ flex:1; display:flex; flex-direction:column; gap:2px; font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; }
+.msati-reg, .msati-ot{ width:100%; font-family:var(--font-mono); font-size:12px; border:1px solid var(--border); border-radius:6px; padding:4px 5px; text-align:center; background:var(--card-soft); color:var(--ink); }
 .msati-ot{ border-color:var(--coral); color:var(--coral); }
+.msati-add-task{ margin-top:auto; text-align:center; font-size:10px; font-weight:600; color:var(--ink-faint); padding:5px; border-radius:7px; border:1.5px dashed var(--border); cursor:pointer; }
+.msati-add-task:hover{ border-color:var(--gold); color:var(--gold-deep); }
 
 .cal-lanes{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px 0; padding:4px 0 10px; position:relative; z-index:1; }
 .cal-bar{
@@ -3775,15 +3779,18 @@ function renderCalendarMySati(){
           const ot = timeEntries.find(t=>t.employeeId===me.authId && t.kadarDbId===kadar.dbId && t.date===iso && t.overtime);
           return `
           <div class="msati-row" data-kadar-id="${kadar.dbId}" data-date="${iso}" data-reg-id="${reg?reg.dbId:''}" data-ot-id="${ot?ot.dbId:''}">
-            <span class="msati-tag" title="${escapeHtml(proj.name)} — ${escapeHtml(kadar.name)}">${escapeHtml(proj.code)} · ${escapeHtml(kadar.name)}</span>
-            <input type="number" class="msati-reg" min="0" max="24" step="0.5" value="${reg?reg.hours:''}" placeholder="0.0" title="Redovni sati">
-            <input type="number" class="msati-ot" min="0" max="24" step="0.5" value="${ot?ot.hours:''}" placeholder="0.0" title="Prekovremeni sati">
+            <div class="msati-tag" title="${escapeHtml(proj.name)} — ${escapeHtml(kadar.name)}">${escapeHtml(proj.code)} · ${escapeHtml(kadar.name)}</div>
+            <div class="msati-inputs">
+              <label>Red.<input type="number" class="msati-reg" min="0" max="24" step="0.5" value="${reg?reg.hours:''}" placeholder="0.0" title="Redovni sati"></label>
+              <label>Prek.<input type="number" class="msati-ot" min="0" max="24" step="0.5" value="${ot?ot.hours:''}" placeholder="0.0" title="Prekovremeni sati"></label>
+            </div>
           </div>`;
         }).join('');
         return `
         <div class="msati-day${inMonth?'':' out-month'}">
           <div class="msati-daynum${isToday?' dn-today':''}">${d.d}</div>
           ${rows}
+          <div class="msati-add-task" data-date="${iso}">+ Zadatak</div>
         </div>`;
       }).join('')}
     </div>`).join('');
@@ -4015,6 +4022,8 @@ async function endBarDrag(){
 
 calWeeks.addEventListener('click', async (e)=>{
   if(suppressBarClick){ suppressBarClick = false; return; }
+  const msatiAddBtn = e.target.closest('.msati-add-task');
+  if(msatiAddBtn){ openEventModal(null, msatiAddBtn.dataset.date, null, true); return; }
   const delBtn = e.target.closest('.cb-delete');
   if(delBtn){
     const evObj = events.find(x=>x._id===Number(delBtn.dataset.id));
