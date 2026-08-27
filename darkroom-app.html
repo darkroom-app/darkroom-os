@@ -10081,6 +10081,30 @@ function buildChatContext(){
       tip_odsustva: e.leaveType || null, praznik: e.holidayName || null,
     }));
 
+  // "Koliko slobodnih dana imam?" (and the same question about
+  // bolovanje/plaćeno/neplaćeno/sati) has no answer anywhere else in this
+  // context — projekti/klijenti/tim are raw lists and kalendar is just a
+  // 33-day window of events, neither one a computed personal total. This
+  // is the exact number already shown on the person's own dashboard pill
+  // and the Kalendar stats row (reuses leaveDaysUsed(), the same function
+  // both of those call), just finally handed to the AI too.
+  const me = currentUser();
+  const monthKey = `${TODAY.y}-${String(TODAY.m).padStart(2,'0')}`;
+  const mesecniSati = (overtime) => (typeof timeEntries!=='undefined' ? timeEntries : [])
+    .filter(t => t.overtime===overtime && me && t.employeeId===me.authId && t.date && t.date.startsWith(monthKey))
+    .reduce((s,t)=>s+t.hours, 0);
+  const mojiPodaci = me ? {
+    ime: me.name,
+    godisnji_odmor_dodeljeno: me.slobodniDani != null ? me.slobodniDani : 20,
+    godisnji_odmor_iskorisceno_ove_godine: leaveDaysUsed(me.name, 'odmor', TODAY.y),
+    godisnji_odmor_preostalo: Math.max(0, (me.slobodniDani != null ? me.slobodniDani : 20) - leaveDaysUsed(me.name, 'odmor', TODAY.y)),
+    bolovanje_dana_ove_godine: leaveDaysUsed(me.name, 'bolovanje', TODAY.y),
+    placeno_odsustvo_dana_ove_godine: leaveDaysUsed(me.name, 'placeno', TODAY.y),
+    neplaceno_odsustvo_dana_ove_godine: leaveDaysUsed(me.name, 'neplaceno', TODAY.y),
+    radni_sati_ovog_meseca: Number(mesecniSati(false).toFixed(1)),
+    prekovremeni_sati_ovog_meseca: Number(mesecniSati(true).toFixed(1)),
+  } : null;
+
   // Playbook section text is stored as real HTML (built by playbook-sync
   // for on-screen rendering — <strong>/<em> for genuine bold/italic from
   // the source Google Doc, plus HTML-entity-escaped punctuation). Sending
@@ -10152,6 +10176,7 @@ function buildChatContext(){
   return JSON.stringify({
     danas: toISO(TODAY),
     nalog_trenutnog_korisnika: { nivo_pristupa: currentAccess(), ima_pristup_finansijama: canAccessFinance() },
+    moji_podaci: mojiPodaci,
     projekti, klijenti, tim, kalendar, playbook, finansije,
   });
 }
