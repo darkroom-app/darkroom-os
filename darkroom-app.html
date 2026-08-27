@@ -10162,7 +10162,20 @@ async function runChatSearch(query){
       body: { message: query, history: chatHistory, context },
     });
     if(error || !data || !data.ok){
-      const errMsg = (data && data.error) || error?.message || 'nepoznata greška';
+      // supabase-js's functions.invoke() swallows the real response body on
+      // a non-2xx status — `data` comes back null and `error.message` is
+      // just the generic "Edge Function returned a non-2xx status code",
+      // even though gemini-chat always returns a real JSON {ok:false,error}
+      // body. The actual body is still readable off error.context (the raw
+      // Response object) — read it explicitly so failures are diagnosable
+      // instead of always showing the same uninformative message.
+      let errMsg = (data && data.error) || error?.message || 'nepoznata greška';
+      if(error && error.context && typeof error.context.json === 'function'){
+        try {
+          const body = await error.context.clone().json();
+          if(body && body.error) errMsg = body.error;
+        } catch(e){ /* body wasn't JSON — keep the generic message */ }
+      }
       replyHtml = `Došlo je do greške: ${escapeHtml(errMsg)}`;
     } else {
       replyRaw = data.reply;
