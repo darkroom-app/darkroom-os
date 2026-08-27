@@ -10209,12 +10209,16 @@ function sendChatFrom(input){
 document.getElementById('chatSend').addEventListener('click', ()=> sendChatFrom(document.getElementById('chatInput')));
 document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==='Enter') sendChatFrom(document.getElementById('chatInput')); });
 
-const chatSuggestions = ["Projekat Koncept 7", "Gensler Dubai", "Miljana", "Workflow standardi"];
+const chatSuggestions = [
+  { label:"Projekti", view:"projekti" },
+  { label:"Kalendar", view:"kalendar" },
+  { label:"DR Playbook", view:"playbook" },
+];
 (function(){
   const row = document.getElementById('chatSuggestRow');
-  row.innerHTML = chatSuggestions.map(s=>`<div class="chat-suggest-chip">${s}</div>`).join('');
+  row.innerHTML = chatSuggestions.map(s=>`<div class="chat-suggest-chip" data-view="${s.view}">${s.label}</div>`).join('');
   row.querySelectorAll('.chat-suggest-chip').forEach(chip=>{
-    chip.addEventListener('click', ()=> runChatSearch(chip.textContent));
+    chip.addEventListener('click', ()=> { showView(chip.dataset.view); toggleChat(false); });
   });
 })();
 

@@ -96,7 +96,14 @@ Deno.serve(async (req) => {
       parts: [{ text: `${SYSTEM_PROMPT}\n\nPODACI STUDIJA (JSON):\n${context}` }],
     },
     contents,
-    generationConfig: { temperature: 0.4, maxOutputTokens: 4096 },
+    // gemini-3.6-flash defaults to "high" thinking on every single request —
+    // Google's own guidance is "low" for exactly this shape of workload
+    // ("straightforward instructions and chat applications"), which this
+    // is: a single-turn lookup over a JSON blob already handed to it, not
+    // multi-step reasoning. Confirmed live this was a real, measurable
+    // chunk of the ~10-15s response time users were seeing, on top of the
+    // large context payload itself.
+    generationConfig: { temperature: 0.4, maxOutputTokens: 4096, thinkingConfig: { thinkingLevel: "low" } },
   };
 
   let geminiResp: Response;
