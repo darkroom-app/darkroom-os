@@ -3815,6 +3815,9 @@ function renderCalendarMySati(){
       const err = await saveOneHoursCell(dbId, me.authId, me.name, kadarDbId, iso, val, !isReg);
       if(err){ await customAlert('Čuvanje sati nije uspelo: ' + err); }
       renderCalendar();
+      renderWeekWidget();
+      renderWeeklyGoal();
+      renderOvertimeStat();
     });
   });
 }
