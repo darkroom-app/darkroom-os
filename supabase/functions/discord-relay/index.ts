@@ -23,15 +23,63 @@
 // odsustva" Discord group, via its own dedicated webhook secret. This is
 // deliberately narrow (checked by `kind`, not a general fallback) so it
 // doesn't reintroduce the Phase 3g problem for anything else.
+// Phase 20: RenderFlow render-done/render-warning notifications used to
+// post into the project's Discord channel like everything else, which
+// meant every render completion was visible to (and spammed) the whole
+// project group, and people ended up checking each other's render
+// notifications instead of their own. These two kinds now DM the actual
+// recipient directly via a real Discord bot (a webhook can only ever post
+// to a fixed channel — there's no such thing as a "webhook DM", so this
+// needed an actual bot with its own token, added to the studio's server).
+// Falls back to the old channel-webhook behavior if the recipient has no
+// discord_user_id on file yet, or if the DM attempt fails for any reason
+// (e.g. they've disabled DMs from server members) — a render notification
+// should never just silently vanish because the DM mapping isn't set up
+// for someone yet.
+
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const DB_WEBHOOK_SECRET = Deno.env.get("DB_WEBHOOK_SECRET") ?? "";
 const DISCORD_WEBHOOK_LEAVE_URL = Deno.env.get("DISCORD_WEBHOOK_LEAVE_URL") ?? "";
+const DISCORD_BOT_TOKEN = Deno.env.get("DISCORD_BOT_TOKEN") ?? "";
+
+const DM_KINDS = new Set(["render-done", "render-warning"]);
+
+const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+);
 
 function jsonResponse(body: unknown, status: number) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { "content-type": "application/json" },
   });
+}
+
+// Discord bots can't message a user directly by id — you first open (or
+// reuse) a DM channel with them, then post into that channel like any
+// other. Returns false on any failure so the caller can fall back to the
+// project channel instead of losing the notification.
+async function sendDiscordDM(discordUserId: string, content: string): Promise<boolean> {
+  try {
+    const dmResp = await fetch("https://discord.com/api/v10/users/@me/channels", {
+      method: "POST",
+      headers: { authorization: `Bot ${DISCORD_BOT_TOKEN}`, "content-type": "application/json" },
+      body: JSON.stringify({ recipient_id: discordUserId }),
+    });
+    if (!dmResp.ok) return false;
+    const dmChannel = await dmResp.json();
+
+    const msgResp = await fetch(`https://discord.com/api/v10/channels/${dmChannel.id}/messages`, {
+      method: "POST",
+      headers: { authorization: `Bot ${DISCORD_BOT_TOKEN}`, "content-type": "application/json" },
+      body: JSON.stringify({ content }),
+    });
+    return msgResp.ok;
+  } catch {
+    return false;
+  }
 }
 
 Deno.serve(async (req) => {
@@ -60,6 +108,19 @@ Deno.serve(async (req) => {
   const row = payload.record as Record<string, unknown>;
   const kind = typeof row.kind === "string" ? row.kind : "";
   const text = typeof row.text === "string" ? row.text : "(bez teksta)";
+  const recipient = typeof row.recipient_name === "string" ? row.recipient_name : "Nepoznat";
+  const projectCode = typeof row.project_code === "string" ? row.project_code : null;
+
+  if (DM_KINDS.has(kind) && DISCORD_BOT_TOKEN) {
+    const { data: member } = await supabase
+      .from("team_members").select("discord_user_id").eq("name", recipient).maybeSingle();
+    if (member?.discord_user_id) {
+      const dmContent = `${text}${projectCode ? ` (${projectCode})` : ""}`;
+      const sent = await sendDiscordDM(member.discord_user_id, dmContent);
+      if (sent) return jsonResponse({ ok: true, via: "dm" }, 200);
+      // fall through to the channel-webhook path below on DM failure
+    }
+  }
 
   let targetUrl = typeof payload.webhook_url === "string" ? payload.webhook_url : "";
   let content: string;
@@ -67,8 +128,6 @@ Deno.serve(async (req) => {
     targetUrl = DISCORD_WEBHOOK_LEAVE_URL;
     content = `🏖️ ${text}`;
   } else {
-    const recipient = typeof row.recipient_name === "string" ? row.recipient_name : "Nepoznat";
-    const projectCode = typeof row.project_code === "string" ? row.project_code : null;
     content = `🔔 **${recipient}** ${projectCode ? `(${projectCode}) ` : ""}— ${text}`;
   }
 
@@ -89,5 +148,5 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: `discord webhook failed: ${discordResp.status} ${errText}` }, 502);
   }
 
-  return jsonResponse({ ok: true }, 200);
+  return jsonResponse({ ok: true, via: "channel" }, 200);
 });

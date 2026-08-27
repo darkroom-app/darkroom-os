@@ -1285,3 +1285,16 @@ grant execute on function public.list_new_storage_objects(timestamptz, int) to s
 -- icon, which would misleadingly flag a normal, successful conversion.
 
 alter table public.expense_inbox add column if not exists fx_note text;
+
+
+-- ==== Phase 20: Discord DM for RenderFlow render notifications (run this query) ====
+-- render-done/render-warning notifications used to post into the whole
+-- project's Discord channel, spamming everyone and encouraging people to
+-- check each other's render notifications instead of their own.
+-- discord-relay now DMs the recipient directly via a real bot when this
+-- column is set, falling back to the old channel post otherwise. Populated
+-- by hand per person (Discord user ID, from "Copy User ID" in Discord with
+-- Developer Mode on) — same one-time-manual-mapping pattern already used
+-- for renderflow_user_id.
+
+alter table public.team_members add column if not exists discord_user_id text;
