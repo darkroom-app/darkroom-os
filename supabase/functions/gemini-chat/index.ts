@@ -479,7 +479,13 @@ Deno.serve(async (req) => {
       break;
     }
 
-    contents.push({ role: "model", parts: fnCalls.map((p) => ({ functionCall: p.functionCall })) });
+    // Pass the function-call parts through UNCHANGED (not rebuilt as
+    // {functionCall:...} objects) — Gemini 3's thinking-capable models
+    // attach a `thoughtSignature` alongside `functionCall` on the same part
+    // and require it echoed back exactly when this turn is replayed in the
+    // next request, or it 400s with "missing a thought_signature". Rebuilding
+    // the object here was silently dropping that field.
+    contents.push({ role: "model", parts: fnCalls });
 
     const responseParts = [];
     for (const p of fnCalls) {
