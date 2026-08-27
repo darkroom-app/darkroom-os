@@ -1415,6 +1415,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .dn-add{ opacity:0; font-family:var(--font-mono); font-size:14px; color:var(--gold-deep); cursor:pointer; transition:opacity .15s ease; line-height:1; }
 .cal-daynum:hover .dn-add{ opacity:0.85; }
 
+/* ---- Kalendar: Moji sati (personal month grid) ---- */
+.msati-week{ display:grid; grid-template-columns:repeat(7,1fr); gap:6px; padding:6px 0; border-top:1px solid var(--border); }
+.msati-day{ min-height:64px; padding:6px 7px; border-radius:9px; background:var(--card-soft); display:flex; flex-direction:column; gap:4px; }
+.msati-day.out-month{ opacity:0.4; }
+.msati-daynum{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); align-self:flex-end; }
+.msati-daynum.dn-today{ background:var(--gold); color:#3a2704; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; align-self:flex-end; }
+.msati-row{ display:flex; align-items:center; gap:4px; }
+.msati-tag{ flex:1; min-width:0; font-size:10px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; background:var(--gold-soft); border:1px solid var(--gold); color:var(--gold-deep); border-radius:6px; padding:2px 6px; }
+.msati-reg, .msati-ot{ width:34px; font-family:var(--font-mono); font-size:10.5px; border:1px solid var(--border); border-radius:6px; padding:2px 3px; text-align:center; background:var(--card); color:var(--ink); }
+.msati-ot{ border-color:var(--coral); color:var(--coral); }
+
 .cal-lanes{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px 0; padding:4px 0 10px; position:relative; z-index:1; }
 .cal-bar{
   display:flex; align-items:center; gap:7px; padding:0 9px 0 6px; height:27px; border-radius:9px;
@@ -1858,6 +1869,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <button class="cvt-btn" data-viewmode="day">Dan</button>
           <button class="cvt-btn active" data-viewmode="week">Nedelja</button>
           <button class="cvt-btn" data-viewmode="month">Mesec</button>
+          <button class="cvt-btn" data-viewmode="sati">Moji sati</button>
         </div>
         <div class="cal-zoom-toggle" id="calZoomToggle">
           <button id="calZoomOut" title="Odzumiraj na ceo mesec">−</button>
@@ -3715,6 +3727,91 @@ function renderCalendarDay(){
   calWeeks.appendChild(wrap);
 }
 
+/* ==== MOJI SATI — personal month grid, requested by the team because the
+   Dan/Nedelja/Mesec views make it hard to see at a glance where you logged
+   hours and how many. Always shows the logged-in user's own hours — same
+   principle csSati/csPrekovremeno already follow — never affected by the
+   Projekat/Osoba filters above (those are for browsing the team's
+   schedule, not your own timesheet).
+   One row per kadar you're assigned to that covers the day, pre-filled
+   from any existing time_entries row, editable directly here — reuses the
+   exact same saveOneHoursCell() + 8h/day cross-kadar cap the "Izmeni
+   stavku" modal already uses, so there's only ever one place that
+   actually validates/writes an hours cell. A kadar with no assignment
+   covering that day never gets a row at all, matching the modal's own
+   "hours only exist within the zadatak's date range" rule. */
+function renderCalendarMySati(){
+  document.getElementById('calWeekdayHeader').style.display = '';
+  const me = currentUser();
+  if(!me){ calWeeks.innerHTML = '<div class="day-view-empty">Uloguj se da vidiš svoje sate.</div>'; return; }
+
+  const daysInMonth = new Date(calCursor.y, calCursor.m, 0).getDate();
+  const firstOfMonth = {y:calCursor.y, m:calCursor.m, d:1};
+  const leadIn = (toJSDate(firstOfMonth).getDay()+6)%7; // Monday-start
+  const totalCells = Math.ceil((leadIn + daysInMonth) / 7) * 7;
+  const gridStart = addDays(firstOfMonth, -leadIn);
+  const weeks = [];
+  for(let i=0;i<totalCells;i+=7){
+    const week = [];
+    for(let j=0;j<7;j++) week.push(addDays(gridStart, i+j));
+    weeks.push(week);
+  }
+
+  calWeeks.innerHTML = weeks.map(week=>`
+    <div class="msati-week">
+      ${week.map(d=>{
+        const iso = toISO(d);
+        const inMonth = d.m===calCursor.m && d.y===calCursor.y;
+        const isToday = d.y===TODAY.y && d.m===TODAY.m && d.d===TODAY.d;
+        const myTasks = events.filter(e=> e.kind==='zadatak' && e.person===me.name
+          && daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0);
+        const seenKadar = new Set();
+        const rows = myTasks.map(ev=>{
+          const proj = allProjects.find(p=>p.code===ev.projectCode);
+          const kadar = proj && proj.kadrovi.find(k=>k.name===ev.taskName);
+          if(!kadar || !kadar.dbId || seenKadar.has(kadar.dbId)) return '';
+          seenKadar.add(kadar.dbId);
+          const reg = timeEntries.find(t=>t.employeeId===me.authId && t.kadarDbId===kadar.dbId && t.date===iso && !t.overtime);
+          const ot = timeEntries.find(t=>t.employeeId===me.authId && t.kadarDbId===kadar.dbId && t.date===iso && t.overtime);
+          return `
+          <div class="msati-row" data-kadar-id="${kadar.dbId}" data-date="${iso}" data-reg-id="${reg?reg.dbId:''}" data-ot-id="${ot?ot.dbId:''}">
+            <span class="msati-tag" title="${escapeHtml(proj.name)} — ${escapeHtml(kadar.name)}">${escapeHtml(proj.code)} · ${escapeHtml(kadar.name)}</span>
+            <input type="number" class="msati-reg" min="0" max="24" step="0.5" value="${reg?reg.hours:''}" placeholder="0.0" title="Redovni sati">
+            <input type="number" class="msati-ot" min="0" max="24" step="0.5" value="${ot?ot.hours:''}" placeholder="0.0" title="Prekovremeni sati">
+          </div>`;
+        }).join('');
+        return `
+        <div class="msati-day${inMonth?'':' out-month'}">
+          <div class="msati-daynum${isToday?' dn-today':''}">${d.d}</div>
+          ${rows}
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+
+  calWeeks.querySelectorAll('.msati-row input').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const row = inp.closest('.msati-row');
+      const kadarDbId = row.dataset.kadarId, iso = row.dataset.date;
+      const isReg = inp.classList.contains('msati-reg');
+      const val = parseFloat(inp.value) || 0;
+      if(isReg && val>0){
+        const otherHours = timeEntries
+          .filter(t=>t.employeeId===me.authId && t.date===iso && !t.overtime && t.kadarDbId!==kadarDbId)
+          .reduce((s,t)=>s+t.hours, 0);
+        if(otherHours+val>8){
+          await customAlert(`Već imaš ${otherHours}h redovnih sati unetih za ${iso} na drugom kadru — ukupno bi bilo ${(otherHours+val).toFixed(1)}h, a dnevni maksimum je 8h. Smanji broj sati ili unesi razliku kao prekovremeno.`);
+          renderCalendar();
+          return;
+        }
+      }
+      const dbId = isReg ? (row.dataset.regId || null) : (row.dataset.otId || null);
+      const err = await saveOneHoursCell(dbId, me.authId, me.name, kadarDbId, iso, val, !isReg);
+      if(err){ await customAlert('Čuvanje sati nije uspelo: ' + err); }
+      renderCalendar();
+    });
+  });
+}
+
 /* Stats row above the calendar grid — was 5 static "0" placeholders with no
    render function ever wired to them. Leave-day counters are approved-only
    (na_cekanju/odbijeno shouldn't count as used leave) and scoped to the
@@ -3755,6 +3852,7 @@ function renderCalendar(){
   document.getElementById('calWeekdayHeader').style.display = 'none';
   if(calViewMode === 'week') renderCalendarWeek();
   else if(calViewMode === 'day') renderCalendarDay();
+  else if(calViewMode === 'sati') renderCalendarMySati();
   else renderCalendarMonth();
   renderCalStats();
 }
@@ -4852,7 +4950,7 @@ function setCalViewMode(mode){
   // it's clear +/- only ever move between those two, not past them.
   document.getElementById('calZoomOut').disabled = mode==='month';
   document.getElementById('calZoomIn').disabled = mode!=='month';
-  document.getElementById('calZoomToggle').style.display = mode==='day' ? 'none' : '';
+  document.getElementById('calZoomToggle').style.display = (mode==='day' || mode==='sati') ? 'none' : '';
   renderCalendar();
 }
 document.querySelectorAll('.cvt-btn').forEach(btn=>{
@@ -4862,7 +4960,7 @@ document.getElementById('calZoomOut').addEventListener('click', ()=> setCalViewM
 document.getElementById('calZoomIn').addEventListener('click', ()=> setCalViewMode('week'));
 let calZoomWheelLock = false;
 calWeeks.addEventListener('wheel', (e)=>{
-  if(!e.ctrlKey || calViewMode==='day') return;
+  if(!e.ctrlKey || calViewMode==='day' || calViewMode==='sati') return;
   // Ctrl+scroll would otherwise zoom the whole browser page — hijack it here
   // instead to move between the 3-week Nedelja view and Mesec, same two
   // states the +/- buttons toggle. { passive:false } is required for
