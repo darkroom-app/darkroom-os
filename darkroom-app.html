@@ -10097,8 +10097,20 @@ function buildChatContext(){
     .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
   const playbook = playbookArticles.map(a => ({
-    naslov: a.navTitle,
-    sadrzaj: a.sections.map(s => `${s.label}: ${s.body ? s.body.map(stripHtmlForAI).join(' ') : (s.list ? s.list.map(stripHtmlForAI).join('; ') : '')}`).join(' | '),
+    naslov: stripHtmlForAI(a.navTitle),
+    // A section can have BOTH an intro paragraph (body) and a bulleted
+    // list — this used to be either/or (whichever came first in the
+    // ternary), silently dropping the list entirely whenever a section
+    // had both. That's exactly what happened to "FAZA 3: Prebacivanje u
+    // Arhivu": its one-line body rendered fine, but the actual answer to
+    // "ko kopira fajlove u arhivu" was three bullet points down in the
+    // list that never made it into the AI's context at all.
+    sadrzaj: a.sections.map(s => {
+      const parts = [];
+      if(s.body) parts.push(...s.body.map(stripHtmlForAI));
+      if(s.list) parts.push(...s.list.map(stripHtmlForAI));
+      return `${stripHtmlForAI(s.label)}: ${parts.join(' ')}`;
+    }).join(' | '),
   }));
 
   let finansije = null;
@@ -11362,6 +11374,16 @@ async function resolveSessionLogin(session){
     await loadTeamMembersFromSupabase();
     await loadClientsFromSupabase();
     await loadProjectsFromSupabase();
+    // Read-only load of whatever playbook-sync last wrote to the DB (no
+    // Google Docs API call here, just a table select — cheap). Without
+    // this, playbookArticles sits on the old pre-Google-Docs hardcoded
+    // seed until someone happens to open the DR Playbook tab that session
+    // (initPlaybook() is what actually re-syncs from the Doc, and stays
+    // lazy/tab-triggered as before) — and the AI assistant reads
+    // playbookArticles directly (buildChatContext()), so it was answering
+    // Playbook questions from year-old fallback content whenever asked
+    // before anyone visited the tab this session.
+    await loadPlaybookFromSupabase();
     await loadKadarPricingFromSupabase();
     await loadTimeEntriesFromSupabase();
     await loadExtraChargesFromSupabase();
