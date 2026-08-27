@@ -1377,6 +1377,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cal-view-toggle{ display:flex; background:var(--card-soft); border-radius:10px; padding:3px; gap:2px; }
 .cvt-btn{ border:none; background:transparent; color:var(--ink-dim); font-family:var(--font-body); font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer; }
 .cvt-btn.active{ background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+/* Same look as .cvt-btn, deliberately a separate class — Kalendar's view-mode
+   wiring queries `.cvt-btn` unscoped (document-wide), so reusing that class
+   here made every dashboard tab click also fire setCalViewMode(undefined). */
+.dash-proj-tab{ border:none; background:transparent; color:var(--ink-dim); font-family:var(--font-body); font-size:11.5px; font-weight:600; padding:6px 12px; border-radius:8px; cursor:pointer; }
+.dash-proj-tab.active{ background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 .cal-nav button{ width:30px; height:30px; border-radius:9px; border:1px solid var(--border); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--ink-dim); }
 .cal-nav button:hover{ background:var(--gold-soft); color:var(--gold-deep); }
 .cal-nav svg{ width:14px; height:14px; }
@@ -1815,8 +1820,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="panel-sub" id="projGridSub">6 projekata</div>
           </div>
           <div class="cal-view-toggle" id="dashProjTabs" style="display:none; margin:0 18px 10px;">
-            <button class="cvt-btn active" data-projtab="vodim">Projekti koje vodim</button>
-            <button class="cvt-btn" data-projtab="radim">Projekti na kojima radim</button>
+            <button class="dash-proj-tab active" data-projtab="vodim">Projekti koje vodim</button>
+            <button class="dash-proj-tab" data-projtab="radim">Projekti na kojima radim</button>
           </div>
           <div class="proj-grid" id="projGrid"></div>
         </div>
@@ -3347,7 +3352,7 @@ function renderDashboardProjects(){
   let list, personal;
   if(currentAccess() !== 'user'){
     tabsEl.style.display = '';
-    document.querySelectorAll('#dashProjTabs .cvt-btn').forEach(b=>b.classList.toggle('active', b.dataset.projtab===dashProjTab));
+    document.querySelectorAll('#dashProjTabs .dash-proj-tab').forEach(b=>b.classList.toggle('active', b.dataset.projtab===dashProjTab));
     if(dashProjTab === 'vodim'){
       list = allProjects.filter(p=>p.managerName===u.name && p.status!=='Završeno');
       personal = false; // show a general sample of the project's kadrovi, not just the manager's own
@@ -3385,7 +3390,7 @@ function renderDashboardProjects(){
     });
   });
 }
-document.querySelectorAll('#dashProjTabs .cvt-btn').forEach(btn=>{
+document.querySelectorAll('#dashProjTabs .dash-proj-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     dashProjTab = btn.dataset.projtab;
     renderDashboardProjects();
