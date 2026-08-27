@@ -3885,7 +3885,11 @@ function renderCalendarMySati(){
    your own, since a summed "remaining" across different people's allotments
    wouldn't mean anything. */
 function renderCalStats(){
-  const target = calFilters.osoba==='Ceo Tim' ? currentUser() : teamMembers.find(t=>t.name===calFilters.osoba);
+  // Only admin/superadmin can pull up someone else's exact leave-day
+  // numbers via the filter — a regular user still sees their colleague's
+  // leave as a bar on the calendar (unchanged, always has been), just not
+  // the precise count here.
+  const target = (calFilters.osoba==='Ceo Tim' || !canAccessStats()) ? currentUser() : teamMembers.find(t=>t.name===calFilters.osoba);
   const leaveDaysApproved = (type)=> {
     const bday = type==='odmor' && target ? personRodjendanDates(target.name, TODAY.y) : null;
     return events
