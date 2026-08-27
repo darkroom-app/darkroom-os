@@ -486,7 +486,12 @@ Deno.serve(async (req) => {
       const toolResult = await executeTool(sbUser, p.functionCall.name, p.functionCall.args ?? {});
       responseParts.push({ functionResponse: { name: p.functionCall.name, response: toolResult } });
     }
-    contents.push({ role: "function", parts: responseParts });
+    // Confirmed live against the real API: "function" is NOT a valid role
+    // for this model/endpoint (400 INVALID_ARGUMENT lists the accepted set,
+    // which no longer includes it) — "user_context" is the role meant for
+    // feeding a tool/function result back in as context, distinct from the
+    // user's own words.
+    contents.push({ role: "user_context", parts: responseParts });
   }
 
   if (!finalText) {
