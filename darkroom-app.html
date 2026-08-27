@@ -10081,9 +10081,24 @@ function buildChatContext(){
       tip_odsustva: e.leaveType || null, praznik: e.holidayName || null,
     }));
 
+  // Playbook section text is stored as real HTML (built by playbook-sync
+  // for on-screen rendering — <strong>/<em> for genuine bold/italic from
+  // the source Google Doc, plus HTML-entity-escaped punctuation). Sending
+  // that markup as-is into the AI's plain-text context makes it noticeably
+  // worse at finding facts buried in a long section (confirmed live: it
+  // missed "Project Manager je zadužen za kopiranje u Arhivu" sitting right
+  // there, bolded, in FAZA 3) — <strong>/<em> become markdown's own **/*
+  // emphasis (which a model reads naturally) instead of raw tags it has to
+  // parse through, and stray tags/entities are cleaned up defensively.
+  const stripHtmlForAI = (s) => String(s)
+    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
   const playbook = playbookArticles.map(a => ({
     naslov: a.navTitle,
-    sadrzaj: a.sections.map(s => `${s.label}: ${s.body ? s.body.join(' ') : (s.list ? s.list.join('; ') : '')}`).join(' | '),
+    sadrzaj: a.sections.map(s => `${s.label}: ${s.body ? s.body.map(stripHtmlForAI).join(' ') : (s.list ? s.list.map(stripHtmlForAI).join('; ') : '')}`).join(' | '),
   }));
 
   let finansije = null;
