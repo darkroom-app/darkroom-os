@@ -10058,28 +10058,18 @@ function renderChatMessages(){
    memoriju za nižа prava), pa ovde šaljemo samo agregatni zbir, nikad
    pojedinačne iznose po zaposlenom. */
 function buildChatContext(){
-  const projekti = allProjects.map(p => ({
-    kod: p.code, naziv: p.name, klijent: p.client, menadzer: p.managerName,
-    godina: p.year, status: p.status, pocetak: p.startDate,
-    broj_kadrova: p.kadrovi.length,
-    tim: [...new Set(p.kadrovi.map(k=>k.employee))],
-  }));
-  const klijenti = allClients.map(c => ({ naziv: c.name, kontakt: c.contact, email: c.email, klijent_od: c.since }));
-  const tim = teamMembers.map(t => ({ ime: t.name, uloga: t.role, pristup: t.access, datum_zaposlenja: t.hireDate, status: t.status }));
-
-  // Zadaci (raspoređenost po projektu), odsustva i praznici u prozoru
-  // [danas-3, danas+30] — dovoljno da odgovori na "ko je slobodan/na
-  // odsustvu narednih dana/nedelju", bez slanja cele istorije kalendara.
-  const kalOd = toISO(addDays(TODAY, -3)), kalDo = toISO(addDays(TODAY, 30));
-  const kalendar = events
-    .filter(e => toISO(e.start) <= kalDo && toISO(e.end) >= kalOd)
-    .map(e => ({
-      vrsta: e.kind, // 'zadatak' | 'odsustvo' | 'praznik'
-      osoba: e.person || null,
-      od: toISO(e.start), do: toISO(e.end),
-      projekat: e.projectCode || null, zadatak: e.taskName || null,
-      tip_odsustva: e.leaveType || null, praznik: e.holidayName || null,
-    }));
+  // Projekti/klijenti/tim/kalendar/playbook used to be dumped into this
+  // context wholesale, hand-picked and ever-growing — every question that
+  // needed a fact outside that fixed snapshot required adding one more
+  // field here and redeploying gemini-chat. gemini-chat now has actual
+  // tools (function calling) to query Supabase directly for all of that,
+  // on demand, scoped by the caller's own RLS — so this function only
+  // needs to send the small handful of things that are genuinely cheap
+  // here and expensive/impossible to re-derive via a server-side tool call:
+  // today's date, the caller's access level, and their own already-computed
+  // personal stats. Finansije stays a static snapshot deliberately (see
+  // gemini-chat's SYSTEM_PROMPT comment) — replicating the exact salary/
+  // benefits formulas server-side risked drifting from the real ones here.
 
   // "Koliko slobodnih dana imam?" (and the same question about
   // bolovanje/plaćeno/neplaćeno/sati) has no answer anywhere else in this
@@ -10104,38 +10094,6 @@ function buildChatContext(){
     radni_sati_ovog_meseca: Number(mesecniSati(false).toFixed(1)),
     prekovremeni_sati_ovog_meseca: Number(mesecniSati(true).toFixed(1)),
   } : null;
-
-  // Playbook section text is stored as real HTML (built by playbook-sync
-  // for on-screen rendering — <strong>/<em> for genuine bold/italic from
-  // the source Google Doc, plus HTML-entity-escaped punctuation). Sending
-  // that markup as-is into the AI's plain-text context makes it noticeably
-  // worse at finding facts buried in a long section (confirmed live: it
-  // missed "Project Manager je zadužen za kopiranje u Arhivu" sitting right
-  // there, bolded, in FAZA 3) — <strong>/<em> become markdown's own **/*
-  // emphasis (which a model reads naturally) instead of raw tags it has to
-  // parse through, and stray tags/entities are cleaned up defensively.
-  const stripHtmlForAI = (s) => String(s)
-    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-  const playbook = playbookArticles.map(a => ({
-    naslov: stripHtmlForAI(a.navTitle),
-    // A section can have BOTH an intro paragraph (body) and a bulleted
-    // list — this used to be either/or (whichever came first in the
-    // ternary), silently dropping the list entirely whenever a section
-    // had both. That's exactly what happened to "FAZA 3: Prebacivanje u
-    // Arhivu": its one-line body rendered fine, but the actual answer to
-    // "ko kopira fajlove u arhivu" was three bullet points down in the
-    // list that never made it into the AI's context at all.
-    sadrzaj: a.sections.map(s => {
-      const parts = [];
-      if(s.body) parts.push(...s.body.map(stripHtmlForAI));
-      if(s.list) parts.push(...s.list.map(stripHtmlForAI));
-      return `${stripHtmlForAI(s.label)}: ${parts.join(' ')}`;
-    }).join(' | '),
-  }));
 
   let finansije = null;
   if(canAccessFinance()){
@@ -10177,7 +10135,7 @@ function buildChatContext(){
     danas: toISO(TODAY),
     nalog_trenutnog_korisnika: { nivo_pristupa: currentAccess(), ima_pristup_finansijama: canAccessFinance() },
     moji_podaci: mojiPodaci,
-    projekti, klijenti, tim, kalendar, playbook, finansije,
+    finansije,
   });
 }
 
