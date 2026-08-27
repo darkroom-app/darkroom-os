@@ -3480,6 +3480,27 @@ function personRodjendanDates(personName, year){
     });
   return dates;
 }
+/* Splits [start,end] into the sub-ranges left over after removing every
+   date in excludeIsoSet — used to carve a birthday day back out of an
+   odmor booking that was saved (or extended) to cover it, so the
+   vacation bar itself visually stops before the birthday and picks back
+   up after, rather than just being right about the day-count while still
+   drawing as one unbroken block. Handles any number of excluded days
+   scattered through the range, not just a single one in the middle. */
+function splitRangeExcludingDates(start, end, excludeIsoSet){
+  const ranges = [];
+  let curStart = null, cur = start;
+  while(daysBetween(cur, end) >= 0){
+    if(excludeIsoSet.has(toISO(cur))){
+      if(curStart){ ranges.push({start:curStart, end:addDays(cur,-1)}); curStart = null; }
+    } else if(!curStart){
+      curStart = cur;
+    }
+    cur = addDays(cur, 1);
+  }
+  if(curStart) ranges.push({start:curStart, end});
+  return ranges;
+}
 
 const calWeeks = document.getElementById('calWeeks');
 const calFilters = { projekat:"Svi Projekti", osoba:"Ceo Tim" };
@@ -4468,6 +4489,7 @@ document.getElementById('evDelete').addEventListener('click', async ()=>{
 document.getElementById('evSubmit').addEventListener('click', async ()=>{
   const kind = evActiveTab;
   let newEvent;
+  let extraOdmorRanges = [];
 
   if(kind==='zadatak'){
     const person = document.getElementById('evzEmployee').value;
@@ -4491,6 +4513,21 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     if(!person || !startVal || !endVal) return;
     let start = fromISO(startVal), end = fromISO(endVal);
     if(daysBetween(start, end) < 0){ const t = start; start = end; end = t; }
+    // A birthday takes precedence over an odmor booking that lands on top
+    // of it — carve those exact day(s) back out so the vacation bar itself
+    // stops before the birthday and picks up after, rather than just being
+    // right about the day-count while still drawing as one solid block.
+    if(leaveType==='odmor'){
+      const bday = personRodjendanDates(person, start.y);
+      if(end.y !== start.y) personRodjendanDates(person, end.y).forEach(d=>bday.add(d));
+      const ranges = splitRangeExcludingDates(start, end, bday);
+      if(ranges.length === 0){
+        await customAlert(`${person} ima rođendan u tom periodu, koji ima prednost nad odmorom — ceo traženi period je već slobodan dan, nema šta da se unese kao odmor.`);
+        return;
+      }
+      start = ranges[0].start; end = ranges[0].end;
+      extraOdmorRanges = ranges.slice(1);
+    }
     const approvalStatus = isSuperAdmin() ? 'odobreno' : 'na_cekanju';
     newEvent = { kind, person, initials: artistInitials[person] || person.slice(0,2).toUpperCase(), color:'leave', leaveType, start, end, approvalStatus };
   } else {
@@ -4524,6 +4561,15 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
       const text = `${newEvent.person} traži odsustvo od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end).replace(/\.$/,'')}.`;
       teamMembers.filter(t=>t.access==='superadmin').forEach(sa=> pushNotification(sa._id, 'odsustvo_zahtev', text, null));
     }
+  }
+  // A birthday in the middle of the requested range splits it into more
+  // than one piece (see the odmor branch above) — the first piece is
+  // whatever just got saved as newEvent; any remaining pieces are genuinely
+  // separate bookings and need their own rows.
+  for(const range of extraOdmorRanges){
+    const extraEvent = { ...newEvent, start:range.start, end:range.end };
+    const { data, error } = await sb.from('calendar_events').insert(calendarEventDbRow(extraEvent)).select().single();
+    if(!error && data) events.push({ _id:nextId(), dbId:data.id, ...extraEvent });
   }
   if(kind==='zadatak'){
     if(oldZadatakSnapshot) await pruneStaleTimeEntries(oldZadatakSnapshot, newEvent);
