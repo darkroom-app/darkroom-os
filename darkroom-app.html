@@ -1205,7 +1205,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
    whole height evenly across every row instead of sizing each row to its
    card's actual content, squashing every card flat instead of overflowing
    into a scrollbar. min-content pins each row to its card's real height. */
-.proj-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:min-content; gap:11px; flex:1; min-height:0; max-height:480px; overflow-y:auto; padding-right:3px; align-content:start; }
+.proj-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:min-content; gap:11px; flex:1; min-height:0; max-height:min(680px, 65vh); overflow-y:auto; padding-right:3px; align-content:start; }
+.proj-grid.list-mode{ grid-template-columns:1fr; }
+.proj-grid.list-mode .proj-card{ display:flex; align-items:center; gap:12px; }
+.proj-grid.list-mode .proj-thumb{ width:64px; height:64px; flex-shrink:0; border-radius:10px; }
+.proj-grid.list-mode .proj-body{ padding:8px 12px 8px 0; flex:1; min-width:0; }
+.proj-grid.list-mode .proj-name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dash-proj-toolbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin:0 18px 10px; }
+.dash-proj-search{ flex:1; min-width:0; }
+.dash-proj-view-btn{ width:32px; height:28px; border-radius:8px; border:none; background:transparent; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.dash-proj-view-btn svg{ width:15px; height:15px; }
+.dash-proj-view-btn.active{ background:var(--ink-solid-bg); color:#FBF8F1; }
 .proj-card{
   background:var(--card-soft); border-radius:14px; overflow:hidden; cursor:pointer;
   transition:transform .15s ease, box-shadow .15s ease; border:1px solid transparent;
@@ -1348,7 +1358,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   .hero-row{ grid-template-columns:270px 1fr; }
   .board{ grid-template-columns:1fr 1fr; }
   .board .col:nth-child(1){ grid-column:1 / -1; }
-  .proj-grid{ overflow:visible; }
+  /* Deliberately NOT resetting .proj-grid to overflow:visible here anymore —
+     it now has its own max-height (independent of the ancestor chain this
+     breakpoint frees up) plus a search box/view toggle, so it should always
+     scroll internally rather than let the whole page grow around it. */
 }
 @media (max-width:1000px){
   .shell{ grid-template-columns:1fr; border-radius:22px; }
@@ -1833,6 +1846,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="cal-view-toggle" id="dashProjTabs" style="display:none; margin:0 18px 10px;">
             <button class="dash-proj-tab active" data-projtab="vodim">Projekti koje vodim</button>
             <button class="dash-proj-tab" data-projtab="radim">Projekti na kojima radim</button>
+          </div>
+          <div class="dash-proj-toolbar">
+            <div class="client-search dash-proj-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+              <input type="text" id="dashProjSearchInput" placeholder="Pretraži projekte...">
+            </div>
+            <div class="view-toggle">
+              <button class="dash-proj-view-btn active" data-mode="grid" title="Grid prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+              <button class="dash-proj-view-btn" data-mode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+            </div>
           </div>
           <div class="proj-grid" id="projGrid"></div>
         </div>
@@ -3346,6 +3369,8 @@ function thumbStyle(seed, w){
 }
 
 let dashProjTab = 'vodim'; // only relevant for admin/superadmin — see renderDashboardProjects()
+let dashProjSearch = '';
+let dashProjViewMode = 'grid';
 
 function renderDashboardProjects(){
   const u = currentUser();
@@ -3377,10 +3402,17 @@ function renderDashboardProjects(){
     personal = list.length > 0;
     if(!personal) list = allProjects.filter(p=>p.status!=='Završeno');
   }
-  // No slice cap here — .proj-grid already scrolls within the fixed-height
-  // panel (flex:1; min-height:0; overflow-y:auto), so showing the full list
-  // instead of capping at 6 just means more scrolling, not a layout break.
+  if(dashProjSearch){
+    const needle = dashProjSearch.toLowerCase();
+    list = list.filter(p=>p.name.toLowerCase().includes(needle) || p.code.toLowerCase().includes(needle));
+  }
+
+  // No slice cap here — .proj-grid scrolls within its own max-height, so
+  // showing the full (filtered) list just means more scrolling, not a
+  // layout break.
   document.getElementById('projGridSub').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
+  document.querySelectorAll('.dash-proj-view-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===dashProjViewMode));
+  projGridEl.classList.toggle('list-mode', dashProjViewMode==='list');
 
   projGridEl.innerHTML = list.map(p=>{
     const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
@@ -3408,6 +3440,16 @@ document.querySelectorAll('#dashProjTabs .dash-proj-tab').forEach(btn=>{
     dashProjTab = btn.dataset.projtab;
     renderDashboardProjects();
   });
+});
+document.querySelectorAll('.dash-proj-view-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    dashProjViewMode = btn.dataset.mode;
+    renderDashboardProjects();
+  });
+});
+document.getElementById('dashProjSearchInput').addEventListener('input', (e)=>{
+  dashProjSearch = e.target.value.trim();
+  renderDashboardProjects();
 });
 
 /* Radna Nedelja widget je povezan sa events (kalendar) — pogledaj renderWeekWidget() niže,
