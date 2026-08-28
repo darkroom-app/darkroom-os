@@ -1317,3 +1317,23 @@ alter table public.team_members add column if not exists discord_user_id text;
 -- record that's already been entered.
 
 alter table public.team_members add column if not exists fitness_opted_in boolean not null default false;
+
+
+-- ==== Phase 23: allow superadmin to actually delete a team_members row (run this query) ====
+-- Discovered live: the Tim page's trash-can "Ukloni" button has only ever
+-- removed a person from the local in-memory array + localStorage — it never
+-- had a matching RLS policy to allow the delete, so the row silently stayed
+-- in the database (Postgres RLS makes an unauthorized DELETE a silent
+-- zero-rows-affected no-op, not an error). Anyone "removed" this way
+-- reappeared on the next full reload, because loadTeamMembersFromSupabase()
+-- re-fetches straight from the still-intact row. The client-side handler is
+-- now fixed to actually call sb.from('team_members').delete(...) and to
+-- surface a friendly message if it's blocked by an FK (kadrovi/salary_entries/
+-- time_entries/projects.manager_id all reference team_members.id with
+-- on delete restrict/cascade, so a person with real history can't be
+-- hard-deleted this way — deactivate via the Status field instead) — this
+-- policy is what actually lets the delete through for someone with no
+-- linked records left.
+create policy "superadmin can delete team_members"
+  on public.team_members for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');

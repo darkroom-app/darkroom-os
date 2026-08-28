@@ -7670,11 +7670,24 @@ function renderTeamPage(){
   document.getElementById('teamList').innerHTML = activeList.map(teamRow).join('') + inactiveList.map(teamRow).join('');
 
   document.querySelectorAll('.team-delete').forEach(btn=>{
-    btn.addEventListener('click', (ev)=>{
+    btn.addEventListener('click', async (ev)=>{
       ev.stopPropagation();
       if(!isSuperAdmin()) return;
       if(!confirm('Ukloniti ovog člana tima?')) return;
       const id = Number(btn.dataset.id);
+      const member = teamMembers.find(t=>t._id===id);
+      if(!member) return;
+      if(member.authId){
+        const { error } = await sb.from('team_members').delete().eq('id', member.authId);
+        if(error){
+          if(error.code === '23503'){
+            await customAlert('Ova osoba ima postojeće podatke u sistemu (kadrovi, plate, sati...) pa se ne može trajno obrisati. Umesto toga, otvori profil i postavi status na "Neaktivan".');
+          } else {
+            await customAlert('Brisanje nije uspelo: ' + error.message);
+          }
+          return;
+        }
+      }
       teamMembers = teamMembers.filter(t=>t._id!==id);
       renderTeamPage();
       if(id === currentUserId) applyCurrentUser(); else renderProfilePage();
