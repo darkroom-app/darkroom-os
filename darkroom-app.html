@@ -10169,11 +10169,8 @@ function pushChatMessage(role, text, results, thinking){
 /* Prijateljski naziv trenutne akcije po alatu koji Gemini poziva — mora se
    poklapati sa TOOL_DECLARATIONS imenima u gemini-chat/index.ts. */
 const TOOL_ACTION_LABELS = {
-  pretrazi_projekte: '🔍 Pretražujem projekte',
   detalji_projekta: '📁 Učitavam detalje projekta',
-  pretrazi_klijente: '🏢 Pretražujem klijente',
   kalendar_period: '📅 Proveravam kalendar',
-  pretrazi_playbook: '📖 Tražim u DR Playbook-u',
   podaci_o_zaposlenom: '👤 Proveravam podatke o zaposlenom',
 };
 
@@ -10241,18 +10238,53 @@ function renderChatMessages(){
    memoriju za nižа prava), pa ovde šaljemo samo agregatni zbir, nikad
    pojedinačne iznose po zaposlenom. */
 function buildChatContext(){
-  // Projekti/klijenti/tim/kalendar/playbook used to be dumped into this
-  // context wholesale, hand-picked and ever-growing — every question that
-  // needed a fact outside that fixed snapshot required adding one more
-  // field here and redeploying gemini-chat. gemini-chat now has actual
-  // tools (function calling) to query Supabase directly for all of that,
-  // on demand, scoped by the caller's own RLS — so this function only
-  // needs to send the small handful of things that are genuinely cheap
-  // here and expensive/impossible to re-derive via a server-side tool call:
-  // today's date, the caller's access level, and their own already-computed
-  // personal stats. Finansije stays a static snapshot deliberately (see
-  // gemini-chat's SYSTEM_PROMPT comment) — replicating the exact salary/
-  // benefits formulas server-side risked drifting from the real ones here.
+  // Went through two designs before this one: (1) a small hand-picked
+  // snapshot — kept needing one more field added and gemini-chat
+  // redeployed every time a real question fell outside it; (2) tools only
+  // (no bulk data at all, everything fetched on demand) — technically
+  // comprehensive, but every non-trivial question became 2-3 sequential
+  // Gemini round-trips (each one a real network hop), which is exactly
+  // what made the assistant feel slow. Landed here: send the FULL
+  // projekti/klijenti/tim/playbook lists (summarized, not every round's
+  // image/history) up front every message, so the large majority of
+  // questions resolve in a single round with zero tool calls — genuinely
+  // fast AND comprehensive, not a tradeoff between them. Kalendar stays a
+  // tool (kalendar_period) since its full history is unbounded and it's
+  // naturally parameterized by date range anyway; detalji_projekta stays a
+  // tool since per-round image/history detail for all 334+ projects at
+  // once would be the one payload actually worth avoiding.
+  const stripHtmlForAI = (s) => String(s)
+    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
+    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+
+  const projekti = allProjects.map(p => ({
+    kod: p.code, naziv: p.name, klijent: p.client, menadzer: p.managerName,
+    godina: p.year, status: p.status, pocetak: p.startDate,
+    broj_kadrova: p.kadrovi.length,
+    tim: [...new Set(p.kadrovi.map(k=>k.employee))],
+  }));
+  const klijenti = allClients.map(c => ({
+    naziv: c.name, kontakt: c.contact, email: c.email, telefon: c.phone, klijent_od: c.since,
+    broj_projekata: allProjects.filter(p=>p.client===c.name).length,
+  }));
+  const tim = teamMembers.map(t => ({
+    ime: t.name, uloga: t.role, pristup: t.access,
+    datum_zaposlenja: t.hireDate, datum_rodjenja: t.birthDate || null, status: t.status,
+  }));
+  const playbook = playbookArticles.map(a => ({
+    naslov: stripHtmlForAI(a.navTitle),
+    // A section can have BOTH an intro paragraph (body) and a bulleted
+    // list — collect both, don't drop one in favor of the other.
+    sadrzaj: a.sections.map(s => {
+      const parts = [];
+      if(s.body) parts.push(...s.body.map(stripHtmlForAI));
+      if(s.list) parts.push(...s.list.map(stripHtmlForAI));
+      return `${stripHtmlForAI(s.label)}: ${parts.join(' ')}`;
+    }).join(' | '),
+  }));
 
   // "Koliko slobodnih dana imam?" (and the same question about
   // bolovanje/plaćeno/neplaćeno/sati) has no answer anywhere else in this
@@ -10324,6 +10356,7 @@ function buildChatContext(){
     danas: toISO(TODAY),
     nalog_trenutnog_korisnika: { nivo_pristupa: currentAccess(), ima_pristup_finansijama: canAccessFinance() },
     moji_podaci: mojiPodaci,
+    projekti, klijenti, tim, playbook,
     finansije,
   });
 }
