@@ -2918,6 +2918,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <input type="number" id="ntSlobodniDani" min="0" max="60" placeholder="npr. 20">
     </div>
     <div class="modal-field">
+      <label>Fitness dodatak</label>
+      <label class="sal-checkbox-label"><input type="checkbox" id="ntFitness"> Prijavljen/a za fitness dodatak (4.000 RSD mesečno)</label>
+    </div>
+    <div class="modal-field">
       <label>Profilna slika</label>
       <div class="upload-dropzone" id="ntAvatarDropzone">
         <div class="nc-avatar-preview" id="ntAvatarPreview"></div>
@@ -7757,6 +7761,7 @@ function openTeamModal(member){
   document.getElementById('ntBirthDate').value = member.birthDate || '';
   document.getElementById('ntSlobodniDani').value = member.slobodniDani != null ? member.slobodniDani : 20;
   document.getElementById('ntSlobodniDani').disabled = !isSuperAdmin();
+  document.getElementById('ntFitness').checked = !!member.fitnessOptedIn;
   document.getElementById('ntStatus').value = member.status;
   document.getElementById('ntAccess').value = member.access || 'user';
   document.getElementById('ntAccessField').style.display = isSuperAdmin() ? '' : 'none';
@@ -7774,6 +7779,7 @@ document.getElementById('newTeamBtn').addEventListener('click', ()=>{
   ['ntName','ntRole','ntEmailBusiness','ntEmailPrivate','ntPhone','ntHireDate','ntBirthDate'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ntSlobodniDani').value = 20;
   document.getElementById('ntSlobodniDani').disabled = false;
+  document.getElementById('ntFitness').checked = false;
   document.getElementById('ntStatus').value = 'Aktivan';
   document.getElementById('ntAccess').value = 'user';
   document.getElementById('ntAccessField').style.display = '';
@@ -7792,6 +7798,7 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
   const hireDate = document.getElementById('ntHireDate').value;
   const birthDate = document.getElementById('ntBirthDate').value;
   const slobodniDani = parseInt(document.getElementById('ntSlobodniDani').value) || 20;
+  const fitnessOptedIn = document.getElementById('ntFitness').checked;
   const status = document.getElementById('ntStatus').value;
   const access = document.getElementById('ntAccess').value;
 
@@ -7803,7 +7810,7 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
         const payload = {
           role, email_business:emailBusiness, email_private:emailPrivate, phone,
           hire_date:hireDate||null, birth_date:birthDate||null,
-          status, avatar
+          status, avatar, fitness_opted_in:fitnessOptedIn
         };
         if(isSuperAdmin()){ payload.access = access; payload.slobodni_dani = slobodniDani; }
         const { data, error } = await sb.from('team_members').update(payload).eq('id', member.authId).select().single();
@@ -7811,10 +7818,11 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
         Object.assign(member, {
           role:data.role, emailBusiness:data.email_business, emailPrivate:data.email_private,
           phone:data.phone, hireDate:data.hire_date, birthDate:data.birth_date,
-          slobodniDani:data.slobodni_dani, status:data.status, avatar:data.avatar, access:data.access
+          slobodniDani:data.slobodni_dani, status:data.status, avatar:data.avatar, access:data.access,
+          fitnessOptedIn:!!data.fitness_opted_in
         });
       } else {
-        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, status, avatar});
+        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, status, avatar, fitnessOptedIn});
         if(isSuperAdmin()){ member.access = access; member.slobodniDani = slobodniDani; }
       }
     }
@@ -9298,7 +9306,7 @@ function renderSalEmpGrid(){
       return `<div class="sal-emp-card" data-emp="${e.key}" style="cursor:pointer;">
         <div class="sal-emp-card-top">
           <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
-          <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
+          <div><div class="sal-emp-card-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
         </div>
         <div class="sal-emp-card-amt empty">Nije uneto</div>
         <button class="sal-emp-card-btn" data-emp="${e.key}">Unesi platu</button>
@@ -9308,7 +9316,7 @@ function renderSalEmpGrid(){
     return `<div class="sal-emp-card entered" data-emp="${e.key}" style="cursor:pointer;">
       <div class="sal-emp-card-top">
         <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
-        <div><div class="sal-emp-card-name">${escapeHtml(e.name)}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
+        <div><div class="sal-emp-card-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
       </div>
       <div class="sal-emp-card-amt">${fmtRSD(salUkupno(entry))}</div>
       ${salBenefits(entry) ? `<div class="sal-emp-card-role" style="margin-top:-6px;">+ ${fmtRSD(salBenefits(entry))} benefiti</div>` : ''}
@@ -9333,7 +9341,7 @@ function renderSalTable(){
     const av = avatarBgInner(e.key);
     if(!entry){
       return `<div class="sal-row2" data-emp="${e.key}" style="cursor:pointer;">
-        <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${escapeHtml(e.name)}</span></div>
+        <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</span></div>
         <div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div><div class="sal-cell2 empty">—</div>
         <div><span class="sal-status-badge missing">Nije uneto</span></div>
         <button class="sal-row-btn primary" data-emp="${e.key}">Unesi platu</button>
@@ -9344,7 +9352,7 @@ function renderSalTable(){
     const arrow = changed ? `<span class="sal-change ${up?'up':'down'}">${up?'▲':'▼'}</span>` : '';
     const paid = entry.status !== 'Na čekanju';
     return `<div class="sal-row2 entered" data-emp="${e.key}" style="cursor:pointer;" title="${changed ? 'Osnovica promenjena u odnosu na prethodni mesec' : ''}">
-      <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${escapeHtml(e.name)}</span></div>
+      <div class="sal-emp"><span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span><span class="sal-emp-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</span></div>
       <div class="sal-cell2">${fmtK(entry.osnovica)}${arrow}</div>
       <div class="sal-cell2">${entry.bonus ? fmtK(entry.bonus) : '—'}</div>
       <div class="sal-cell2">${entry.prekovremeno ? fmtK(entry.prekovremeno) : '—'}</div>
@@ -9707,7 +9715,11 @@ function openSalModal(emp, month){
   document.getElementById('salDedukcijeInput').value = existing ? existing.dedukcije : 0;
   document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(lastOsn||0, emp);
   document.getElementById('salZdravstvenoInput').value = existing ? (existing.zdravstveno ?? ZDRAVSTVENO_DEFAULT) : ZDRAVSTVENO_DEFAULT;
-  document.getElementById('salFitnesInput').checked = existing ? !!existing.fitnes : false;
+  // Novi unos (nema existing) — predefiniši na osnovu trenutnog opt-in
+  // statusa te osobe (Tim profil), umesto uvek na isključeno. Već sačuvan
+  // unos i dalje pamti tačno ono što je zavedeno tog meseca, bez obzira
+  // šta osoba kasnije promeni u svom profilu.
+  document.getElementById('salFitnesInput').checked = existing ? !!existing.fitnes : !!teamMembers.find(t=>t.name===emp)?.fitnessOptedIn;
   document.getElementById('salStatusInput').value = existing ? existing.status : 'Isplaćeno';
   renderSalSideHustleList();
   updateSalModalLive();
@@ -11253,7 +11265,8 @@ async function loadTeamMembersFromSupabase(){
         phone: prev.phone || '',
         skills: prev.skills || [],
         avatar: row.avatar || null,
-        status: row.status || 'Aktivan'
+        status: row.status || 'Aktivan',
+        fitnessOptedIn: !!row.fitness_opted_in
       });
     });
     return true;

@@ -1298,3 +1298,22 @@ alter table public.expense_inbox add column if not exists fx_note text;
 -- for renderflow_user_id.
 
 alter table public.team_members add column if not exists discord_user_id text;
+
+
+-- ==== Phase 22: self-service fitness benefit opt-in (run this query) ====
+-- Fitness signups used to happen entirely outside the app — a message in
+-- Discord, a 👍 reaction, and whoever prepares payroll has to remember who
+-- reacted before deciding whether to add the 4.000 RSD fitness line to
+-- someone's salary_entries row that month. This lets each person toggle
+-- their own opt-in status in their Tim profile (same self-or-superadmin
+-- edit gate the rest of that modal already uses — no new RLS needed, the
+-- existing "self or superadmin can update team_members" policy already
+-- covers this column). openSalModal() reads it to pre-check the "Ide na
+-- fitnes" box on a brand-new salary entry, and the payroll grid/list shows
+-- a small badge next to anyone currently opted in — the actual per-month
+-- fitnes:boolean on salary_entries stays the source of truth once an entry
+-- exists (this is only ever a default for a NEW entry, never rewrites a
+-- saved one), so someone opting in/out mid-month never changes a payroll
+-- record that's already been entered.
+
+alter table public.team_members add column if not exists fitness_opted_in boolean not null default false;
