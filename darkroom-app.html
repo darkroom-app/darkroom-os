@@ -10276,6 +10276,12 @@ function buildChatContext(){
     neplaceno_odsustvo_dana_ove_godine: leaveDaysUsed(me.name, 'neplaceno', TODAY.y),
     radni_sati_ovog_meseca: Number(mesecniSati(false).toFixed(1)),
     prekovremeni_sati_ovog_meseca: Number(mesecniSati(true).toFixed(1)),
+    // Pokriva "koliko projekata vodim/na kojima radim" bez ijednog poziva
+    // alata — isti filter kao dashboard-ov "Aktivni Projekti" tab (vidi
+    // renderDashboardProjects()), samo unapred izračunat ovde da najčešće
+    // pitanje o sopstvenom radu ne zahteva network round-trip ka Gemini-ju.
+    broj_projekata_koje_vodim: allProjects.filter(p=>p.managerName===me.name && p.status!=='Završeno').length,
+    broj_projekata_na_kojima_radim: allProjects.filter(p=>p.kadrovi.some(k=>k.employee===me.key && (k.status==='aktivan' || k.status==='na čekanju'))).length,
   } : null;
 
   let finansije = null;
