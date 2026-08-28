@@ -739,8 +739,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .chat-panel.open{ transform:scale(1) translateY(0); opacity:1; pointer-events:auto; }
 
 .chat-header{ display:flex; align-items:center; gap:11px; padding:15px 16px; border-bottom:1px solid var(--border); background:var(--card); flex-shrink:0; }
-.chat-header-avatar{ width:33px; height:33px; border-radius:10px; background:linear-gradient(150deg, var(--gold), #c9861a); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.chat-header-avatar svg{ width:15px; height:15px; }
 .chat-header-title{ font-family:var(--font-display); font-weight:700; font-size:13px; }
 .chat-header-sub{ font-family:var(--font-mono); font-size:8px; color:#4C8A55; display:flex; align-items:center; gap:5px; margin-top:1px; }
 .chat-header-sub::before{ content:""; width:5px; height:5px; border-radius:50%; background:#4C8A55; flex-shrink:0; }
@@ -3249,7 +3247,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 <div class="chat-panel" id="chatPanel">
   <div class="chat-header">
-    <div class="chat-header-avatar"><svg viewBox="0 0 24 24" fill="none" stroke="#3a2704" stroke-width="2"><rect x="3" y="3" width="7" height="18" rx="1.5"/><rect x="14" y="3" width="7" height="8" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
     <div>
       <div class="chat-header-title">DARKROOM Asistent</div>
       <div class="chat-header-sub">Pretraži celu aplikaciju</div>
@@ -10180,19 +10177,33 @@ const TOOL_ACTION_LABELS = {
   podaci_o_zaposlenom: '👤 Proveravam podatke o zaposlenom',
 };
 
-function renderThinkingBubble(t){
+function chatStatsText(t){
   const secs = (t.elapsedMs/1000).toFixed(1);
   const stats = [`${secs}s`];
   if(t.tokens) stats.push(`~${t.tokens} tokena`);
   if(t.toolsUsed.length) stats.push(`${t.toolsUsed.length} ${t.toolsUsed.length===1 ? 'alat pozvan' : 'alata pozvano'}`);
+  return stats.join(' · ');
+}
+function renderThinkingBubble(t){
+  // Stable ids (not rebuilt while pending) — updateThinkingDisplay() below
+  // patches just these two text nodes on every tick/round instead of going
+  // through renderChatMessages(), which would tear down and recreate the
+  // .chat-typing dots every 300ms and restart their CSS animation from
+  // scratch each time, making it look choppy instead of a smooth loop.
   return `
     <div class="chat-thinking">
       <div class="chat-typing"><span></span><span></span><span></span></div>
       <div class="chat-thinking-meta">
-        <div class="ct-action">${escapeHtml(t.action)}</div>
-        <div class="ct-stats">${stats.join(' · ')}</div>
+        <div class="ct-action" id="ctAction">${escapeHtml(t.action)}</div>
+        <div class="ct-stats" id="ctStats">${chatStatsText(t)}</div>
       </div>
     </div>`;
+}
+function updateThinkingDisplay(t){
+  const actionEl = document.getElementById('ctAction');
+  const statsEl = document.getElementById('ctStats');
+  if(actionEl) actionEl.textContent = t.action;
+  if(statsEl) statsEl.textContent = chatStatsText(t);
 }
 
 function renderChatMessages(){
@@ -10354,7 +10365,7 @@ async function runChatSearch(query){
   const startedAt = Date.now();
   const tickTimer = setInterval(()=>{
     thinking.elapsedMs = Date.now() - startedAt;
-    renderChatMessages();
+    updateThinkingDisplay(thinking);
   }, 300);
 
   const context = buildChatContext();
@@ -10384,7 +10395,7 @@ async function runChatSearch(query){
       (data.toolCalls || []).forEach(tc => thinking.toolsUsed.push(tc.name));
       const namedCalls = (data.toolCalls || []).map(tc => TOOL_ACTION_LABELS[tc.name]).filter(Boolean);
       thinking.action = namedCalls.length ? namedCalls.join(' + ') : '💭 Razmišljam...';
-      renderChatMessages();
+      updateThinkingDisplay(thinking);
     }
     if(!ok) throw new Error('Model nije dao konačan odgovor nakon više pokušaja pozivanja alata.');
     replyHtml = formatBotReply(replyRaw);

@@ -132,7 +132,7 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: "podaci_o_zaposlenom",
-    description: "Vrati info o jednom ili više članova tima po (delu) imena — uloga, nivo pristupa, datum zaposlenja, i njihove odsustvo/bolovanje statistike za zadatu godinu. Koristi za pitanja o DRUGOJ osobi (za pitanja o osobi koja ti trenutno piše, koristi već dato polje moji_podaci).",
+    description: "Vrati info o jednom ili više članova tima po (delu) imena — uloga, nivo pristupa, datum zaposlenja, datum rođenja, i njihove odsustvo/bolovanje statistike za zadatu godinu. Koristi za pitanja o DRUGOJ osobi (za pitanja o osobi koja ti trenutno piše, koristi već dato polje moji_podaci).",
     parameters: {
       type: "object",
       properties: {
@@ -309,15 +309,17 @@ async function toolPretraziPlaybook(sb: SupabaseClient, args: any) {
 
 // deno-lint-ignore no-explicit-any
 async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
-  const { data, error } = await sb.from("team_members").select("name,role,access,hire_date,slobodni_dani,status");
+  const { data, error } = await sb.from("team_members").select("name,role,access,hire_date,birth_date,slobodni_dani,status");
   if (error) return { greska: error.message };
   // deno-lint-ignore no-explicit-any
   let rows = (data ?? []) as any[];
   if (args?.ime) {
     const needle = String(args.ime).toLowerCase();
     rows = rows.filter((t) => t.name?.toLowerCase().includes(needle));
+    rows = rows.slice(0, 10);
   }
-  rows = rows.slice(0, 10);
+  // No cap when no name filter — a "did everyone enter X" question needs
+  // the whole team, and silently truncating past 10 would answer it wrong.
   if (rows.length === 0) return { rezultati: [] };
 
   const godina = args?.godina ? Number(args.godina) : new Date().getUTCFullYear();
@@ -338,6 +340,7 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
       pristup: t.access,
       status: t.status,
       datum_zaposlenja: t.hire_date,
+      datum_rodjenja: t.birth_date,
       godina_za_koju_je_racunato: godina,
       godisnji_odmor_dodeljeno: t.slobodni_dani,
       godisnji_odmor_iskorisceno: daysOf("odmor"),
