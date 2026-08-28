@@ -3588,6 +3588,12 @@ const leaveLabels = { odmor:"Godišnji odmor", bolovanje:"Bolovanje", placeno:"P
    dates from the odmor day-count (rather than special-casing the odmor
    event itself) means the vacation stays exactly as the person booked it
    on the calendar; it just doesn't cost them that one day. */
+/* Vikend (subota/nedelja) se ne računa u iskorišćene dane godišnjeg odmora —
+   isti princip kao personRodjendanDates/splitRangeExcludingDates ispod:
+   izuzimamo te datume iz brojanja umesto da diramo sam upisani period, tako
+   da odmor na kalendaru ostaje tačno onakav kakav je zaveden (npr. pet-pon),
+   samo se subota/nedelja unutar njega ne oduzimaju od dodeljenih dana. */
+function isWeekendDate(o){ const dow = toJSDate(o).getDay(); return dow===0 || dow===6; }
 function personRodjendanDates(personName, year){
   const dates = new Set();
   events.filter(e=>e.kind==='odsustvo' && e.leaveType==='rodjendan' && e.person===personName && e.start.y===year)
@@ -4005,14 +4011,15 @@ function renderCalStats(){
   // the precise count here.
   const target = (calFilters.osoba==='Ceo Tim' || !canAccessStats()) ? currentUser() : teamMembers.find(t=>t.name===calFilters.osoba);
   const leaveDaysApproved = (type)=> {
-    const bday = type==='odmor' && target ? personRodjendanDates(target.name, TODAY.y) : null;
+    const isOdmor = type==='odmor';
+    const bday = isOdmor && target ? personRodjendanDates(target.name, TODAY.y) : null;
     return events
       .filter(e=>e.kind==='odsustvo' && e.leaveType===type && e.approvalStatus==='odobreno'
         && e.start.y===TODAY.y && target && e.person===target.name)
       .reduce((s,e)=>{
-        if(!bday) return s + (daysBetween(e.start,e.end)+1);
+        if(!isOdmor) return s + (daysBetween(e.start,e.end)+1);
         let count = 0, cur = e.start;
-        while(daysBetween(cur, e.end) >= 0){ if(!bday.has(toISO(cur))) count++; cur = addDays(cur, 1); }
+        while(daysBetween(cur, e.end) >= 0){ if(!isWeekendDate(cur) && !bday.has(toISO(cur))) count++; cur = addDays(cur, 1); }
         return s + count;
       }, 0);
   };
@@ -10894,12 +10901,13 @@ function renderMyStats(){
   setTimeout(()=>wrap.classList.add('shown'), 80);
 }
 function leaveDaysUsed(personName, leaveType, year){
-  const bday = leaveType==='odmor' ? personRodjendanDates(personName, year) : null;
+  const isOdmor = leaveType==='odmor';
+  const bday = isOdmor ? personRodjendanDates(personName, year) : null;
   return events.filter(e=>e.kind==='odsustvo' && e.person===personName && e.leaveType===leaveType && e.start.y===year)
     .reduce((sum,e)=>{
-      if(!bday) return sum + daysBetween(e.start, e.end) + 1;
+      if(!isOdmor) return sum + daysBetween(e.start, e.end) + 1;
       let count = 0, cur = e.start;
-      while(daysBetween(cur, e.end) >= 0){ if(!bday.has(toISO(cur))) count++; cur = addDays(cur, 1); }
+      while(daysBetween(cur, e.end) >= 0){ if(!isWeekendDate(cur) && !bday.has(toISO(cur))) count++; cur = addDays(cur, 1); }
       return sum + count;
     }, 0);
 }
