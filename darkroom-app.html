@@ -1194,7 +1194,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .grow2{ flex:1.7; }
 
 /* ---- Projects: 2-up grid ---- */
-.proj-grid{ display:grid; grid-template-columns:1fr 1fr; gap:11px; flex:1; min-height:0; overflow-y:auto; padding-right:3px; align-content:start; }
+/* max-height is the real constraint here — flex:1/min-height:0 alone
+   depend on the whole ancestor chain (.panel/.col/.board/.main/.shell)
+   actually resolving to a fixed height, which in practice let the panel
+   just grow to fit every card instead of clipping+scrolling once the
+   slice(0,6) cap was removed. A fixed max-height scrolls correctly
+   regardless of what the ancestors do. */
+.proj-grid{ display:grid; grid-template-columns:1fr 1fr; gap:11px; flex:1; min-height:0; max-height:480px; overflow-y:auto; padding-right:3px; align-content:start; }
 .proj-card{
   background:var(--card-soft); border-radius:14px; overflow:hidden; cursor:pointer;
   transition:transform .15s ease, box-shadow .15s ease; border:1px solid transparent;
