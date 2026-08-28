@@ -1199,8 +1199,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
    actually resolving to a fixed height, which in practice let the panel
    just grow to fit every card instead of clipping+scrolling once the
    slice(0,6) cap was removed. A fixed max-height scrolls correctly
-   regardless of what the ancestors do. */
-.proj-grid{ display:grid; grid-template-columns:1fr 1fr; gap:11px; flex:1; min-height:0; max-height:480px; overflow-y:auto; padding-right:3px; align-content:start; }
+   regardless of what the ancestors do. grid-auto-rows:min-content matters
+   just as much — as a flex item with a definite (flex-grown) height, this
+   grid's default `auto` row tracks were being computed by DIVIDING that
+   whole height evenly across every row instead of sizing each row to its
+   card's actual content, squashing every card flat instead of overflowing
+   into a scrollbar. min-content pins each row to its card's real height. */
+.proj-grid{ display:grid; grid-template-columns:1fr 1fr; grid-auto-rows:min-content; gap:11px; flex:1; min-height:0; max-height:480px; overflow-y:auto; padding-right:3px; align-content:start; }
 .proj-card{
   background:var(--card-soft); border-radius:14px; overflow:hidden; cursor:pointer;
   transition:transform .15s ease, box-shadow .15s ease; border:1px solid transparent;
