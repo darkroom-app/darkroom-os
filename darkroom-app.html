@@ -8095,9 +8095,11 @@ function salaryFor(emp, month, year){
    za Finansije. Mesecni fond je 160 radnih sati: sat = osnovica/160,
    uvecan za 30% za prekovremene sate. Samo predlog — polje ostaje rucno
    izmenljivo i ne dira vec sacuvane unose (isti princip kao fitnes opt-in
-   predefinisanje u openSalModal). */
+   predefinisanje u openSalModal). `month` je 0-indeksiran (isto kao
+   salBreakdownMonth/salaryFor svuda drugde u ovom fajlu) — +1 pri gradjenju
+   kalendarskog prefiksa jer time_entries.date koristi realni broj meseca. */
 function monthlyOvertimeHours(authId, year, month){
-  const prefix = `${year}-${String(month).padStart(2,'0')}`;
+  const prefix = `${year}-${String(month+1).padStart(2,'0')}`;
   return timeEntries
     .filter(e=> e.employeeId===authId && e.overtime && e.date && e.date.startsWith(prefix))
     .reduce((sum,e)=> sum + e.hours, 0);
