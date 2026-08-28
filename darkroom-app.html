@@ -598,6 +598,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .price-wait-badge-urgent{ color:var(--coral); background:var(--coral-soft); }
 
 .sal-table2{ overflow-x:auto; }
+#salTable{ max-height:400px; overflow-y:auto; }
 .sal-head2, .sal-row2{ display:grid; grid-template-columns:1.5fr repeat(8, 0.72fr) 0.85fr 0.9fr; gap:6px; align-items:center; min-width:900px; }
 .sal-head2{ padding:0 4px 10px; border-bottom:1px solid var(--border); margin-bottom:4px; }
 .sal-head2 span{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; text-align:center; }
@@ -644,7 +645,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .sal-unit-tooltip-dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
 .sal-unit-tooltip-item b{ font-family:var(--font-mono); font-weight:700; }
 
-.sal-emp-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; }
+.sal-emp-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(210px, 1fr)); gap:14px; max-height:440px; overflow-y:auto; padding-right:4px; }
 .sal-emp-card{ background:var(--card); border:2px solid var(--border); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:11px; transition:border-color .35s ease, box-shadow .35s ease; }
 .sal-emp-card.entered{ border-color:#4C8A55; box-shadow:0 0 0 3px rgba(76,138,85,0.12); }
 .sal-emp-card-top{ display:flex; align-items:center; gap:10px; }
@@ -2580,7 +2581,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
         </div>
 
-        <div class="stat-grid-2" style="grid-template-columns:2.1fr 1fr;">
+        <div class="stat-grid-2" style="grid-template-columns:2.1fr 1fr; align-items:start;">
           <div class="stat-panel">
             <div class="stat-panel-head">
               <div class="stat-panel-title">👥 Plate zaposlenih — <span id="salTableMonthLabel">—</span></div>
