@@ -10,8 +10,15 @@
 // never commit that value to this repo, and never send it to the client.
 //
 // POST /functions/v1/gemini-chat
-// Body: { message: string, history: [{role:"user"|"model", text:string}], context: string }
-// Returns: { ok: true, reply: string } or { ok: false, error: string }
+// First call in an exchange:
+//   Body: { message: string, history: [{role:"user"|"model", text:string}], context: string }
+// Continuing an exchange still mid-tool-calls (see "one round per call" below):
+//   Body: { contents: [...] (exactly what the previous response returned), context: string }
+// Returns one of:
+//   { ok: true, done: true, reply: string, usage?: {...} } — final answer
+//   { ok: true, done: false, contents: [...], toolCalls: [{name,args}], usage?: {...} }
+//     — one tool-calling round happened; call again with this `contents` to continue
+//   { ok: false, error: string }
 //
 // ARCHITECTURE (rewritten from a static-context-dump design):
 // Previously `context` carried a full snapshot of projects/clients/team/
@@ -52,7 +59,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
 const MODEL = "gemini-3.6-flash";
 const MAX_HISTORY_TURNS = 12;
-const MAX_TOOL_ROUNDS = 6;
+// The round-count cap now lives client-side (runChatSearch() in
+// darkroom-app.html) since the client drives the loop, one round per call.
 
 const SYSTEM_PROMPT = `Ti si DR Asistent — AI asistent unutar internog dashboard-a DARKROOM studija za 3D vizuelizaciju. Korisnici su članovi tima (dizajneri, menadžeri, vlasnik). Kad te neko pita ko si/sa kim priča, predstavi se kao "DR Asistent" — nikad ne pominji "Titanium" niti bilo koje staro/interno ime aplikacije, to više nije u upotrebi. Uvek odgovaraj na srpskom jeziku, kratko i konkretno — ovo je radni alat, ne ćaskanje.
 
@@ -385,7 +393,16 @@ interface ChatTurn {
 // deno-lint-ignore no-explicit-any
 type GeminiPart = any;
 
-async function callGemini(contents: unknown[], systemText: string): Promise<{ ok: true; parts: GeminiPart[] } | { ok: false; error: string }> {
+interface Usage {
+  promptTokenCount?: number;
+  candidatesTokenCount?: number;
+  totalTokenCount?: number;
+}
+
+async function callGemini(
+  contents: unknown[],
+  systemText: string,
+): Promise<{ ok: true; parts: GeminiPart[]; usage?: Usage } | { ok: false; error: string }> {
   const geminiBody = {
     systemInstruction: { parts: [{ text: systemText }] },
     contents,
@@ -415,7 +432,7 @@ async function callGemini(contents: unknown[], systemText: string): Promise<{ ok
     const blockReason = data?.promptFeedback?.blockReason;
     return { ok: false, error: blockReason ? `Gemini je blokirao odgovor: ${blockReason}` : "Gemini nije vratio odgovor" };
   }
-  return { ok: true, parts };
+  return { ok: true, parts, usage: data?.usageMetadata };
 }
 
 Deno.serve(async (req) => {
@@ -432,19 +449,15 @@ Deno.serve(async (req) => {
     return jsonResponse({ ok: false, error: "SUPABASE_ANON_KEY nije dostupan na serveru" }, 500);
   }
 
-  let body: { message?: string; history?: ChatTurn[]; context?: string };
+  // deno-lint-ignore no-explicit-any
+  let body: { message?: string; history?: ChatTurn[]; context?: string; contents?: any[] };
   try {
     body = await req.json();
   } catch {
     return jsonResponse({ ok: false, error: "invalid json" }, 400);
   }
 
-  const message = typeof body.message === "string" ? body.message.trim() : "";
-  if (!message) {
-    return jsonResponse({ ok: false, error: "poruka je prazna" }, 400);
-  }
   const context = typeof body.context === "string" ? body.context : "";
-  const history = Array.isArray(body.history) ? body.history.slice(-MAX_HISTORY_TURNS) : [];
 
   // Every tool call below runs through this client, authenticated as the
   // actual caller (their JWT forwarded as-is) — not the service role — so
@@ -455,54 +468,74 @@ Deno.serve(async (req) => {
   });
 
   const systemText = `${SYSTEM_PROMPT}\n\nPODACI (JSON):\n${context}`;
+
+  // ONE round per invocation — the caller (darkroom-app.html's
+  // runChatSearch()) drives the outer tool-calling loop itself, one HTTP
+  // round-trip per round, instead of this function looping internally like
+  // it used to. That's what lets the chat UI show live progress (elapsed
+  // time, tokens so far, which tool is running) between rounds instead of
+  // a single opaque wait for the whole exchange to finish. Tool EXECUTION
+  // stays entirely server-side either way (via sbUser above) — only the
+  // loop's control flow moved to the client.
+  //
+  // If `contents` is already provided, this call is continuing a
+  // tool-calling exchange the client already started (it's exactly what
+  // the previous round's response handed back, now with the tool results
+  // appended) — otherwise this is a fresh message, built the same way as
+  // before from message+history.
   // deno-lint-ignore no-explicit-any
-  const contents: any[] = [
-    ...history
-      .filter((t) => t && (t.role === "user" || t.role === "model") && typeof t.text === "string")
-      .map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
-    { role: "user", parts: [{ text: message }] },
-  ];
-
-  let finalText = "";
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const result = await callGemini(contents, systemText);
-    if (!result.ok) return jsonResponse({ ok: false, error: result.error }, 502);
-
-    // Thinking-capable models can return internal reasoning as separate
-    // parts (marked `thought: true`) alongside the real answer/call — never
-    // treat those as the reply or forward them back into `contents`.
-    const realParts = result.parts.filter((p) => !p.thought);
-    const fnCalls = realParts.filter((p) => p.functionCall);
-
-    if (fnCalls.length === 0) {
-      finalText = realParts.map((p) => p.text ?? "").join("");
-      break;
-    }
-
-    // Pass the function-call parts through UNCHANGED (not rebuilt as
-    // {functionCall:...} objects) — Gemini 3's thinking-capable models
-    // attach a `thoughtSignature` alongside `functionCall` on the same part
-    // and require it echoed back exactly when this turn is replayed in the
-    // next request, or it 400s with "missing a thought_signature". Rebuilding
-    // the object here was silently dropping that field.
-    contents.push({ role: "model", parts: fnCalls });
-
-    const responseParts = [];
-    for (const p of fnCalls) {
-      const toolResult = await executeTool(sbUser, p.functionCall.name, p.functionCall.args ?? {});
-      responseParts.push({ functionResponse: { name: p.functionCall.name, response: toolResult } });
-    }
-    // Confirmed live against the real API: "function" is NOT a valid role
-    // for this model/endpoint (400 INVALID_ARGUMENT lists the accepted set,
-    // which no longer includes it) — "user_context" is the role meant for
-    // feeding a tool/function result back in as context, distinct from the
-    // user's own words.
-    contents.push({ role: "user_context", parts: responseParts });
+  let contents: any[];
+  if (Array.isArray(body.contents) && body.contents.length > 0) {
+    contents = body.contents;
+  } else {
+    const message = typeof body.message === "string" ? body.message.trim() : "";
+    if (!message) return jsonResponse({ ok: false, error: "poruka je prazna" }, 400);
+    const history = Array.isArray(body.history) ? body.history.slice(-MAX_HISTORY_TURNS) : [];
+    contents = [
+      ...history
+        .filter((t) => t && (t.role === "user" || t.role === "model") && typeof t.text === "string")
+        .map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
+      { role: "user", parts: [{ text: message }] },
+    ];
   }
 
-  if (!finalText) {
-    return jsonResponse({ ok: false, error: "Model nije dao konačan odgovor nakon više pokušaja pozivanja alata." }, 502);
+  const result = await callGemini(contents, systemText);
+  if (!result.ok) return jsonResponse({ ok: false, error: result.error }, 502);
+
+  // Thinking-capable models can return internal reasoning as separate parts
+  // (marked `thought: true`) alongside the real answer/call — never treat
+  // those as the reply or forward them back into `contents`.
+  const realParts = result.parts.filter((p) => !p.thought);
+  const fnCalls = realParts.filter((p) => p.functionCall);
+
+  if (fnCalls.length === 0) {
+    const finalText = realParts.map((p) => p.text ?? "").join("");
+    if (!finalText) return jsonResponse({ ok: false, error: "Gemini nije vratio tekstualan odgovor." }, 502);
+    return jsonResponse({ ok: true, done: true, reply: finalText, usage: result.usage }, 200);
   }
 
-  return jsonResponse({ ok: true, reply: finalText }, 200);
+  // Pass the function-call parts through UNCHANGED (not rebuilt as
+  // {functionCall:...} objects) — Gemini 3's thinking-capable models attach
+  // a `thoughtSignature` alongside `functionCall` on the same part and
+  // require it echoed back exactly when this turn is replayed in the next
+  // request, or it 400s with "missing a thought_signature". Rebuilding the
+  // object here was silently dropping that field.
+  contents.push({ role: "model", parts: fnCalls });
+
+  // deno-lint-ignore no-explicit-any
+  const responseParts: any[] = [];
+  const toolCalls: { name: string; args: unknown }[] = [];
+  for (const p of fnCalls) {
+    const toolResult = await executeTool(sbUser, p.functionCall.name, p.functionCall.args ?? {});
+    responseParts.push({ functionResponse: { name: p.functionCall.name, response: toolResult } });
+    toolCalls.push({ name: p.functionCall.name, args: p.functionCall.args ?? {} });
+  }
+  // Confirmed live against the real API: "function" is NOT a valid role for
+  // this model/endpoint (400 INVALID_ARGUMENT lists the accepted set, which
+  // no longer includes it) — "user_context" is the role meant for feeding a
+  // tool/function result back in as context, distinct from the user's own
+  // words.
+  contents.push({ role: "user_context", parts: responseParts });
+
+  return jsonResponse({ ok: true, done: false, contents, toolCalls, usage: result.usage }, 200);
 });

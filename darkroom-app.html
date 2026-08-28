@@ -759,6 +759,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .chat-typing span:nth-child(1){ animation-delay:-0.28s; }
 .chat-typing span:nth-child(2){ animation-delay:-0.14s; }
 @keyframes chatTypingBounce{ 0%,80%,100%{ transform:scale(0.6); opacity:.4; } 40%{ transform:scale(1); opacity:1; } }
+.chat-thinking{ display:flex; align-items:center; gap:9px; }
+.chat-thinking-meta{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+.ct-action{ font-size:11px; font-weight:500; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ct-stats{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); }
 
 .chat-results{ display:flex; flex-direction:column; gap:6px; margin-top:7px; }
 .chat-result-card{ display:flex; align-items:center; gap:9px; background:var(--card); border:1px solid var(--border); border-radius:11px; padding:7px 10px; cursor:pointer; transition:background .12s ease, border-color .12s ease; }
@@ -10165,10 +10169,36 @@ function pushChatMessage(role, text, results, thinking){
   return chatMessages.length - 1;
 }
 
+/* Prijateljski naziv trenutne akcije po alatu koji Gemini poziva — mora se
+   poklapati sa TOOL_DECLARATIONS imenima u gemini-chat/index.ts. */
+const TOOL_ACTION_LABELS = {
+  pretrazi_projekte: '🔍 Pretražujem projekte',
+  detalji_projekta: '📁 Učitavam detalje projekta',
+  pretrazi_klijente: '🏢 Pretražujem klijente',
+  kalendar_period: '📅 Proveravam kalendar',
+  pretrazi_playbook: '📖 Tražim u DR Playbook-u',
+  podaci_o_zaposlenom: '👤 Proveravam podatke o zaposlenom',
+};
+
+function renderThinkingBubble(t){
+  const secs = (t.elapsedMs/1000).toFixed(1);
+  const stats = [`${secs}s`];
+  if(t.tokens) stats.push(`~${t.tokens} tokena`);
+  if(t.toolsUsed.length) stats.push(`${t.toolsUsed.length} ${t.toolsUsed.length===1 ? 'alat pozvan' : 'alata pozvano'}`);
+  return `
+    <div class="chat-thinking">
+      <div class="chat-typing"><span></span><span></span><span></span></div>
+      <div class="chat-thinking-meta">
+        <div class="ct-action">${escapeHtml(t.action)}</div>
+        <div class="ct-stats">${stats.join(' · ')}</div>
+      </div>
+    </div>`;
+}
+
 function renderChatMessages(){
   const html = chatMessages.map((m,i)=>`
     <div class="chat-msg ${m.role}">
-      <div class="chat-bubble">${m.thinking ? '<div class="chat-typing"><span></span><span></span><span></span></div>' : m.text}</div>
+      <div class="chat-bubble">${m.thinking ? renderThinkingBubble(m.thinking) : m.text}</div>
       ${m.results && m.results.length ? `<div class="chat-results">${m.results.map((r,ri)=>`
         <div class="chat-result-card" data-msg="${i}" data-ri="${ri}">
           <span class="chat-result-icon">${r.icon}</span>
@@ -10289,44 +10319,79 @@ function formatBotReply(text){
     .replace(/\n/g, '<br>');
 }
 
+const MAX_CHAT_ROUNDS = 6; // safety cap on tool-calling rounds — matches gemini-chat's old server-side limit, now enforced here since the client drives the loop
+
+/* Extracts gemini-chat's real error body — supabase-js's functions.invoke()
+   swallows it on a non-2xx status, leaving only the generic "Edge Function
+   returned a non-2xx status code" on error.message, even though gemini-chat
+   always returns a real JSON {ok:false,error} body readable off
+   error.context (the raw Response object). */
+async function extractChatErrorMessage(data, error){
+  let errMsg = (data && data.error) || error?.message || 'nepoznata greška';
+  if(error && error.context && typeof error.context.json === 'function'){
+    try {
+      const body = await error.context.clone().json();
+      if(body && body.error) errMsg = body.error;
+    } catch(e){ /* body wasn't JSON — keep the generic message */ }
+  }
+  return errMsg;
+}
+
 async function runChatSearch(query){
   if(chatBusy) return;
   pushChatMessage('user', escapeHtml(query));
   const results = chatbotSearch(query);
-  const thinkingIdx = pushChatMessage('bot', '', null, true);
+  const thinking = { elapsedMs:0, tokens:0, action:'💭 Razmišljam...', toolsUsed:[] };
+  const thinkingIdx = pushChatMessage('bot', '', null, thinking);
   chatBusy = true;
   document.getElementById('chatSend').disabled = true;
 
+  // Live elapsed-time ticker while waiting — gemini-chat now does one
+  // tool-calling round per HTTP call instead of looping internally
+  // server-side, specifically so this loop can show real progress (elapsed
+  // time, tokens so far, which tool is running) between rounds instead of
+  // a single opaque wait.
+  const startedAt = Date.now();
+  const tickTimer = setInterval(()=>{
+    thinking.elapsedMs = Date.now() - startedAt;
+    renderChatMessages();
+  }, 300);
+
+  const context = buildChatContext();
+  let contents = null;
   let replyHtml, ok = false, replyRaw = '';
   try {
-    const context = buildChatContext();
-    const { data, error } = await sb.functions.invoke('gemini-chat', {
-      body: { message: query, history: chatHistory, context },
-    });
-    if(error || !data || !data.ok){
-      // supabase-js's functions.invoke() swallows the real response body on
-      // a non-2xx status — `data` comes back null and `error.message` is
-      // just the generic "Edge Function returned a non-2xx status code",
-      // even though gemini-chat always returns a real JSON {ok:false,error}
-      // body. The actual body is still readable off error.context (the raw
-      // Response object) — read it explicitly so failures are diagnosable
-      // instead of always showing the same uninformative message.
-      let errMsg = (data && data.error) || error?.message || 'nepoznata greška';
-      if(error && error.context && typeof error.context.json === 'function'){
-        try {
-          const body = await error.context.clone().json();
-          if(body && body.error) errMsg = body.error;
-        } catch(e){ /* body wasn't JSON — keep the generic message */ }
+    for(let round = 0; round < MAX_CHAT_ROUNDS; round++){
+      const body = contents ? { contents, context } : { message: query, history: chatHistory, context };
+      const { data, error } = await sb.functions.invoke('gemini-chat', { body });
+      if(error || !data || !data.ok){
+        throw new Error(await extractChatErrorMessage(data, error));
       }
-      replyHtml = `Došlo je do greške: ${escapeHtml(errMsg)}`;
-    } else {
-      replyRaw = data.reply;
-      replyHtml = formatBotReply(replyRaw);
-      ok = true;
+      if(data.usage && data.usage.totalTokenCount) thinking.tokens = data.usage.totalTokenCount;
+
+      // Backward-compatible with a not-yet-redeployed gemini-chat still
+      // returning the old single-shot {ok,reply} shape (no `done` field) —
+      // treat a bare `reply` with no `done` as final too, so the chat
+      // doesn't break during the redeploy gap between this client push
+      // (auto-deployed) and the Edge Function's manual redeploy.
+      if(data.done || (data.done === undefined && typeof data.reply === 'string')){
+        replyRaw = data.reply;
+        ok = true;
+        break;
+      }
+
+      contents = data.contents;
+      (data.toolCalls || []).forEach(tc => thinking.toolsUsed.push(tc.name));
+      const namedCalls = (data.toolCalls || []).map(tc => TOOL_ACTION_LABELS[tc.name]).filter(Boolean);
+      thinking.action = namedCalls.length ? namedCalls.join(' + ') : '💭 Razmišljam...';
+      renderChatMessages();
     }
+    if(!ok) throw new Error('Model nije dao konačan odgovor nakon više pokušaja pozivanja alata.');
+    replyHtml = formatBotReply(replyRaw);
   } catch(e){
-    replyHtml = `Došlo je do greške: ${escapeHtml(String(e))}`;
+    replyHtml = `Došlo je do greške: ${escapeHtml(String(e.message || e))}`;
   }
+  clearInterval(tickTimer);
 
   if(ok){
     chatHistory.push({role:'user', text: query});
