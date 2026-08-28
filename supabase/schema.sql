@@ -1,4 +1,4 @@
--- DARKROOM — Titanium OS: Phase 1 backend (Pulse render-finished notifications)
+-- DARKROOM OS: Phase 1 backend (Pulse render-finished notifications)
 -- Run this once in the Supabase SQL Editor (Project → SQL Editor → New query → paste → Run).
 
 create table public.notifications (

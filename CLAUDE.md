@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-A single self-contained HTML file (`darkroom-app.html`, ~3,600 lines) implementing "DARKROOM — Titanium OS": a front-end-only mock dashboard/prototype for a 3D visualization/rendering studio. All markup, CSS, and JavaScript live in this one file — there is no build system, package manager, bundler, framework, or backend. All application data (projects, clients, team, finances, portfolio) is hardcoded in JS arrays/objects and lives only in memory; nothing persists across a page reload (no localStorage, no API calls).
+A single self-contained HTML file (`darkroom-app.html`, ~3,600 lines) implementing "DARKROOM OS": a front-end-only mock dashboard/prototype for a 3D visualization/rendering studio. All markup, CSS, and JavaScript live in this one file — there is no build system, package manager, bundler, framework, or backend. All application data (projects, clients, team, finances, portfolio) is hardcoded in JS arrays/objects and lives only in memory; nothing persists across a page reload (no localStorage, no API calls).
 
 UI copy and content are in Serbian (`lang="sr"`).
 

@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Automatic birthday day off (Phase 21)
+// DARKROOM OS: Automatic birthday day off (Phase 21)
 //
 // Deploy via Supabase Dashboard → Edge Functions → New function → name it
 // "birthday-sync" → paste this file's contents → Deploy → disable

@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Phase 1 backend (RenderFlow render-finished notifications)
+// DARKROOM OS: Phase 1 backend (RenderFlow render-finished notifications)
 //
 // Deploy via Supabase Dashboard → Edge Functions → pulse-webhook → Code tab →
 // replace all content with this file → Deploy. WEBHOOK_SECRET must already be

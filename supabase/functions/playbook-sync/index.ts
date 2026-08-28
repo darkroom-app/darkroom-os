@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Phase 15 backend (Playbook synced from Google Docs)
+// DARKROOM OS: Phase 15 backend (Playbook synced from Google Docs)
 //
 // Deploy via Supabase Dashboard → Edge Functions → playbook-sync → Code tab
 // → paste this file's contents → Deploy. Leave "Enforce JWT Verification" ON

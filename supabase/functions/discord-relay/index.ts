@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Phase 3e/3f backend (relay notifications to Discord)
+// DARKROOM OS: Phase 3e/3f backend (relay notifications to Discord)
 //
 // Deployed under the dashboard-assigned name "smart-service" — see
 // schema.sql's notify_discord() for why. Disable "Enforce JWT

@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Weekly health report (Phase 19)
+// DARKROOM OS: Weekly health report (Phase 19)
 //
 // Deploy via Supabase Dashboard → Edge Functions → New function → name it
 // "weekly-health-report" → paste this file's contents → Deploy → disable

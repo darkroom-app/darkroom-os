@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Dropbox receipt intake (Phase 12)
+// DARKROOM OS: Dropbox receipt intake (Phase 12)
 //
 // Deploy via Supabase Dashboard → Edge Functions → New function → name it
 // "dropbox-expense-sync" → paste this file's contents → Deploy → disable

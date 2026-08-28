@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Storage backup (Phase 16)
+// DARKROOM OS: Storage backup (Phase 16)
 //
 // Supabase's Database Backups (Pro plan) explicitly do NOT cover Storage
 // objects — only DB metadata about them ("Restoring an old backup does not

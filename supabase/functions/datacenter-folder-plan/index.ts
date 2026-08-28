@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Datacenter folder plan (Phase 18)
+// DARKROOM OS: Datacenter folder plan (Phase 18)
 //
 // Deploy via Supabase Dashboard → Edge Functions → New function → name it
 // "datacenter-folder-plan" → paste this file's contents → Deploy → disable

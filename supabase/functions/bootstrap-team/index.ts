@@ -1,4 +1,4 @@
-// DARKROOM — Titanium OS: Phase 2 backend (magic-link auth + team_members)
+// DARKROOM OS: Phase 2 backend (magic-link auth + team_members)
 //
 // One-time-use admin function: pre-creates a Supabase auth user (email
 // pre-verified, no invite email sent) for each team member and inserts the
