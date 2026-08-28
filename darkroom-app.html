@@ -730,7 +730,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fab-dot{ position:absolute; top:3px; right:3px; width:10px; height:10px; border-radius:50%; background:#4C8A55; border:2px solid var(--bg-outer); }
 
 .chat-panel{
-  position:fixed; bottom:92px; right:24px; width:370px; height:530px; max-height:calc(100vh - 120px);
+  /* height:auto (not a fixed px) lets the panel grow with the conversation —
+     it's anchored by `bottom`, so growing height extends the box upward,
+     not down over the fab. min-height keeps it from looking cramped with
+     just the greeting message; max-height caps the growth at a sensible
+     absolute size or a viewport-relative one, whichever is smaller, so it
+     never grows unbounded on a tall monitor or off the top of a short one.
+     Once height hits that cap, .chat-body's flex:1/overflow-y:auto takes
+     over and the conversation scrolls internally instead of the panel
+     growing further. */
+  position:fixed; bottom:92px; right:24px; width:370px;
+  height:auto; min-height:340px; max-height:min(680px, calc(100vh - 120px));
   background:var(--bg-app); border:1px solid var(--border); border-radius:22px; z-index:200;
   display:flex; flex-direction:column; overflow:hidden; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4);
   transform:scale(0.92) translateY(12px); opacity:0; pointer-events:none;
