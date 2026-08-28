@@ -3366,7 +3366,9 @@ function renderDashboardProjects(){
     personal = list.length > 0;
     if(!personal) list = allProjects.filter(p=>p.status!=='Završeno');
   }
-  list = list.slice(0, 6);
+  // No slice cap here — .proj-grid already scrolls within the fixed-height
+  // panel (flex:1; min-height:0; overflow-y:auto), so showing the full list
+  // instead of capping at 6 just means more scrolling, not a layout break.
   document.getElementById('projGridSub').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
 
   projGridEl.innerHTML = list.map(p=>{
