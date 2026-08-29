@@ -1,0 +1,13 @@
+{
+  "name": "darkroom-path-bot",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Discord bot that turns pasted datacenter paths into clickable open-folder links.",
+  "main": "darkroom-path-bot.js",
+  "scripts": {
+    "start": "node darkroom-path-bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.1"
+  }
+}

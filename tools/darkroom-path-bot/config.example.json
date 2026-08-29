@@ -1,0 +1,5 @@
+{
+  "discordBotToken": "PASTE_YOUR_BOT_TOKEN_HERE",
+  "openPageBaseUrl": "https://app.darkroomstudio.com/open.html",
+  "allowedChannelIds": []
+}

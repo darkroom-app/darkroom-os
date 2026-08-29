@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DARKROOM — Otvori folder</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root{
+  --bg-app:#F6F2E8;
+  --card:#FFFFFF;
+  --card-soft:#FBF7EE;
+  --border:#EAE3D3;
+  --ink:#231F18;
+  --ink-dim:#847C6C;
+  --ink-faint:#B3AB98;
+  --gold:#EBAA2E;
+  --gold-soft:#FCEAC2;
+  --gold-deep:#8A5F13;
+  --coral:#D97757;
+  --coral-soft:#F7E3DA;
+  --font-display:'Space Grotesk', sans-serif;
+  --font-body:'Inter', sans-serif;
+  --font-mono:'IBM Plex Mono', monospace;
+}
+*{ box-sizing:border-box; }
+body{
+  margin:0; min-height:100vh; display:flex; align-items:center; justify-content:center;
+  background:var(--bg-app); color:var(--ink); font-family:var(--font-body);
+  padding:24px;
+}
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:20px;
+  padding:32px 30px; max-width:460px; width:100%;
+  box-shadow:0 30px 60px -20px rgba(40,30,10,0.25);
+  text-align:center;
+}
+.icon{ width:44px; height:44px; color:var(--gold-deep); margin:0 auto 16px; }
+h1{ font-family:var(--font-display); font-size:18px; font-weight:700; margin:0 0 8px; }
+.sub{ font-size:12.5px; color:var(--ink-dim); margin:0 0 20px; line-height:1.5; }
+.path-box{
+  font-family:var(--font-mono); font-size:11.5px; color:var(--ink);
+  background:var(--card-soft); border:1px solid var(--border); border-radius:12px;
+  padding:12px 14px; word-break:break-all; text-align:left; margin-bottom:22px;
+}
+.btn{
+  display:inline-flex; align-items:center; gap:8px; font-family:var(--font-body);
+  font-weight:600; font-size:13.5px; padding:12px 22px; border-radius:12px;
+  border:none; background:var(--gold); color:#3a2704; cursor:pointer;
+  text-decoration:none;
+}
+.btn svg{ width:15px; height:15px; }
+.hint{ font-size:10.5px; color:var(--ink-faint); margin-top:16px; line-height:1.5; }
+.error{ color:var(--coral); background:var(--coral-soft); border-radius:12px; padding:12px 14px; font-size:12px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+  <h1 id="title">Otvori folder</h1>
+  <div id="body"></div>
+</div>
+<script>
+const params = new URLSearchParams(location.search);
+const rawPath = params.get('p') || '';
+const body = document.getElementById('body');
+
+if (!rawPath) {
+  document.getElementById('title').textContent = 'Nedostaje putanja';
+  body.innerHTML = '<div class="error">Ovaj link nema putanju do foldera (nedostaje ?p= parametar).</div>';
+} else {
+  body.innerHTML = `
+    <p class="sub">Klikni dugme ispod da otvoriš ovaj folder direktno u Windows Explorer-u.</p>
+    <div class="path-box">${rawPath.replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</div>
+    <a class="btn" id="openBtn" href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+      Otvori folder
+    </a>
+    <div class="hint">Radi samo na Windows računaru u studiju gde je instaliran Darkroom Open helper (jednokratna instalacija). Prvi put će Windows/browser pitati da potvrdiš otvaranje.</div>
+  `;
+  document.getElementById('openBtn').addEventListener('click', (e) => {
+    e.preventDefault();
+    window.location.href = 'darkroom-open:' + encodeURIComponent(rawPath);
+  });
+}
+</script>
+</body>
+</html>
