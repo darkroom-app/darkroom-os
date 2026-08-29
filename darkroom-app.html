@@ -6875,7 +6875,7 @@ function renderSkriptePage(){
         <div class="skripte-file-meta">${escapeHtml(s.fileName)}${s.fileSize ? ' · '+fmtFileSize(s.fileSize) : ''} · ${escapeHtml(s.uploaderName)}</div>
       </div>
       <div class="skripte-file-actions">
-        <a class="skripte-dl-btn" href="${escapeHtml(s.fileUrl)}" target="_blank" rel="noopener" download="${escapeHtml(s.fileName)}">
+        <a class="skripte-dl-btn" href="${escapeHtml(s.fileUrl)}?download=${encodeURIComponent(s.fileName)}" rel="noopener" download="${escapeHtml(s.fileName)}">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
           Preuzmi
         </a>
