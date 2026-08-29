@@ -1692,7 +1692,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <a data-view="kalendar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Kalendar</a>
       <a data-view="projekti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7 12 2l9 5-9 5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Projekti</a>
       <a data-view="klijenti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.5 14.3c2.9.4 5 2.6 5 5.7"/></svg>Klijenti</a>
-      <a data-view="playbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v14.5"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H19"/></svg>DR Playbook</a>
+      <a data-view="playbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v14.5"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H19"/></svg>Playbook</a>
       <a data-view="portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-4.5-4.5L9 18"/></svg>Portfolio</a>
       <a data-view="statistika" id="navStatistika"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Statistika</a>
       <a data-view="tim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M2 20c0-3.4 2.8-5.8 6-5.8s6 2.4 6 5.8"/><path d="M14.5 14.5c2.7.3 4.7 2.3 4.7 5.5"/></svg>Tim</a>
@@ -2136,7 +2136,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="pb-nav-head">
             <div class="pb-nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v14.5"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H19"/></svg></div>
             <div>
-              <div class="pb-nav-title">DR Playbook</div>
+              <div class="pb-nav-title">Playbook</div>
               <div class="pb-nav-sub">Interna baza znanja</div>
             </div>
           </div>
@@ -10207,7 +10207,7 @@ function chatbotSearch(query){
   playbookArticles.forEach(a=>{
     const bodyText = a.sections.map(s=> s.label + ' ' + (s.body?s.body.join(' '):'') + ' ' + (s.list?s.list.join(' '):'')).join(' ');
     const hay = (a.navTitle + ' ' + bodyText).toLowerCase();
-    if(hay.includes(q)) results.push({ icon:'📖', type:'Playbook', title:a.navTitle, meta:'DR Playbook', action:()=>openPlaybookArticle(a) });
+    if(hay.includes(q)) results.push({ icon:'📖', type:'Playbook', title:a.navTitle, meta:'Playbook', action:()=>openPlaybookArticle(a) });
   });
   Object.keys(artistGrad).forEach(name=>{
     if(name.toLowerCase().includes(q)) results.push({ icon:'👤', type:'Zaposleni', title:name, meta:`${empYearTotal(name)} radova ukupno 2026.`, action:()=>openPersonStats(name) });
@@ -10534,7 +10534,7 @@ document.getElementById('chatInput').addEventListener('keydown', e=>{ if(e.key==
 const chatSuggestions = [
   { label:"Projekti", view:"projekti" },
   { label:"Kalendar", view:"kalendar" },
-  { label:"DR Playbook", view:"playbook" },
+  { label:"Playbook", view:"playbook" },
 ];
 (function(){
   const row = document.getElementById('chatSuggestRow');
@@ -10939,7 +10939,7 @@ document.querySelectorAll('.corner-tab-btn').forEach(btn=>{
   });
 });
 
-pushChatMessage('bot', "Zdravo! 👋 Ja sam DR Asistent. Mogu da odgovorim na pitanja o projektima, klijentima, timu, rasporedu/odsustvima i DR Playbook pravilniku. Šta te zanima?");
+pushChatMessage('bot', "Zdravo! 👋 Ja sam DR Asistent. Mogu da odgovorim na pitanja o projektima, klijentima, timu, rasporedu/odsustvima i Playbook pravilniku. Šta te zanima?");
 
 /* ==== LOGIN / SESIJA / PROFIL ==== */
 const loginScreen = document.getElementById('loginScreen');
@@ -11705,7 +11705,7 @@ async function resolveSessionLogin(session){
     // Read-only load of whatever playbook-sync last wrote to the DB (no
     // Google Docs API call here, just a table select — cheap). Without
     // this, playbookArticles sits on the old pre-Google-Docs hardcoded
-    // seed until someone happens to open the DR Playbook tab that session
+    // seed until someone happens to open the Playbook tab that session
     // (initPlaybook() is what actually re-syncs from the Doc, and stays
     // lazy/tab-triggered as before) — and the AI assistant reads
     // playbookArticles directly (buildChatContext()), so it was answering
