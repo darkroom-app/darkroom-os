@@ -1344,11 +1344,11 @@ create policy "superadmin can delete team_members"
 -- templates the studio uses often. Same open-write spirit as kadrovi/rounds
 -- (anyone can contribute a file), but edit/delete is restricted to whoever
 -- uploaded it or an admin/superadmin, matching the self-or-superadmin
--- pattern already used for team_members. Category is free text (not a fixed
--- enum) — the client-side UI derives the folder tiles from whatever
--- categories already exist in the data, same idea as how filter menus
--- elsewhere (Transakcije, Cenovnik) are built from live data rather than a
--- hardcoded list, so no schema change is needed to add a new category.
+-- pattern already used for team_members. Category stays plain text (not a
+-- DB enum) even though the UI currently only offers a fixed set (3ds Max /
+-- Photoshop / AE i PR / Ostalo, matching the categoryColorVar convention
+-- already used for Finansije categories) — that keeps adding a fifth
+-- category later a client-side-only change, no migration needed.
 create table public.scripts (
   id uuid primary key default gen_random_uuid(),
   name text not null,
