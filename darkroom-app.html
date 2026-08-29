@@ -265,8 +265,9 @@ body{
 .modal-title{ font-family:var(--font-display); font-weight:700; font-size:16px; margin-bottom:16px; }
 .modal-field{ margin-bottom:12px; }
 .modal-field label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:5px; }
-.modal-field input, .modal-field select{ width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; outline:none; color:var(--ink); }
-.modal-field input:focus, .modal-field select:focus{ border-color:var(--gold); }
+.modal-field input, .modal-field select, .modal-field textarea{ width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; outline:none; color:var(--ink); }
+.modal-field textarea{ resize:vertical; font-family:inherit; }
+.modal-field input:focus, .modal-field select:focus, .modal-field textarea:focus{ border-color:var(--gold); }
 
 /* Custom-dropdown enhancement for native <select> — the real native popup can't be
    reliably rounded cross-browser, so JS (enhanceSelect) hides the select and drives
@@ -798,6 +799,32 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   .chat-panel{ width:calc(100vw - 24px); right:12px; bottom:82px; height:calc(100vh - 140px); }
   .chat-fab{ right:16px; bottom:16px; }
 }
+
+/* ==== SKRIPTE VIEW ==== */
+.skripte-breadcrumb{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); }
+.skripte-breadcrumb a{ color:var(--ink-dim); cursor:pointer; text-decoration:underline; text-underline-offset:2px; }
+.skripte-breadcrumb a:hover{ color:var(--gold-deep); }
+.skripte-folder-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:14px; }
+.skripte-folder-card{ background:var(--card); border:1.5px solid var(--border); border-radius:16px; padding:18px 16px; display:flex; flex-direction:column; align-items:flex-start; gap:8px; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
+.skripte-folder-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(70,55,20,0.28); border-color:var(--folder-color); }
+.skripte-folder-icon{ width:30px; height:30px; color:var(--folder-color); }
+.skripte-folder-name{ font-family:var(--font-display); font-weight:600; font-size:13px; }
+.skripte-folder-count{ font-family:var(--font-mono); font-size:10px; color:var(--ink-faint); }
+.skripte-file-list{ display:flex; flex-direction:column; gap:10px; margin-top:14px; }
+.skripte-file-row{ display:flex; align-items:center; gap:14px; background:var(--card); border:1px solid var(--border); border-radius:14px; padding:12px 16px; }
+.skripte-file-icon{ width:38px; height:38px; border-radius:10px; background:var(--card-soft); display:flex; align-items:center; justify-content:center; font-size:17px; flex-shrink:0; }
+.skripte-file-main{ flex:1; min-width:0; }
+.skripte-file-name{ font-family:var(--font-display); font-weight:600; font-size:12.5px; }
+.skripte-file-desc{ font-size:11px; color:var(--ink-dim); margin-top:2px; }
+.skripte-file-meta{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); margin-top:4px; }
+.skripte-file-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+.skripte-dl-btn{ display:flex; align-items:center; gap:6px; font-family:var(--font-body); font-size:11.5px; font-weight:600; padding:8px 14px; border-radius:10px; border:1px solid var(--border); background:var(--card-soft); color:var(--ink-dim); cursor:pointer; text-decoration:none; transition:background .15s; }
+.skripte-dl-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); }
+.skripte-dl-btn svg{ width:13px; height:13px; }
+.skripte-icon-btn{ width:28px; height:28px; border-radius:8px; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); cursor:pointer; transition:background .15s, color .15s; }
+.skripte-icon-btn:hover{ background:var(--card-soft); color:var(--ink); }
+.skripte-icon-btn svg{ width:14px; height:14px; }
+.skripte-empty{ text-align:center; padding:40px 20px; color:var(--ink-faint); font-size:12.5px; }
 
 /* ==== PORTFOLIO VIEW ==== */
 /* pfGodina is the leftmost filter; the shared .cal-filter-menu right-aligns
@@ -1693,6 +1720,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <a data-view="projekti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7 12 2l9 5-9 5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Projekti</a>
       <a data-view="klijenti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/><circle cx="17.5" cy="8.5" r="2.6"/><path d="M15.5 14.3c2.9.4 5 2.6 5 5.7"/></svg>Klijenti</a>
       <a data-view="playbook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5V5a2 2 0 0 1 2-2h11a1 1 0 0 1 1 1v14.5"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H19"/></svg>Playbook</a>
+      <a data-view="skripte"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>Skripte</a>
       <a data-view="portfolio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="10" r="2"/><path d="m21 15-4.5-4.5L9 18"/></svg>Portfolio</a>
       <a data-view="statistika" id="navStatistika"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>Statistika</a>
       <a data-view="tim"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="3.2"/><circle cx="17" cy="9" r="2.6"/><path d="M2 20c0-3.4 2.8-5.8 6-5.8s6 2.4 6 5.8"/><path d="M14.5 14.5c2.7.3 4.7 2.3 4.7 5.5"/></svg>Tim</a>
@@ -2144,6 +2172,27 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         </div>
         <div class="pb-content-panel" id="pbContent"></div>
       </div>
+    </div>
+
+    <div class="view-panel" id="view-skripte">
+      <div class="page-head">
+        <div>
+          <div class="page-title">Skripte</div>
+          <div class="page-sub">Skripte, šabloni i alati koje studio često koristi</div>
+        </div>
+        <button class="btn-primary" id="skriptAddBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+          Dodaj skriptu
+        </button>
+      </div>
+      <div class="proj-toolbar" style="margin-bottom:16px;">
+        <div class="skripte-breadcrumb" id="skripteBreadcrumb"></div>
+        <div class="client-search" style="width:240px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+          <input type="text" id="skripteSearchInput" placeholder="Pretraži skripte...">
+        </div>
+      </div>
+      <div id="skripteContent"></div>
     </div>
 
     <div class="view-panel" id="view-portfolio">
@@ -3235,6 +3284,39 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="modal-actions" id="confirmModalActions">
       <button class="modal-cancel" id="confirmModalCancel">Otkaži</button>
       <button class="modal-submit" id="confirmModalOk">Potvrdi</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="skriptModalOverlay">
+  <div class="modal-card">
+    <div class="modal-title" id="skriptTitle">Dodaj skriptu</div>
+    <div class="modal-field">
+      <label>Naziv</label>
+      <input type="text" id="skriptNameInput" placeholder="npr. Batch Render Setup">
+    </div>
+    <div class="modal-field">
+      <label>Kategorija</label>
+      <input type="text" id="skriptCategoryInput" list="skripteCategoryList" placeholder="npr. 3ds Max">
+      <datalist id="skripteCategoryList"></datalist>
+    </div>
+    <div class="modal-field">
+      <label>Opis (opciono)</label>
+      <textarea id="skriptDescInput" rows="2" placeholder="Kratak opis šta skripta radi i kako se koristi"></textarea>
+    </div>
+    <div class="modal-field">
+      <label>Fajl</label>
+      <div class="upload-dropzone" id="skriptFileDropzone">
+        <div class="upload-dropzone-text">
+          <span id="skriptFileHint">Prevuci fajl ovde ili</span>
+          <input type="file" id="skriptFileInput">
+        </div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-delete" id="skriptDelete" style="display:none;">Obriši</button>
+      <button class="modal-cancel" id="skriptCancel">Otkaži</button>
+      <button class="modal-submit" id="skriptSubmit">Sačuvaj</button>
     </div>
   </div>
 </div>
@@ -5736,11 +5818,13 @@ async function processImageUpload(file, bucket){
   });
 }
 
-/* Shared drag-and-drop wiring for every image-upload dropzone (round render,
-   client avatar, team avatar) — highlights the zone while a file is
-   dragged over it and hands the dropped file to the same callback each
-   spot already uses for its <input type=file> change handler. */
-function wireImageDropzone(zone, onFile){
+/* Shared drag-and-drop wiring for every upload dropzone (round render,
+   client avatar, team avatar, project thumbnail, skripte) — highlights the
+   zone while a file is dragged over it and hands the dropped file to the
+   same callback each spot already uses for its <input type=file> change
+   handler. `accept` optionally filters which dropped file types are
+   forwarded (e.g. images-only for avatar zones); omit it to accept any file. */
+function wireDropzone(zone, onFile, accept){
   if(!zone) return;
   ['dragenter','dragover'].forEach(evt=>{
     zone.addEventListener(evt, (e)=>{ e.preventDefault(); zone.classList.add('dragover'); });
@@ -5750,8 +5834,23 @@ function wireImageDropzone(zone, onFile){
   });
   zone.addEventListener('drop', (e)=>{
     const file = e.dataTransfer.files[0];
-    if(file && file.type.startsWith('image/')) onFile(file);
+    if(file && (!accept || accept(file))) onFile(file);
   });
+}
+function wireImageDropzone(zone, onFile){
+  wireDropzone(zone, onFile, file=>file.type.startsWith('image/'));
+}
+
+/* Uploads an arbitrary file (script, template, tool — not an image, so no
+   compression/re-encoding like processImageUpload) to Storage and returns
+   its public URL, or null on failure. */
+async function processScriptUpload(file, bucket){
+  const dot = file.name.lastIndexOf('.');
+  const ext = dot > -1 ? file.name.slice(dot) : '';
+  const path = `${crypto.randomUUID()}${ext}`;
+  const { error } = await sb.storage.from(bucket).upload(path, file, { contentType: file.type || 'application/octet-stream' });
+  if(error){ await customAlert('Otpremanje fajla nije uspelo: ' + error.message); return null; }
+  return sb.storage.from(bucket).getPublicUrl(path).data.publicUrl;
 }
 
 async function handleProjectThumbFile(file){
@@ -6698,6 +6797,227 @@ async function initPlaybook(){
   renderPlaybookNav();
   renderPlaybookContent();
 }
+
+/* ==== SKRIPTE (shared downloads: scripts, templates, tools) ==== */
+let scriptFiles = [];
+let skriptState = { category: null, search: '' };
+let skripteInited = false;
+let editingScriptId = null;
+
+function fmtFileSize(bytes){
+  if(!bytes) return '';
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/(1024*1024)).toFixed(1) + ' MB';
+}
+const skripteExtIcons = {
+  zip:'🗜️', rar:'🗜️', '7z':'🗜️', py:'🐍', js:'📜', ms:'📜', mse:'📜', mel:'📜', jsx:'📜',
+  pdf:'📕', doc:'📄', docx:'📄', txt:'📄', psd:'🎨', ai:'🎨', exe:'⚙️', bat:'⚙️'
+};
+function skripteFileIcon(fileName){
+  const ext = (fileName.split('.').pop()||'').toLowerCase();
+  return skripteExtIcons[ext] || '📦';
+}
+/* Kategorije nisu fiksna lista (ni u schema.sql ni ovde) — izvode se iz
+   postojecih podataka, isto kao filter meniji na drugim mestima (Transakcije,
+   Cenovnik). Boja po kategoriji je stabilna u okviru sesije jer se racuna iz
+   abecednog indeksa medju TRENUTNO postojecim kategorijama. */
+function skripteCategories(){
+  return [...new Set(scriptFiles.map(s=>s.category))].sort((a,b)=>a.localeCompare(b));
+}
+const skripteFolderColors = ['var(--gold)','var(--teal)','var(--coral)','var(--plum)','var(--sky)','var(--sage)'];
+function skripteFolderColor(cat){
+  const idx = skripteCategories().indexOf(cat);
+  return skripteFolderColors[idx % skripteFolderColors.length] || 'var(--ink-faint)';
+}
+function canManageScript(s){
+  const u = currentUser();
+  if(!u) return false;
+  return s.uploaderAuthId === u.authId || currentAccess()==='admin' || isSuperAdmin();
+}
+
+async function loadScriptsFromSupabase(){
+  if(!sb) return;
+  const { data, error } = await sb.from('scripts').select('*').order('created_at', { ascending:false });
+  if(error || !data) return;
+  scriptFiles.length = 0;
+  data.forEach(row=>{
+    const uploader = teamMembers.find(t=>t.authId===row.uploaded_by);
+    scriptFiles.push({
+      _id: nextId(), dbId: row.id, name: row.name, description: row.description || '',
+      category: row.category, fileUrl: row.file_url, fileName: row.file_name,
+      fileSize: row.file_size || 0, uploaderAuthId: row.uploaded_by,
+      uploaderName: uploader ? uploader.name : 'Nepoznato', createdAt: row.created_at
+    });
+  });
+}
+
+async function initSkripte(){
+  await loadScriptsFromSupabase();
+  renderSkriptePage();
+  wireSkripteToolbar();
+}
+
+function renderSkriptePage(){
+  const wrap = document.getElementById('skripteContent');
+  const crumb = document.getElementById('skripteBreadcrumb');
+  const q = skriptState.search.trim().toLowerCase();
+  if(q){
+    crumb.innerHTML = '';
+    const matches = scriptFiles.filter(s=> `${s.name} ${s.description} ${s.category}`.toLowerCase().includes(q));
+    renderSkripteFileRows(wrap, matches, true);
+    return;
+  }
+  if(!skriptState.category){
+    crumb.innerHTML = '';
+    renderSkripteFolders(wrap);
+  } else {
+    crumb.innerHTML = `<a id="skripteBackLink">Sve kategorije</a> / ${escapeHtml(skriptState.category)}`;
+    document.getElementById('skripteBackLink').addEventListener('click', ()=>{ skriptState.category = null; renderSkriptePage(); });
+    renderSkripteFileRows(wrap, scriptFiles.filter(s=>s.category===skriptState.category), false);
+  }
+}
+
+function renderSkripteFolders(wrap){
+  const cats = skripteCategories();
+  if(!cats.length){
+    wrap.innerHTML = `<div class="skripte-empty">Još uvek nema dodatih skripti. Klikni "Dodaj skriptu" da dodaš prvu.</div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="skripte-folder-grid">` + cats.map(cat=>{
+    const count = scriptFiles.filter(s=>s.category===cat).length;
+    return `<div class="skripte-folder-card" data-cat="${escapeHtml(cat)}" style="--folder-color:${skripteFolderColor(cat)}">
+      <svg class="skripte-folder-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg>
+      <div class="skripte-folder-name">${escapeHtml(cat)}</div>
+      <div class="skripte-folder-count">${count} ${count===1?'stavka':'stavki'}</div>
+    </div>`;
+  }).join('') + `</div>`;
+  wrap.querySelectorAll('.skripte-folder-card').forEach(card=>{
+    card.addEventListener('click', ()=>{ skriptState.category = card.dataset.cat; renderSkriptePage(); });
+  });
+}
+
+function renderSkripteFileRows(wrap, items, showCategory){
+  if(!items.length){
+    wrap.innerHTML = `<div class="skripte-empty">Nema rezultata.</div>`;
+    return;
+  }
+  wrap.innerHTML = `<div class="skripte-file-list">` + items.map(s=>{
+    const manage = canManageScript(s);
+    return `<div class="skripte-file-row">
+      <div class="skripte-file-icon">${skripteFileIcon(s.fileName)}</div>
+      <div class="skripte-file-main">
+        <div class="skripte-file-name">${escapeHtml(s.name)}</div>
+        ${s.description ? `<div class="skripte-file-desc">${escapeHtml(s.description)}</div>` : ''}
+        <div class="skripte-file-meta">${showCategory ? escapeHtml(s.category)+' · ' : ''}${escapeHtml(s.fileName)}${s.fileSize ? ' · '+fmtFileSize(s.fileSize) : ''} · ${escapeHtml(s.uploaderName)}</div>
+      </div>
+      <div class="skripte-file-actions">
+        <a class="skripte-dl-btn" href="${escapeHtml(s.fileUrl)}" target="_blank" rel="noopener" download="${escapeHtml(s.fileName)}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
+          Preuzmi
+        </a>
+        ${manage ? `<div class="skripte-icon-btn skripte-edit-btn" data-id="${s._id}" title="Izmeni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>` : ''}
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+  wrap.querySelectorAll('.skripte-edit-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const s = scriptFiles.find(x=>x._id===Number(btn.dataset.id));
+      if(s) openSkriptModal(s);
+    });
+  });
+}
+
+let skripteToolbarWired = false;
+function wireSkripteToolbar(){
+  if(skripteToolbarWired) return;
+  skripteToolbarWired = true;
+  document.getElementById('skripteSearchInput').addEventListener('input', (e)=>{
+    skriptState.search = e.target.value;
+    renderSkriptePage();
+  });
+  document.getElementById('skriptAddBtn').addEventListener('click', ()=> openSkriptModal(null));
+}
+
+/* ---- Modal: dodaj/izmeni skriptu ---- */
+let pendingSkriptFile = null;
+const skriptModalOverlay = document.getElementById('skriptModalOverlay');
+function closeSkriptModal(){ skriptModalOverlay.classList.remove('open'); editingScriptId = null; pendingSkriptFile = null; }
+function openSkriptModal(existing){
+  editingScriptId = existing ? existing._id : null;
+  pendingSkriptFile = null;
+  document.getElementById('skriptTitle').textContent = existing ? "Izmeni skriptu" : "Dodaj skriptu";
+  document.getElementById('skriptDelete').style.display = existing ? 'block' : 'none';
+  document.getElementById('skriptNameInput').value = existing ? existing.name : '';
+  document.getElementById('skriptCategoryInput').value = existing ? existing.category : '';
+  document.getElementById('skriptDescInput').value = existing ? existing.description : '';
+  document.getElementById('skriptFileInput').value = '';
+  document.getElementById('skriptFileHint').textContent = existing ? `Trenutni fajl: ${existing.fileName} — prevuci novi da zameniš` : 'Prevuci fajl ovde ili';
+  document.getElementById('skripteCategoryList').innerHTML = skripteCategories().map(c=>`<option value="${escapeHtml(c)}">`).join('');
+  skriptModalOverlay.classList.add('open');
+}
+document.getElementById('skriptCancel').addEventListener('click', closeSkriptModal);
+wireOverlayClose(skriptModalOverlay, closeSkriptModal);
+
+function handleSkriptFile(file){
+  pendingSkriptFile = file;
+  document.getElementById('skriptFileHint').textContent = `Izabrano: ${file.name} (${fmtFileSize(file.size)})`;
+}
+document.getElementById('skriptFileInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(file) handleSkriptFile(file);
+});
+wireDropzone(document.getElementById('skriptFileDropzone'), handleSkriptFile);
+
+document.getElementById('skriptDelete').addEventListener('click', async ()=>{
+  if(!editingScriptId) return;
+  if(!confirm('Obrisati ovu skriptu?')) return;
+  const s = scriptFiles.find(x=>x._id===editingScriptId);
+  if(s && s.dbId){
+    const { error } = await sb.from('scripts').delete().eq('id', s.dbId);
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+  }
+  const idx = scriptFiles.findIndex(x=>x._id===editingScriptId);
+  if(idx>-1) scriptFiles.splice(idx,1);
+  closeSkriptModal();
+  renderSkriptePage();
+});
+
+document.getElementById('skriptSubmit').addEventListener('click', async ()=>{
+  const name = document.getElementById('skriptNameInput').value.trim();
+  const category = document.getElementById('skriptCategoryInput').value.trim();
+  const description = document.getElementById('skriptDescInput').value.trim();
+  if(!name || !category) return;
+  const existing = editingScriptId ? scriptFiles.find(x=>x._id===editingScriptId) : null;
+  if(!existing && !pendingSkriptFile){ await customAlert('Izaberi fajl za otpremanje.'); return; }
+  let fileUrl = existing ? existing.fileUrl : null;
+  let fileName = existing ? existing.fileName : null;
+  let fileSize = existing ? existing.fileSize : null;
+  if(pendingSkriptFile){
+    const url = await processScriptUpload(pendingSkriptFile, 'scripts');
+    if(!url) return;
+    fileUrl = url; fileName = pendingSkriptFile.name; fileSize = pendingSkriptFile.size;
+  }
+  const me = currentUser();
+  const payload = { name, category, description, file_url:fileUrl, file_name:fileName, file_size:fileSize };
+  if(existing){
+    if(existing.dbId){
+      const { error } = await sb.from('scripts').update(payload).eq('id', existing.dbId);
+      if(error){ await customAlert('Izmena nije uspela: ' + error.message); return; }
+    }
+    Object.assign(existing, { name, category, description, fileUrl, fileName, fileSize });
+  } else {
+    payload.uploaded_by = me ? me.authId : null;
+    const { data, error } = await sb.from('scripts').insert(payload).select().single();
+    if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
+    scriptFiles.unshift({
+      _id: nextId(), dbId: data.id, name, category, description, fileUrl, fileName, fileSize,
+      uploaderAuthId: me ? me.authId : null, uploaderName: me ? me.name : '—', createdAt: data.created_at
+    });
+  }
+  closeSkriptModal();
+  renderSkriptePage();
+});
 
 const artistInitials = {
   "Dušan Stević":"DS", "Stefana Ristić":"SR", "Radoslav Milanović":"RM", "Dalibor Mitić":"DM",
@@ -9944,6 +10264,7 @@ function showView(name){
   document.getElementById('view-projekat-detalji').classList.toggle('active', name==='projekat-detalji');
   document.getElementById('view-klijenti').classList.toggle('active', name==='klijenti');
   document.getElementById('view-playbook').classList.toggle('active', name==='playbook');
+  document.getElementById('view-skripte').classList.toggle('active', name==='skripte');
   document.getElementById('view-portfolio').classList.toggle('active', name==='portfolio');
   document.getElementById('view-statistika').classList.toggle('active', name==='statistika');
   document.getElementById('view-tim').classList.toggle('active', name==='tim');
@@ -9952,6 +10273,7 @@ function showView(name){
   if(name==='statistika' && !statistikaInited){ statistikaInited = true; initStatistika(); }
   if(name==='finansije' && !finansijeInited){ finansijeInited = true; initFinansije(); }
   if(name==='playbook' && !playbookInited){ playbookInited = true; initPlaybook(); }
+  if(name==='skripte' && !skripteInited){ skripteInited = true; initSkripte(); }
   setActiveNav(name);
   if(!_histSyncing && (!history.state || history.state.view !== name)){
     history.pushState({view:name}, '', location.href);

@@ -1337,3 +1337,47 @@ alter table public.team_members add column if not exists fitness_opted_in boolea
 create policy "superadmin can delete team_members"
   on public.team_members for delete to authenticated
   using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+
+-- ==== Phase 24: Skripte — shared downloads (scripts/templates/tools) (run this query) ====
+-- New tab so people stop hunting through server folders for the scripts and
+-- templates the studio uses often. Same open-write spirit as kadrovi/rounds
+-- (anyone can contribute a file), but edit/delete is restricted to whoever
+-- uploaded it or an admin/superadmin, matching the self-or-superadmin
+-- pattern already used for team_members. Category is free text (not a fixed
+-- enum) — the client-side UI derives the folder tiles from whatever
+-- categories already exist in the data, same idea as how filter menus
+-- elsewhere (Transakcije, Cenovnik) are built from live data rather than a
+-- hardcoded list, so no schema change is needed to add a new category.
+create table public.scripts (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  description text,
+  category text not null,
+  file_url text not null,
+  file_name text not null,
+  file_size int,
+  uploaded_by uuid references public.team_members(id) on delete set null,
+  created_at timestamptz not null default now()
+);
+alter table public.scripts enable row level security;
+
+create policy "authenticated can read scripts"
+  on public.scripts for select to authenticated using (true);
+create policy "authenticated can upload scripts"
+  on public.scripts for insert to authenticated with check (uploaded_by = auth.uid());
+create policy "uploader or admin can update scripts"
+  on public.scripts for update to authenticated
+  using (uploaded_by = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin'))
+  with check (uploaded_by = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin'));
+create policy "uploader or admin can delete scripts"
+  on public.scripts for delete to authenticated
+  using (uploaded_by = auth.uid() or (select access from public.team_members where id = auth.uid()) in ('admin','superadmin'));
+
+insert into storage.buckets (id, name, public) values ('scripts', 'scripts', true);
+
+create policy "Public read scripts" on storage.objects for select using (bucket_id = 'scripts');
+create policy "Authenticated upload scripts" on storage.objects for insert to authenticated
+  with check (bucket_id = 'scripts');
+create policy "Authenticated delete scripts" on storage.objects for delete to authenticated
+  using (bucket_id = 'scripts');
