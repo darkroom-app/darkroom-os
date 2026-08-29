@@ -3026,9 +3026,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field">
       <label>Thumbnail</label>
-      <div class="nc-avatar-row">
+      <div class="upload-dropzone" id="npThumbDropzone">
         <div class="nc-avatar-preview np-thumb-preview" id="npThumbPreview"></div>
-        <input type="file" id="npThumbInput" accept="image/*">
+        <div class="upload-dropzone-text">
+          <span>Prevuci sliku ovde ili</span>
+          <input type="file" id="npThumbInput" accept="image/*">
+        </div>
       </div>
     </div>
     <div class="modal-field">
@@ -5751,12 +5754,15 @@ function wireImageDropzone(zone, onFile){
   });
 }
 
-document.getElementById('npThumbInput').addEventListener('change', async (e)=>{
-  const file = e.target.files[0];
-  if(!file) return;
+async function handleProjectThumbFile(file){
   const url = await processImageUpload(file, 'project-thumbnails');
   if(url){ pendingProjectThumbnail = url; setProjectThumbPreview(url); }
+}
+document.getElementById('npThumbInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(file) handleProjectThumbFile(file);
 });
+wireImageDropzone(document.getElementById('npThumbDropzone'), handleProjectThumbFile);
 
 function closeProjectModal(){
   modalOverlay.classList.remove('open');
