@@ -28,7 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, Partials } = require('discord.js');
 
 const configPath = path.join(__dirname, 'config.json');
 if (!fs.existsSync(configPath)) {
@@ -95,12 +95,20 @@ function extractPaths(content) {
   return found;
 }
 
+// DirectMessages + Partials.Channel: lets people DM the BOT itself with a
+// path and get the link back privately. This can only ever cover DMs sent
+// TO the bot — Discord does not let any bot see DMs between two other
+// people (there is no way around that, by design, for privacy), so this is
+// "DM the bot, then forward its reply" rather than the bot silently
+// watching your conversations.
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
+    GatewayIntentBits.DirectMessages,
   ],
+  partials: [Partials.Channel],
 });
 
 client.once('clientReady', () => {
@@ -110,10 +118,17 @@ client.once('clientReady', () => {
 client.on('messageCreate', async (message) => {
   try {
     if (message.author.bot) return;
-    if (ALLOWED_CHANNEL_IDS.length && !ALLOWED_CHANNEL_IDS.includes(message.channelId)) return;
+    if (message.guildId && ALLOWED_CHANNEL_IDS.length && !ALLOWED_CHANNEL_IDS.includes(message.channelId)) return;
+
+    const where = message.guildId ? `#${message.channel.name ?? message.channelId}` : `DM od ${message.author.tag}`;
+    console.log(`[poruka] (${where}) ${JSON.stringify(message.content)}`);
 
     const cleaned = extractPaths(message.content);
-    if (!cleaned.length) return;
+    if (!cleaned.length) {
+      console.log('  -> nije prepoznata nijedna putanja');
+      return;
+    }
+    console.log(`  -> prepoznato: ${JSON.stringify(cleaned)}`);
 
     const lines = cleaned.map((p) => {
       const segments = p.split('\\').filter(Boolean);
