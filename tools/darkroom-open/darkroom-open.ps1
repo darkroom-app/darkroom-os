@@ -39,6 +39,18 @@ try {
     $decoded = [System.Uri]::UnescapeDataString($uri)
     $path = $decoded.Replace('/', '\')
 
+    # Defense in depth: this helper only ever exists to open the studio's
+    # own datacenter share. It never runs or executes anything from the
+    # target path (Start-Process explorer.exe below just navigates a
+    # Explorer window, same as double-clicking the address bar), so there
+    # is no privilege-escalation angle here regardless — but scoping it to
+    # one known prefix means the link genuinely cannot be repurposed to
+    # point Explorer at some other local/network path.
+    if ($path -notlike '\\DATACENTER\*') {
+        Show-Message "Ovaj link ne vodi na DATACENTER share pa je odbijen:`n`n$path"
+        exit
+    }
+
     if (-not (Test-Path -LiteralPath $path)) {
         Show-Message "Putanja ne postoji ili nije dostupna sa ovog racunara (proveri da li si na studio mrezi):`n`n$path"
         exit

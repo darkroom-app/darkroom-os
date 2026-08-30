@@ -44,15 +44,17 @@ if (!config.discordBotToken || config.discordBotToken === 'PASTE_YOUR_BOT_TOKEN_
 const OPEN_PAGE_BASE = config.openPageBaseUrl || 'https://app.darkroomstudio.com/open.html';
 const ALLOWED_CHANNEL_IDS = Array.isArray(config.allowedChannelIds) ? config.allowedChannelIds : [];
 
-// Matches a Windows UNC path (\\SERVER\Share\...) or a drive-letter path
-// (Z:\...). Used as a last-resort fallback (see extractPaths below) — on
-// its own it stops at the first whitespace, which breaks on this studio's
-// own folder convention ("P0288 - 55 Deans" has spaces in it).
-const PATH_REGEX = /(?:\\\\[^\s\\]+(?:\\[^\s\\]+)+|[A-Za-z]:\\[^\s]+)/g;
+// Only ever matches \\DATACENTER\... — deliberately scoped to the one real
+// share this is for, not "any UNC path", matching the same allowlist
+// darkroom-open.ps1 enforces on the receiving end. Used as a last-resort
+// fallback (see extractPaths below) — on its own it stops at the first
+// whitespace, which breaks on this studio's own folder convention
+// ("P0288 - 55 Deans" has spaces in it).
+const PATH_REGEX = /\\\\DATACENTER\\[^\s\\]+(?:\\[^\s\\]+)*/gi;
 const TRAILING_PUNCTUATION = /[.,;:!?)\]"'`]+$/;
 
 function looksLikePath(s) {
-  return /^\\\\[^\s\\]+(\\[^\\]+)+$/.test(s) || /^[A-Za-z]:\\.+$/.test(s);
+  return /^\\\\DATACENTER\\.+$/i.test(s);
 }
 
 // Three tiers, each consuming what it matches before the next one runs (so
