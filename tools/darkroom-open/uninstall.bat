@@ -1,6 +1,6 @@
 @echo off
 REM DARKROOM OS: removes the darkroom-open:// link handler installed by
-REM install.bat - deletes the registry key and the copied script.
+REM install.bat - deletes the registry key and the installed helper.
 
 setlocal
 echo Uklanjam Darkroom Open helper...

@@ -6,3 +6,8 @@
 # config.example.json is the committed template, this is the real one.
 tools/darkroom-path-bot/config.json
 tools/darkroom-path-bot/node_modules/
+
+# darkroom-open's compiled helper — install.bat compiles DarkroomOpen.cs
+# fresh on each machine, so the .exe itself is a local build artifact.
+tools/darkroom-open/DarkroomOpen.exe
+tools/darkroom-open/*.TMP
