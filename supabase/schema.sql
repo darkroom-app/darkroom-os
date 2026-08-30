@@ -1388,3 +1388,18 @@ create policy "Authenticated delete scripts" on storage.objects for delete to au
 -- are just another object in the same bucket) - only the metadata column
 -- is new.
 alter table public.scripts add column if not exists thumbnail_url text;
+
+
+-- ==== Phase 26: restrict adding scripts to admin/superadmin (run this query) ====
+-- Phase 24 deliberately opened uploads to anyone (matching kadrovi/rounds'
+-- "everyone can contribute" spirit); the studio decided that was too open in
+-- practice and narrowed it to admin/superadmin, same as who can upload a
+-- client avatar. Edit/delete stays uploader-or-admin (unchanged) - this only
+-- touches who can create a new entry.
+drop policy "authenticated can upload scripts" on public.scripts;
+create policy "admin can upload scripts"
+  on public.scripts for insert to authenticated
+  with check (
+    uploaded_by = auth.uid()
+    and (select access from public.team_members where id = auth.uid()) in ('admin','superadmin')
+  );
