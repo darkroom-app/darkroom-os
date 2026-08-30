@@ -113,7 +113,22 @@ const client = new Client({
 
 client.once('clientReady', () => {
   console.log(`Darkroom path bot je online kao ${client.user.tag}`);
+  const guilds = [...client.guilds.cache.values()];
+  console.log(`Serveri na kojima je bot (${guilds.length}):`, guilds.map((g) => `${g.name} (${g.memberCount} clanova)`).join(', ') || '(nijedan!)');
 });
+
+client.on('error', (err) => console.error('[client error]', err));
+client.on('shardError', (err) => console.error('[shard error]', err));
+client.on('warn', (msg) => console.warn('[warn]', msg));
+client.on('shardDisconnect', (event, id) => console.warn(`[shard ${id} disconnected]`, event.code, event.reason));
+client.on('shardReconnecting', (id) => console.log(`[shard ${id} reconnecting]`));
+client.on('shardResume', (id) => console.log(`[shard ${id} resumed]`));
+// Verbose gateway trace — only when DARKROOM_DEBUG=1 is set, since this is
+// noisy (heartbeats etc). Turn on to see raw evidence of whether Discord is
+// sending MESSAGE_CREATE at all when normal logging shows nothing.
+if (process.env.DARKROOM_DEBUG) {
+  client.on('debug', (info) => console.log('[debug]', info));
+}
 
 client.on('messageCreate', async (message) => {
   try {
