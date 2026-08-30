@@ -1381,3 +1381,10 @@ create policy "Authenticated upload scripts" on storage.objects for insert to au
   with check (bucket_id = 'scripts');
 create policy "Authenticated delete scripts" on storage.objects for delete to authenticated
   using (bucket_id = 'scripts');
+
+
+-- ==== Phase 25: Skripte grid view + optional thumbnail (run this query) ====
+-- Reuses the existing 'scripts' bucket/policies from Phase 24 (thumbnails
+-- are just another object in the same bucket) - only the metadata column
+-- is new.
+alter table public.scripts add column if not exists thumbnail_url text;

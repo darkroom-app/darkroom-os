@@ -817,6 +817,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .skripte-icon-btn:hover{ background:var(--card-soft); color:var(--ink); }
 .skripte-icon-btn svg{ width:14px; height:14px; }
 .skripte-empty{ text-align:center; padding:40px 20px; color:var(--ink-faint); font-size:12.5px; }
+.skripte-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:16px; }
+.skripte-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; transition:transform .15s ease, box-shadow .15s ease; }
+.skripte-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(70,55,20,0.28); }
+.skripte-card-thumb{ height:100px; background:var(--card-soft); background-size:cover; background-position:center; display:flex; align-items:center; justify-content:center; font-size:32px; position:relative; }
+.skripte-card-cat{ position:absolute; top:8px; left:8px; font-family:var(--font-mono); font-size:8px; font-weight:600; padding:2px 8px; border-radius:20px; text-transform:uppercase; letter-spacing:0.03em; }
+.skripte-card-body{ padding:12px 14px 14px; }
+.skripte-card-name{ font-family:var(--font-display); font-weight:600; font-size:12.5px; margin-bottom:3px; }
+.skripte-card-desc{ font-size:10.5px; color:var(--ink-dim); margin-bottom:8px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.skripte-card-meta{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-bottom:10px; }
+.skripte-card-actions{ display:flex; align-items:center; gap:6px; }
+.skripte-card-actions .skripte-dl-btn{ flex:1; justify-content:center; padding:7px 10px; font-size:10.5px; }
 
 /* ==== PORTFOLIO VIEW ==== */
 /* pfGodina is the leftmost filter; the shared .cal-filter-menu right-aligns
@@ -2192,6 +2203,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
           <input type="text" id="skripteSearchInput" placeholder="Pretraži skripte...">
         </div>
+        <div class="view-toggle">
+          <button class="vt-btn active" data-skmode="grid" title="Grid prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></button>
+          <button class="vt-btn" data-skmode="list" title="Lista prikaz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+        </div>
       </div>
       <div id="skripteContent"></div>
     </div>
@@ -3315,6 +3330,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="upload-dropzone-text">
           <span id="skriptFileHint">Prevuci fajl ovde ili</span>
           <input type="file" id="skriptFileInput">
+        </div>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label>Slika (opciono)</label>
+      <div class="upload-dropzone" id="skriptThumbDropzone">
+        <div class="nc-avatar-preview np-thumb-preview" id="skriptThumbPreview"></div>
+        <div class="upload-dropzone-text">
+          <span>Prevuci sliku ovde ili</span>
+          <input type="file" id="skriptThumbInput" accept="image/*">
         </div>
       </div>
     </div>
@@ -6805,7 +6830,7 @@ async function initPlaybook(){
 
 /* ==== SKRIPTE (shared downloads: scripts, templates, tools) ==== */
 let scriptFiles = [];
-let skriptState = { category: 'Sve kategorije', search: '' };
+let skriptState = { category: 'Sve kategorije', search: '', view: 'grid' };
 let skripteInited = false;
 let editingScriptId = null;
 
@@ -6843,7 +6868,7 @@ async function loadScriptsFromSupabase(){
     scriptFiles.push({
       _id: nextId(), dbId: row.id, name: row.name, description: row.description || '',
       category: row.category, fileUrl: row.file_url, fileName: row.file_name,
-      fileSize: row.file_size || 0, uploaderAuthId: row.uploaded_by,
+      fileSize: row.file_size || 0, thumbnailUrl: row.thumbnail_url || null, uploaderAuthId: row.uploaded_by,
       uploaderName: uploader ? uploader.name : 'Nepoznato', createdAt: row.created_at
     });
   });
@@ -6864,31 +6889,67 @@ function renderSkriptePage(){
     wrap.innerHTML = `<div class="skripte-empty">${scriptFiles.length ? 'Nema rezultata.' : 'Još uvek nema dodatih skripti. Klikni "Dodaj skriptu" da dodaš prvu.'}</div>`;
     return;
   }
-  wrap.innerHTML = `<div class="skripte-file-list">` + items.map(s=>{
-    const manage = canManageScript(s);
-    const catColor = skripteCategoryColors[s.category] || 'var(--ink-faint)';
-    return `<div class="skripte-file-row">
-      <div class="skripte-file-icon">${skripteFileIcon(s.fileName)}</div>
-      <div class="skripte-file-main">
-        <div class="skripte-file-name">${escapeHtml(s.name)} <span class="skripte-cat-tag" style="background:${catColor}22; color:${catColor}">${escapeHtml(s.category)}</span></div>
-        ${s.description ? `<div class="skripte-file-desc">${escapeHtml(s.description)}</div>` : ''}
-        <div class="skripte-file-meta">${escapeHtml(s.fileName)}${s.fileSize ? ' · '+fmtFileSize(s.fileSize) : ''} · ${escapeHtml(s.uploaderName)}</div>
-      </div>
-      <div class="skripte-file-actions">
-        <a class="skripte-dl-btn" href="${escapeHtml(s.fileUrl)}?download=${encodeURIComponent(s.fileName)}" rel="noopener" download="${escapeHtml(s.fileName)}">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
-          Preuzmi
-        </a>
-        ${manage ? `<div class="skripte-icon-btn skripte-edit-btn" data-id="${s._id}" title="Izmeni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>` : ''}
-      </div>
-    </div>`;
-  }).join('') + `</div>`;
+  if(skriptState.view === 'grid') renderSkripteGrid(wrap, items);
+  else renderSkripteList(wrap, items);
+}
+
+function skripteDlBtnHtml(s){
+  return `<a class="skripte-dl-btn" href="${escapeHtml(s.fileUrl)}?download=${encodeURIComponent(s.fileName)}" rel="noopener" download="${escapeHtml(s.fileName)}">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M4 19h16"/></svg>
+    Preuzmi
+  </a>`;
+}
+function skripteEditBtnHtml(s){
+  return canManageScript(s) ? `<div class="skripte-icon-btn skripte-edit-btn" data-id="${s._id}" title="Izmeni"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></div>` : '';
+}
+function wireSkripteEditButtons(wrap){
   wrap.querySelectorAll('.skripte-edit-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
       const s = scriptFiles.find(x=>x._id===Number(btn.dataset.id));
       if(s) openSkriptModal(s);
     });
   });
+}
+
+function renderSkripteList(wrap, items){
+  wrap.innerHTML = `<div class="skripte-file-list">` + items.map(s=>{
+    const catColor = skripteCategoryColors[s.category] || 'var(--ink-faint)';
+    return `<div class="skripte-file-row">
+      <div class="skripte-file-icon"${s.thumbnailUrl ? ` style="background-image:url('${escapeHtml(s.thumbnailUrl)}'); background-size:cover; background-position:center;"` : ''}>${s.thumbnailUrl ? '' : skripteFileIcon(s.fileName)}</div>
+      <div class="skripte-file-main">
+        <div class="skripte-file-name">${escapeHtml(s.name)} <span class="skripte-cat-tag" style="background:${catColor}22; color:${catColor}">${escapeHtml(s.category)}</span></div>
+        ${s.description ? `<div class="skripte-file-desc">${escapeHtml(s.description)}</div>` : ''}
+        <div class="skripte-file-meta">${escapeHtml(s.fileName)}${s.fileSize ? ' · '+fmtFileSize(s.fileSize) : ''} · ${escapeHtml(s.uploaderName)}</div>
+      </div>
+      <div class="skripte-file-actions">
+        ${skripteDlBtnHtml(s)}
+        ${skripteEditBtnHtml(s)}
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+  wireSkripteEditButtons(wrap);
+}
+
+function renderSkripteGrid(wrap, items){
+  wrap.innerHTML = `<div class="skripte-grid">` + items.map(s=>{
+    const catColor = skripteCategoryColors[s.category] || 'var(--ink-faint)';
+    return `<div class="skripte-card">
+      <div class="skripte-card-thumb"${s.thumbnailUrl ? ` style="background-image:url('${escapeHtml(s.thumbnailUrl)}');"` : ''}>
+        ${s.thumbnailUrl ? '' : skripteFileIcon(s.fileName)}
+        <span class="skripte-card-cat" style="background:${catColor}; color:#fff;">${escapeHtml(s.category)}</span>
+      </div>
+      <div class="skripte-card-body">
+        <div class="skripte-card-name">${escapeHtml(s.name)}</div>
+        ${s.description ? `<div class="skripte-card-desc">${escapeHtml(s.description)}</div>` : ''}
+        <div class="skripte-card-meta">${s.fileSize ? fmtFileSize(s.fileSize) : ''} · ${escapeHtml(s.uploaderName)}</div>
+        <div class="skripte-card-actions">
+          ${skripteDlBtnHtml(s)}
+          ${skripteEditBtnHtml(s)}
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `</div>`;
+  wireSkripteEditButtons(wrap);
 }
 
 let skripteToolbarWired = false;
@@ -6901,15 +6962,25 @@ function wireSkripteToolbar(){
   });
   document.getElementById('skriptAddBtn').addEventListener('click', ()=> openSkriptModal(null));
   bindCalFilter('filterSkripteCategory', (val)=>{ skriptState.category = val; renderSkriptePage(); });
+  document.querySelectorAll('.vt-btn[data-skmode]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.vt-btn[data-skmode]').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      skriptState.view = btn.dataset.skmode;
+      renderSkriptePage();
+    });
+  });
 }
 
 /* ---- Modal: dodaj/izmeni skriptu ---- */
 let pendingSkriptFile = null;
+let pendingSkriptThumbnail = null;
 const skriptModalOverlay = document.getElementById('skriptModalOverlay');
-function closeSkriptModal(){ skriptModalOverlay.classList.remove('open'); editingScriptId = null; pendingSkriptFile = null; }
+function closeSkriptModal(){ skriptModalOverlay.classList.remove('open'); editingScriptId = null; pendingSkriptFile = null; pendingSkriptThumbnail = null; }
 function openSkriptModal(existing){
   editingScriptId = existing ? existing._id : null;
   pendingSkriptFile = null;
+  pendingSkriptThumbnail = null;
   document.getElementById('skriptTitle').textContent = existing ? "Izmeni skriptu" : "Dodaj skriptu";
   document.getElementById('skriptDelete').style.display = existing ? 'block' : 'none';
   document.getElementById('skriptNameInput').value = existing ? existing.name : '';
@@ -6917,6 +6988,8 @@ function openSkriptModal(existing){
   document.getElementById('skriptDescInput').value = existing ? existing.description : '';
   document.getElementById('skriptFileInput').value = '';
   document.getElementById('skriptFileHint').textContent = existing ? `Trenutni fajl: ${existing.fileName} — prevuci novi da zameniš` : 'Prevuci fajl ovde ili';
+  document.getElementById('skriptThumbInput').value = '';
+  document.getElementById('skriptThumbPreview').style.backgroundImage = existing && existing.thumbnailUrl ? `url('${existing.thumbnailUrl}')` : '';
   skriptModalOverlay.classList.add('open');
 }
 document.getElementById('skriptCancel').addEventListener('click', closeSkriptModal);
@@ -6931,6 +7004,16 @@ document.getElementById('skriptFileInput').addEventListener('change', (e)=>{
   if(file) handleSkriptFile(file);
 });
 wireDropzone(document.getElementById('skriptFileDropzone'), handleSkriptFile);
+
+function handleSkriptThumbFile(file){
+  pendingSkriptThumbnail = file;
+  document.getElementById('skriptThumbPreview').style.backgroundImage = `url('${URL.createObjectURL(file)}')`;
+}
+document.getElementById('skriptThumbInput').addEventListener('change', (e)=>{
+  const file = e.target.files[0];
+  if(file) handleSkriptThumbFile(file);
+});
+wireImageDropzone(document.getElementById('skriptThumbDropzone'), handleSkriptThumbFile);
 
 document.getElementById('skriptDelete').addEventListener('click', async ()=>{
   if(!editingScriptId) return;
@@ -6961,20 +7044,26 @@ document.getElementById('skriptSubmit').addEventListener('click', async ()=>{
     if(!url) return;
     fileUrl = url; fileName = pendingSkriptFile.name; fileSize = pendingSkriptFile.size;
   }
+  let thumbnailUrl = existing ? existing.thumbnailUrl : null;
+  if(pendingSkriptThumbnail){
+    const url = await processImageUpload(pendingSkriptThumbnail, 'scripts');
+    if(!url) return;
+    thumbnailUrl = url;
+  }
   const me = currentUser();
-  const payload = { name, category, description, file_url:fileUrl, file_name:fileName, file_size:fileSize };
+  const payload = { name, category, description, file_url:fileUrl, file_name:fileName, file_size:fileSize, thumbnail_url:thumbnailUrl };
   if(existing){
     if(existing.dbId){
       const { error } = await sb.from('scripts').update(payload).eq('id', existing.dbId);
       if(error){ await customAlert('Izmena nije uspela: ' + error.message); return; }
     }
-    Object.assign(existing, { name, category, description, fileUrl, fileName, fileSize });
+    Object.assign(existing, { name, category, description, fileUrl, fileName, fileSize, thumbnailUrl });
   } else {
     payload.uploaded_by = me ? me.authId : null;
     const { data, error } = await sb.from('scripts').insert(payload).select().single();
     if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
     scriptFiles.unshift({
-      _id: nextId(), dbId: data.id, name, category, description, fileUrl, fileName, fileSize,
+      _id: nextId(), dbId: data.id, name, category, description, fileUrl, fileName, fileSize, thumbnailUrl,
       uploaderAuthId: me ? me.authId : null, uploaderName: me ? me.name : '—', createdAt: data.created_at
     });
   }
