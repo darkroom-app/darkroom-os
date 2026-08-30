@@ -1,13 +1,3 @@
 # Local secrets — never commit. Used by Claude for direct DB diagnostics
 # (bypasses RLS), kept out of the repo entirely.
 .secrets/
-
-# darkroom-path-bot's real config (has the live Discord bot token) —
-# config.example.json is the committed template, this is the real one.
-tools/darkroom-path-bot/config.json
-tools/darkroom-path-bot/node_modules/
-
-# darkroom-open's compiled helper — install.bat compiles DarkroomOpen.cs
-# fresh on each machine, so the .exe itself is a local build artifact.
-tools/darkroom-open/DarkroomOpen.exe
-tools/darkroom-open/*.TMP
