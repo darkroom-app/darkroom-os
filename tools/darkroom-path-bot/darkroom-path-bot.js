@@ -103,7 +103,7 @@ const client = new Client({
   ],
 });
 
-client.once('ready', () => {
+client.once('clientReady', () => {
   console.log(`Darkroom path bot je online kao ${client.user.tag}`);
 });
 
