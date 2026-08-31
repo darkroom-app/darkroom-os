@@ -1403,3 +1403,18 @@ create policy "admin can upload scripts"
     uploaded_by = auth.uid()
     and (select access from public.team_members where id = auth.uid()) in ('admin','superadmin')
   );
+
+
+-- ==== Phase 27: show payroll in Transakcije (run this query) ====
+-- Salary payouts never showed up in the Transakcije ledger even though
+-- "Plate" has been a real transaction category (categoryColorVar) since
+-- Phase 5 — the donut/cost-breakdown chart already folds salaryEntries in
+-- (finCostComponents(), client-side only), but the itemized Transakcije
+-- list reads purely from `transactions` and salaries never wrote a row
+-- there. Fixes it the same way client payments already work
+-- (txAutoLogPayment on kadar/extra_charge "naplaćeno") — a real
+-- transactions row, kept in sync (not just created once) with the salary
+-- entry: 'Isplaćeno' upserts the row, anything else (still 'Na čekanju',
+-- or the entry gets deleted) removes it, so someone un-marking a payment
+-- doesn't leave a stale ledger entry behind.
+alter table public.transactions add column if not exists salary_entry_id uuid references public.salary_entries(id) on delete set null;

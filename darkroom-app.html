@@ -9848,6 +9848,7 @@ function refreshAfterSalChange(){
   renderSalBreakdown(); renderSalPayrun(); renderSalChart(); renderSalProgress(); renderSalEmpGrid(); renderSalTable();
   renderFinHero(); renderFinFlowChart(); renderFinDonut(); renderFinProjection();
   renderRaiseHistory();
+  buildTxCategoryMenu(); buildTxYearMenu(); renderTxList();
 }
 
 /* ==== ISTORIJA POVEĆANJA ====
@@ -10064,6 +10065,7 @@ document.getElementById('salConfirmSubmit').addEventListener('click', async ()=>
     if(error){ await customAlert('Potvrda nije uspela: ' + error.message); return; }
   }
   toConfirm.forEach(e=>{ e.status = 'Isplaćeno'; });
+  for(const e of toConfirm) await txSyncSalary(e);
   const key = `${year}-${month}`;
   if(!salConfirmedMonths.includes(key)) salConfirmedMonths.push(key);
   salConfirmModalOverlay.classList.remove('open');
@@ -10163,6 +10165,7 @@ document.getElementById('salDelete').addEventListener('click', async ()=>{
   if(entry && entry.dbId){
     const { error } = await sb.from('salary_entries').delete().eq('id', entry.dbId);
     if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+    await txSyncSalary({ ...entry, status:'Na čekanju' }); // removes the linked ledger row, if any
   }
   const idx = salaryEntries.findIndex(s=>s.employee===emp && s.month===month);
   if(idx>-1) salaryEntries.splice(idx,1);
@@ -10185,15 +10188,19 @@ document.getElementById('salSubmit').addEventListener('click', async ()=>{
   if(!empRow || !empRow.authId) return;
   const existing = salaryFor(emp, month);
   const payload = { employee_id:empRow.authId, year:salBreakdownYear, month, osnovica, bonus, prekovremeno, dedukcije, porez, zdravstveno, fitnes, status };
+  let savedEntry;
   if(existing && existing.dbId){
     const { data, error } = await sb.from('salary_entries').update(payload).eq('id', existing.dbId).select().single();
     if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
     Object.assign(existing, { year:data.year, osnovica:data.osnovica, bonus:data.bonus, prekovremeno:data.prekovremeno, dedukcije:data.dedukcije, porez:data.porez, zdravstveno:data.zdravstveno, fitnes:data.fitnes, status:data.status });
+    savedEntry = existing;
   } else {
     const { data, error } = await sb.from('salary_entries').insert(payload).select().single();
     if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
-    salaryEntries.push({ _id:nextId(), dbId:data.id, employeeId:data.employee_id, employee:emp, year:data.year, month:data.month, osnovica:data.osnovica, bonus:data.bonus, prekovremeno:data.prekovremeno, dedukcije:data.dedukcije, porez:data.porez, zdravstveno:data.zdravstveno, fitnes:data.fitnes, status:data.status });
+    savedEntry = { _id:nextId(), dbId:data.id, employeeId:data.employee_id, employee:emp, year:data.year, month:data.month, osnovica:data.osnovica, bonus:data.bonus, prekovremeno:data.prekovremeno, dedukcije:data.dedukcije, porez:data.porez, zdravstveno:data.zdravstveno, fitnes:data.fitnes, status:data.status };
+    salaryEntries.push(savedEntry);
   }
+  await txSyncSalary(savedEntry);
   closeSalModal();
   refreshAfterSalChange();
 });
@@ -12058,7 +12065,7 @@ async function loadTransactionsFromSupabase(){
       allTransactions.push({
         _id: nextId(), dbId: row.id, date: row.date, type: row.type, category: row.category,
         desc: row.description, method: row.method, amount: row.amount,
-        extraChargeDbId: row.extra_charge_id, kadarDbId: row.kadar_id
+        extraChargeDbId: row.extra_charge_id, kadarDbId: row.kadar_id, salaryEntryDbId: row.salary_entry_id
       });
     });
     return true;
@@ -12072,6 +12079,37 @@ async function txAutoLogPayment({ desc, amount, date, kadarDbId, extraChargeDbId
   const { data, error } = await sb.from('transactions').insert(row).select().single();
   if(error || !data) return;
   allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:data.extra_charge_id, kadarDbId:data.kadar_id });
+}
+/* Keeps one Transakcije ledger row in sync with a salary_entries row —
+   called from the salary modal's save handler and from "Potvrdi sve plate"
+   (bulk status flip), same idea as txAutoLogPayment for client payments but
+   two-way: 'Isplaćeno' upserts the linked row, anything else (still 'Na
+   čekanju', or the salary entry got deleted — see the salDelete handler)
+   removes it, so a payment that gets un-marked doesn't leave a stale entry
+   in the ledger. Amount is salUkupno() — the studio's real total cost for
+   that person that month (neto + benefiti + porez), not just their payout. */
+async function txSyncSalary(entry){
+  const existingTx = allTransactions.find(t=>t.salaryEntryDbId === entry.dbId);
+  if(entry.status !== 'Isplaćeno'){
+    if(existingTx && existingTx.dbId){
+      const { error } = await sb.from('transactions').delete().eq('id', existingTx.dbId);
+      if(!error){ const idx = allTransactions.findIndex(t=>t._id===existingTx._id); if(idx>-1) allTransactions.splice(idx,1); }
+    }
+    return;
+  }
+  const amount = salUkupno(entry);
+  const desc = `Plata — ${entry.employee} (${monthNamesFull[entry.month]} ${entry.year}.)`;
+  const date = toISO(new Date(entry.year, entry.month+1, 5));
+  if(existingTx){
+    if(existingTx.dbId){
+      const { error } = await sb.from('transactions').update({ description:desc, amount, date }).eq('id', existingTx.dbId);
+      if(!error) Object.assign(existingTx, { desc, amount, date });
+    }
+  } else {
+    const row = { date, type:'Odliv', category:'Plate', description:desc, method:'Račun', amount, salary_entry_id: entry.dbId };
+    const { data, error } = await sb.from('transactions').insert(row).select().single();
+    if(!error && data) allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, salaryEntryDbId:data.salary_entry_id });
+  }
 }
 /* Combines a project's real per-kadar base prices with its extra_charges
    rows into one flat {price,status} list — the single place every finance
