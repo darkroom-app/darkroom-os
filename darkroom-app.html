@@ -8540,9 +8540,16 @@ function receivablesTotal(){
    "tok" (Priliv - Odliv = Neto) kao chipovi umesto tri odvojene kartice koje
    su pre ponavljale istu pricu; Potrazivanja/Plate% ostaju kao manji prateci
    brojevi da ne konkurisu glavnoj cifri. */
+/* category!=='Plate' everywhere below that also adds monthlyPayrollTotal/
+   yearPayrollTotal: payroll's own transactions rows (txSyncPayrollMonth)
+   exist so Transakcije has something to show, but the cost itself is
+   already counted via salaryEntries in these payroll-total helpers —
+   summing both would double it. "Plate" is deliberately not one of
+   TX_CATEGORIES' manual-entry options, so this can never exclude a real
+   hand-entered transaction, only the auto-synced payroll rows. */
 function renderFinHero(){
   const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
-  const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
+  const totalOutTx = allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate').reduce((s,t)=>s+t.amount,0);
   const totalSalary = yearPayrollTotal(null);
   const totalOut = totalOutTx + totalSalary;
   const net = totalIn - totalOut;
@@ -8551,7 +8558,7 @@ function renderFinHero(){
   const payrollPct = totalIn > 0 ? (totalSalary/totalIn)*100 : 0;
 
   const currM = TODAY.m - 1, prevM = currM - 1;
-  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
+  const outFor = m => allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y);
   const outCurr = outFor(currM), outPrev = prevM>=0 ? outFor(prevM) : 0;
   const outTrend = outPrev>0 ? ((outCurr-outPrev)/outPrev)*100 : null;
 
@@ -8588,7 +8595,7 @@ function renderFinFlowChart(){
   const monthIn = [], monthOut = [];
   for(let m=0;m<8;m++){
     monthIn.push(allTransactions.filter(t=>t.type==='Priliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0));
-    monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y));
+    monthOut.push(allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && txYear(t.date)===TODAY.y && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, TODAY.y));
   }
   const wrap = document.getElementById('finFlowChart');
   wrap.classList.remove('shown');
@@ -8654,7 +8661,7 @@ function finCostComponents(){
   });
   const items = Object.keys(comps).filter(k=>comps[k]>0).map(k=>({ label:salCatLabels[k], value:comps[k], color:salCatColors[k] }));
   const txCats = {};
-  allTransactions.filter(t=>t.type==='Odliv').forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
+  allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate').forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
   Object.keys(txCats).forEach(c=>{
     items.push({ label:c, value:txCats[c], color: categoryColorVar[c] || 'var(--ink-faint)' });
   });
@@ -8817,7 +8824,7 @@ function renderTopExpenses(){
 let finProjectionMarginPct = (_persistedRaw && typeof _persistedRaw.finProjectionMarginPct === 'number') ? _persistedRaw.finProjectionMarginPct : 20;
 function finMonthCost(m, year){
   if(year === undefined) year = TODAY.y;
-  return allTransactions.filter(t=>t.type==='Odliv' && txYear(t.date)===year && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, year);
+  return allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && txYear(t.date)===year && txMonth(t.date)===m).reduce((s,t)=>s+t.amount,0) + monthlyPayrollTotal(m, year);
 }
 function finMonthRevenue(m, year){
   if(year === undefined) year = TODAY.y;
@@ -10065,7 +10072,7 @@ document.getElementById('salConfirmSubmit').addEventListener('click', async ()=>
     if(error){ await customAlert('Potvrda nije uspela: ' + error.message); return; }
   }
   toConfirm.forEach(e=>{ e.status = 'Isplaćeno'; });
-  for(const e of toConfirm) await txSyncSalary(e);
+  await txSyncPayrollMonth(year, month);
   const key = `${year}-${month}`;
   if(!salConfirmedMonths.includes(key)) salConfirmedMonths.push(key);
   salConfirmModalOverlay.classList.remove('open');
@@ -10165,10 +10172,10 @@ document.getElementById('salDelete').addEventListener('click', async ()=>{
   if(entry && entry.dbId){
     const { error } = await sb.from('salary_entries').delete().eq('id', entry.dbId);
     if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
-    await txSyncSalary({ ...entry, status:'Na čekanju' }); // removes the linked ledger row, if any
   }
   const idx = salaryEntries.findIndex(s=>s.employee===emp && s.month===month);
   if(idx>-1) salaryEntries.splice(idx,1);
+  if(entry) await txSyncPayrollMonth(entry.year, entry.month); // re-totals (or removes) that month's ledger row now that this entry is gone
   closeSalModal();
   refreshAfterSalChange();
 });
@@ -10200,7 +10207,7 @@ document.getElementById('salSubmit').addEventListener('click', async ()=>{
     savedEntry = { _id:nextId(), dbId:data.id, employeeId:data.employee_id, employee:emp, year:data.year, month:data.month, osnovica:data.osnovica, bonus:data.bonus, prekovremeno:data.prekovremeno, dedukcije:data.dedukcije, porez:data.porez, zdravstveno:data.zdravstveno, fitnes:data.fitnes, status:data.status };
     salaryEntries.push(savedEntry);
   }
-  await txSyncSalary(savedEntry);
+  await txSyncPayrollMonth(savedEntry.year, savedEntry.month);
   closeSalModal();
   refreshAfterSalChange();
 });
@@ -10779,7 +10786,7 @@ function buildChatContext(){
   let finansije = null;
   if(canAccessFinance()){
     const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
-    const totalOutTx = allTransactions.filter(t=>t.type==='Odliv').reduce((s,t)=>s+t.amount,0);
+    const totalOutTx = allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate').reduce((s,t)=>s+t.amount,0);
     const totalSalary = yearPayrollTotal(null);
     const ovaGod = String(TODAY.y);
 
@@ -10805,7 +10812,7 @@ function buildChatContext(){
       ova_godina: {
         godina: TODAY.y,
         priliv: allTransactions.filter(t=>t.type==='Priliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
-        odliv: allTransactions.filter(t=>t.type==='Odliv' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
+        odliv: allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && t.date.startsWith(ovaGod)).reduce((s,t)=>s+t.amount,0),
         plate: yearPayrollTotal(TODAY.y),
       },
       plate_po_zaposlenom,
@@ -12065,7 +12072,7 @@ async function loadTransactionsFromSupabase(){
       allTransactions.push({
         _id: nextId(), dbId: row.id, date: row.date, type: row.type, category: row.category,
         desc: row.description, method: row.method, amount: row.amount,
-        extraChargeDbId: row.extra_charge_id, kadarDbId: row.kadar_id, salaryEntryDbId: row.salary_entry_id
+        extraChargeDbId: row.extra_charge_id, kadarDbId: row.kadar_id
       });
     });
     return true;
@@ -12080,39 +12087,51 @@ async function txAutoLogPayment({ desc, amount, date, kadarDbId, extraChargeDbId
   if(error || !data) return;
   allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:data.extra_charge_id, kadarDbId:data.kadar_id });
 }
-/* Keeps one Transakcije ledger row in sync with a salary_entries row —
-   called from the salary modal's save handler and from "Potvrdi sve plate"
-   (bulk status flip), same idea as txAutoLogPayment for client payments but
-   two-way: 'Isplaćeno' upserts the linked row, anything else (still 'Na
-   čekanju', or the salary entry got deleted — see the salDelete handler)
-   removes it, so a payment that gets un-marked doesn't leave a stale entry
-   in the ledger. Amount is salUkupno() — the studio's real total cost for
-   that person that month (neto + benefiti + porez), not just their payout. */
-async function txSyncSalary(entry){
-  const existingTx = allTransactions.find(t=>t.salaryEntryDbId === entry.dbId);
-  if(entry.status !== 'Isplaćeno'){
+/* Keeps ONE Transakcije ledger row per (year, month) in sync with that
+   month's whole payroll — called from the salary modal's save handler and
+   from "Potvrdi sve plate" (bulk status flip) with the year/month that
+   changed. Deliberately one row for the whole studio, not one per employee
+   (per-employee detail already lives in Plate — Transakcije only needed to
+   show that payroll happened and how much). Matched/upserted by category +
+   date rather than a linking column, since one row now represents many
+   salary_entries rows at once: the payday date (5th of the following
+   month) is already unique per (year, month) and "Plate" is deliberately
+   not one of TX_CATEGORIES' manual-entry options, so this can never
+   collide with a real hand-entered transaction.
+   Two-way, like txAutoLogPayment for client payments: if the month still
+   has at least one 'Isplaćeno' entry the row is created/updated to match
+   the current total; if none do (all reverted to 'Na čekanju', or deleted)
+   the row is removed, so the ledger never drifts from what Plate says.
+   Amount sums salUkupno() per entry — the studio's real total cost per
+   person that month (neto + benefiti + porez), not just their payout. */
+async function txSyncPayrollMonth(year, month){
+  const paydayDate = new Date(year, month+1, 5);
+  // toISO() expects this app's own {y,m,d} shape, not a native Date — build
+  // the ISO string straight from Date's own getters instead, same as
+  // renderSalPayrun's payday label does for this exact same computation.
+  const date = `${paydayDate.getFullYear()}-${String(paydayDate.getMonth()+1).padStart(2,'0')}-${String(paydayDate.getDate()).padStart(2,'0')}`;
+  const existingTx = allTransactions.find(t=>t.category==='Plate' && t.date===date);
+  const entries = salaryEntries.filter(e=>e.year===year && e.month===month && e.status==='Isplaćeno');
+
+  if(!entries.length){
     if(existingTx && existingTx.dbId){
       const { error } = await sb.from('transactions').delete().eq('id', existingTx.dbId);
       if(!error){ const idx = allTransactions.findIndex(t=>t._id===existingTx._id); if(idx>-1) allTransactions.splice(idx,1); }
     }
     return;
   }
-  const amount = salUkupno(entry);
-  const desc = `Plata — ${entry.employee} (${monthNamesFull[entry.month]} ${entry.year}.)`;
-  // toISO() expects this app's own {y,m,d} shape, not a native Date — build
-  // the ISO string straight from Date's own getters instead, same as
-  // renderSalPayrun's payday label does for this exact same computation.
-  const paydayDate = new Date(entry.year, entry.month+1, 5);
-  const date = `${paydayDate.getFullYear()}-${String(paydayDate.getMonth()+1).padStart(2,'0')}-${String(paydayDate.getDate()).padStart(2,'0')}`;
+
+  const amount = entries.reduce((s,e)=>s+salUkupno(e), 0);
+  const desc = `Plate — ${monthNamesFull[month]} ${year}. (${entries.length} ${entries.length===1?'zaposleni':'zaposlenih'})`;
   if(existingTx){
     if(existingTx.dbId){
-      const { error } = await sb.from('transactions').update({ description:desc, amount, date }).eq('id', existingTx.dbId);
-      if(!error) Object.assign(existingTx, { desc, amount, date });
+      const { error } = await sb.from('transactions').update({ description:desc, amount }).eq('id', existingTx.dbId);
+      if(!error) Object.assign(existingTx, { desc, amount });
     }
   } else {
-    const row = { date, type:'Odliv', category:'Plate', description:desc, method:'Račun', amount, salary_entry_id: entry.dbId };
+    const row = { date, type:'Odliv', category:'Plate', description:desc, method:'Račun', amount };
     const { data, error } = await sb.from('transactions').insert(row).select().single();
-    if(!error && data) allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, salaryEntryDbId:data.salary_entry_id });
+    if(!error && data) allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount });
   }
 }
 /* Combines a project's real per-kadar base prices with its extra_charges

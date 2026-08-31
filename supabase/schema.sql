@@ -1405,16 +1405,23 @@ create policy "admin can upload scripts"
   );
 
 
--- ==== Phase 27: show payroll in Transakcije (run this query) ====
+-- ==== Phase 27: show payroll in Transakcije (superseded by Phase 28) ====
 -- Salary payouts never showed up in the Transakcije ledger even though
 -- "Plate" has been a real transaction category (categoryColorVar) since
 -- Phase 5 — the donut/cost-breakdown chart already folds salaryEntries in
 -- (finCostComponents(), client-side only), but the itemized Transakcije
 -- list reads purely from `transactions` and salaries never wrote a row
--- there. Fixes it the same way client payments already work
--- (txAutoLogPayment on kadar/extra_charge "naplaćeno") — a real
--- transactions row, kept in sync (not just created once) with the salary
--- entry: 'Isplaćeno' upserts the row, anything else (still 'Na čekanju',
--- or the entry gets deleted) removes it, so someone un-marking a payment
--- doesn't leave a stale ledger entry behind.
+-- there. Original design added a per-entry link column and wrote one
+-- transaction per (employee, month); this caused a double-counting bug
+-- (renderFinHero etc. already sum payroll separately from salaryEntries)
+-- and didn't match what was actually wanted (one cumulative studio-wide
+-- row per month, not one per employee) — see Phase 28.
 alter table public.transactions add column if not exists salary_entry_id uuid references public.salary_entries(id) on delete set null;
+
+-- ==== Phase 28: fix payroll-in-Transakcije — one row per studio-month (run this query) ====
+-- Replaces Phase 27's per-employee-per-month rows with a single aggregate
+-- "Plate" transaction per (year, month), matched/upserted by
+-- category='Plate' + date (no FK needed — one row now represents many
+-- salary_entries rows at once, txSyncPayrollMonth() client-side). Drops the
+-- now-unused per-entry link column from Phase 27.
+alter table public.transactions drop column if exists salary_entry_id;
