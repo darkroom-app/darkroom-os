@@ -12099,7 +12099,11 @@ async function txSyncSalary(entry){
   }
   const amount = salUkupno(entry);
   const desc = `Plata — ${entry.employee} (${monthNamesFull[entry.month]} ${entry.year}.)`;
-  const date = toISO(new Date(entry.year, entry.month+1, 5));
+  // toISO() expects this app's own {y,m,d} shape, not a native Date — build
+  // the ISO string straight from Date's own getters instead, same as
+  // renderSalPayrun's payday label does for this exact same computation.
+  const paydayDate = new Date(entry.year, entry.month+1, 5);
+  const date = `${paydayDate.getFullYear()}-${String(paydayDate.getMonth()+1).padStart(2,'0')}-${String(paydayDate.getDate()).padStart(2,'0')}`;
   if(existingTx){
     if(existingTx.dbId){
       const { error } = await sb.from('transactions').update({ description:desc, amount, date }).eq('id', existingTx.dbId);
