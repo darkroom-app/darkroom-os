@@ -1425,3 +1425,40 @@ alter table public.transactions add column if not exists salary_entry_id uuid re
 -- salary_entries rows at once, txSyncPayrollMonth() client-side). Drops the
 -- now-unused per-entry link column from Phase 27.
 alter table public.transactions drop column if exists salary_entry_id;
+
+-- ==== Phase 29: side_hustle_entries → Supabase + year field (run this query) ====
+-- sideHustleEntries lived only in localStorage (fromPersisted/persist) with
+-- no `year` field — sideHustleFor(employee, month) matched by month alone,
+-- so a side hustle logged for e.g. August of one year silently applied to
+-- that same employee's August in every other year too, and the data never
+-- synced across devices/browsers at all. Moving it to a real table (mirrors
+-- salary_entries' superadmin-only RLS, since it's only ever edited from
+-- inside the Plate salary modal) fixes both.
+create table public.side_hustle_entries (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.team_members(id) on delete cascade,
+  year int not null,
+  month int not null,
+  project_code text not null,
+  kadar_name text not null,
+  amount numeric not null,
+  created_at timestamptz not null default now()
+);
+alter table public.side_hustle_entries enable row level security;
+
+create policy "superadmin can read side_hustle_entries"
+  on public.side_hustle_entries for select to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can insert side_hustle_entries"
+  on public.side_hustle_entries for insert to authenticated
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can update side_hustle_entries"
+  on public.side_hustle_entries for update to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin')
+  with check ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+create policy "superadmin can delete side_hustle_entries"
+  on public.side_hustle_entries for delete to authenticated
+  using ((select access from public.team_members where id = auth.uid()) = 'superadmin');

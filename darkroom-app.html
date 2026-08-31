@@ -3455,7 +3455,7 @@ function persist(){
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
       teamMembers,
-      sideHustleEntries, todoItems, salConfirmedMonths, notifications,
+      todoItems, salConfirmedMonths, notifications,
       finProjectionMarginPct
       // allClients/allProjects intentionally excluded — Supabase (Phase 3a/3b) is
       // now the sole source of truth for them, matching Phase 2's precedent for
@@ -3469,6 +3469,10 @@ function persist(){
       // via loadKadarPricingFromSupabase().
       // salaryEntries removed (Phase 7) — real payroll now lives in Supabase's
       // salary_entries table, loaded via loadSalaryEntriesFromSupabase().
+      // sideHustleEntries removed (Phase 29) — was localStorage-only with no
+      // `year` field (a month index alone silently matched every year), now
+      // in Supabase's side_hustle_entries table via
+      // loadSideHustleEntriesFromSupabase().
       // events removed (Phase 8) — the calendar is now Supabase-backed via
       // calendar_events, loaded via loadEventsFromSupabase(). This was the bug:
       // local-only events could vanish per-device while their logged
@@ -8480,9 +8484,31 @@ async function loadSalaryEntriesFromSupabase(){
    dodeljen — poenta je da neko preuzme višak posla), sa svojom cenom po
    zadatku umesto fiksnog mesečnog iznosa poput zdravstvenog/fitnesa. */
 let sideHustleEntries = [];
-fromPersisted('sideHustleEntries', sideHustleEntries);
-function sideHustleFor(employee, month){ return sideHustleEntries.filter(s=>s.employee===employee && s.month===month); }
-function sideHustleTotal(employee, month){ return sideHustleFor(employee, month).reduce((s,e)=>s+e.amount,0); }
+async function loadSideHustleEntriesFromSupabase(){
+  if(!sb) return false;
+  try {
+    const pageSize = 1000;
+    const data = [];
+    for(let from = 0; ; from += pageSize){
+      const { data: page, error } = await sb.from('side_hustle_entries').select('*').range(from, from + pageSize - 1);
+      if(error) return false;
+      data.push(...page);
+      if(page.length < pageSize) break;
+    }
+    sideHustleEntries.length = 0;
+    data.forEach(row=>{
+      const emp = teamMembers.find(t=>t.authId===row.employee_id);
+      sideHustleEntries.push({
+        _id: nextId(), dbId: row.id, employeeId: row.employee_id,
+        employee: emp ? emp.name : '', year: row.year, month: row.month,
+        projectCode: row.project_code, kadarName: row.kadar_name, amount: row.amount
+      });
+    });
+    return true;
+  } catch(e){ return false; }
+}
+function sideHustleFor(employee, month, year){ return sideHustleEntries.filter(s=>s.employee===employee && s.month===month && s.year===year); }
+function sideHustleTotal(employee, month, year){ return sideHustleFor(employee, month, year).reduce((s,e)=>s+e.amount,0); }
 /* year je opciono — podrazumevano trenutno prikazana godina u Plate tabu
    (salBreakdownYear), tako da postojeci pozivi ostaju netaknuti sad kad
    salary_entries moze da sadrzi vise od jedne godine. Prosledi year:null
@@ -8513,7 +8539,7 @@ function suggestedPrekovremeno(emp, year, month){
   return { hours, amount: Math.round((osn/160)*1.3*hours) };
 }
 function salBruto(e){ return e.osnovica + e.bonus + e.prekovremeno; }
-function salBenefits(e){ return (e.zdravstveno||0) + (e.fitnes?FITNES_AMOUNT:0) + sideHustleTotal(e.employee, e.month); }
+function salBenefits(e){ return (e.zdravstveno||0) + (e.fitnes?FITNES_AMOUNT:0) + sideHustleTotal(e.employee, e.month, e.year); }
 /* Neto je namerno cista plata (bruto - dedukcije) — benefiti (zdravstveno,
    fitnes, side hustle) se NE racunaju u nju, vec se prikazuju kao odvojen
    dodatak svuda u UI-ju. Ukupno (ukupan trosak firme) i dalje sabira sve
@@ -10081,7 +10107,7 @@ document.getElementById('salConfirmSubmit').addEventListener('click', async ()=>
   renderFinHero(); renderFinFlowChart(); renderFinDonut(); renderFinProjection();
   persist();
 });
-function closeSalModal(){ salModalOverlay.classList.remove('open'); activeSalEmp = null; activeSalMonth = null; }
+function closeSalModal(){ salModalOverlay.classList.remove('open'); activeSalEmp = null; activeSalMonth = null; activeSalYear = null; }
 
 function updateSalModalLive(){
   const emp = document.getElementById('salEmpInput').value;
@@ -10093,7 +10119,7 @@ function updateSalModalLive(){
   const porez = parseFloat(document.getElementById('salPorezInput').value) || 0;
   const zdravstveno = parseFloat(document.getElementById('salZdravstvenoInput').value) || 0;
   const fitnes = document.getElementById('salFitnesInput').checked ? FITNES_AMOUNT : 0;
-  const sideHustle = sideHustleTotal(emp, month);
+  const sideHustle = sideHustleTotal(emp, month, activeSalYear);
   const benefiti = zdravstveno + fitnes + sideHustle;
   const neto = osn + bonus + preko - deduk;
   const ukupno = neto + benefiti + porez;
@@ -10129,9 +10155,9 @@ function autoCalcSalPorez(){
   document.getElementById(id).addEventListener('change', updateSalModalLive);
 });
 
-let activeSalEmp = null, activeSalMonth = null;
+let activeSalEmp = null, activeSalMonth = null, activeSalYear = null;
 function openSalModal(emp, month){
-  activeSalEmp = emp; activeSalMonth = month;
+  activeSalEmp = emp; activeSalMonth = month; activeSalYear = salBreakdownYear;
   const existing = salaryFor(emp, month);
   document.getElementById('salTitle').textContent = existing ? "Izmeni platu" : "Unos plate";
   document.getElementById('salSubmit').textContent = "Sačuvaj";
@@ -10216,7 +10242,7 @@ let editingSideHustleId = null;
 function renderSalSideHustleList(){
   const list = document.getElementById('salSideHustleList');
   if(!activeSalEmp){ list.innerHTML = ''; return; }
-  const entries = sideHustleFor(activeSalEmp, activeSalMonth);
+  const entries = sideHustleFor(activeSalEmp, activeSalMonth, activeSalYear);
   list.innerHTML = entries.length ? entries.map(e=>`
     <div class="price-kadar-row" data-shid="${e._id}" style="cursor:pointer;">
       <div class="price-kadar-name">${escapeHtml(e.kadarName)} <span class="price-extra-hint" style="color:var(--ink-faint);">· ${escapeHtml(e.projectCode)}</span></div>
@@ -10265,31 +10291,51 @@ function openSideHustleModal(entry){
 document.getElementById('salSideHustleAddBtn').addEventListener('click', ()=> openSideHustleModal(null));
 document.getElementById('shCancel').addEventListener('click', closeSideHustleModal);
 wireOverlayClose(sideHustleModalOverlay, closeSideHustleModal);
-document.getElementById('shDelete').addEventListener('click', ()=>{
+document.getElementById('shDelete').addEventListener('click', async ()=>{
   if(!editingSideHustleId) return;
   if(!confirm('Obrisati ovaj side hustle unos?')) return;
   const idx = sideHustleEntries.findIndex(s=>s._id===editingSideHustleId);
+  const entry = idx>-1 ? sideHustleEntries[idx] : null;
+  if(entry && entry.dbId){
+    const { error } = await sb.from('side_hustle_entries').delete().eq('id', entry.dbId);
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+  }
   if(idx>-1) sideHustleEntries.splice(idx,1);
   closeSideHustleModal();
   renderSalSideHustleList();
   updateSalModalLive();
-  persist();
+  // Side hustle je deo salUkupno() → menja iznos već sinhronizovanog "Plate"
+  // reda u Transakcijama za ovaj mesec (ako ga ima), ne samo prikaz uživo.
+  await txSyncPayrollMonth(activeSalYear, activeSalMonth);
+  refreshAfterSalChange();
 });
-document.getElementById('shSubmit').addEventListener('click', ()=>{
+document.getElementById('shSubmit').addEventListener('click', async ()=>{
   const projectCode = document.getElementById('shProjectSelect').value;
   const kadarName = document.getElementById('shKadarSelect').value;
   const amount = parseFloat(document.getElementById('shAmountInput').value);
   if(!projectCode || !kadarName || !amount) return;
   if(editingSideHustleId){
     const entry = sideHustleEntries.find(s=>s._id===editingSideHustleId);
-    if(entry) Object.assign(entry, { projectCode, kadarName, amount });
+    if(entry){
+      if(entry.dbId){
+        const { error } = await sb.from('side_hustle_entries').update({ project_code:projectCode, kadar_name:kadarName, amount }).eq('id', entry.dbId);
+        if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
+      }
+      Object.assign(entry, { projectCode, kadarName, amount });
+    }
   } else {
-    sideHustleEntries.push({ _id:nextId(), employee:activeSalEmp, month:activeSalMonth, projectCode, kadarName, amount });
+    const empRow = teamMembers.find(t=>t.name===activeSalEmp);
+    if(!empRow || !empRow.authId) return;
+    const payload = { employee_id:empRow.authId, year:activeSalYear, month:activeSalMonth, project_code:projectCode, kadar_name:kadarName, amount };
+    const { data, error } = await sb.from('side_hustle_entries').insert(payload).select().single();
+    if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
+    sideHustleEntries.push({ _id:nextId(), dbId:data.id, employeeId:data.employee_id, employee:activeSalEmp, year:data.year, month:data.month, projectCode:data.project_code, kadarName:data.kadar_name, amount:data.amount });
   }
   closeSideHustleModal();
   renderSalSideHustleList();
   updateSalModalLive();
-  persist();
+  await txSyncPayrollMonth(activeSalYear, activeSalMonth);
+  refreshAfterSalChange();
 });
 
 let finansijeInited = false;
@@ -12171,6 +12217,7 @@ async function resolveSessionLogin(session){
     await loadTransactionsFromSupabase();
     await loadExpenseInboxFromSupabase();
     await loadSalaryEntriesFromSupabase();
+    await loadSideHustleEntriesFromSupabase();
     await loadEventsFromSupabase();
     buildCalFilterMenus();
     renderCalendar();
