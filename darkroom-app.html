@@ -651,6 +651,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .sal-emp-card.entered{ border-color:#4C8A55; box-shadow:0 0 0 3px rgba(76,138,85,0.12); }
 .sal-emp-card-top{ display:flex; align-items:center; gap:7px; }
 .sal-emp-avatar-lg{ width:26px; height:26px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:9.5px; color:#fff; flex-shrink:0; }
+.sal-emp-card-info{ flex:1; min-width:0; }
 .sal-emp-card-name{ font-family:var(--font-display); font-weight:600; font-size:11.5px; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sal-emp-card-role{ font-size:9px; color:var(--ink-faint); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .sal-emp-card-amt{ font-family:var(--font-mono); font-size:12.5px; font-weight:700; color:var(--ink); }
@@ -9728,7 +9729,7 @@ function renderSalEmpGrid(){
       return `<div class="sal-emp-card" data-emp="${e.key}" style="cursor:pointer;">
         <div class="sal-emp-card-top">
           <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
-          <div><div class="sal-emp-card-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
+          <div class="sal-emp-card-info"><div class="sal-emp-card-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
         </div>
         <div class="sal-emp-card-amt empty">Nije uneto</div>
         <button class="sal-emp-card-btn" data-emp="${e.key}">Unesi platu</button>
@@ -9738,7 +9739,7 @@ function renderSalEmpGrid(){
     return `<div class="sal-emp-card entered" data-emp="${e.key}" style="cursor:pointer;">
       <div class="sal-emp-card-top">
         <span class="sal-emp-avatar-lg" style="${av.bg}">${av.inner}</span>
-        <div><div class="sal-emp-card-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
+        <div class="sal-emp-card-info"><div class="sal-emp-card-name">${escapeHtml(e.name)}${e.fitnessOptedIn ? ' <span title="Prijavljen/a za fitness dodatak">🏋️</span>' : ''}</div><div class="sal-emp-card-role">${escapeHtml(e.role)}</div></div>
       </div>
       <div class="sal-emp-card-amt">${fmtRSD(salUkupno(entry))}</div>
       ${salBenefits(entry) ? `<div class="sal-emp-card-role" style="margin-top:-6px;">+ ${fmtRSD(salBenefits(entry))} benefiti</div>` : ''}
