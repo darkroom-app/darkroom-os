@@ -10,9 +10,13 @@
 // with plain csc.exe), and launches the watcher immediately so it's
 // running without waiting for the next login. Ends with a small message
 // box confirming it worked, since otherwise a console-free installer that
-// finishes instantly gives no feedback at all.
+// finishes instantly gives no feedback at all. Also doubles as the updater —
+// re-running it stops any already-running watcher first (an in-use exe
+// can't be overwritten on Windows), so shipping a new build is just "send
+// this file again," same as the first install.
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
@@ -36,6 +40,7 @@ namespace DarkroomPathWatcher
 
                 string exePath = Path.Combine(installDir, ExeResourceName);
                 string iconPath = Path.Combine(installDir, IconResourceName);
+                StopRunningWatcher();
                 ExtractResource(ExeResourceName, exePath);
                 ExtractResource(IconResourceName, iconPath);
 
@@ -56,6 +61,19 @@ namespace DarkroomPathWatcher
                     "Darkroom Path Watcher",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Error);
+            }
+        }
+
+        // An already-running watcher.exe can't have its file overwritten (Windows
+        // locks running executables) — stop any instance first so re-running this
+        // installer works as an updater, not just a fresh install.
+        private static void StopRunningWatcher()
+        {
+            string exeName = Path.GetFileNameWithoutExtension(ExeResourceName);
+            foreach (Process p in Process.GetProcessesByName(exeName))
+            {
+                try { p.Kill(); p.WaitForExit(2000); }
+                catch { /* best-effort — extraction below will surface any real problem */ }
             }
         }
 

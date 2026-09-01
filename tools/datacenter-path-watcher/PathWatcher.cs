@@ -1,21 +1,31 @@
 // DARKROOM OS: Datacenter path watcher (tray app)
 //
-// Watches the Windows clipboard for a path starting with \\DATACENTER\ and
-// reacts based on WHERE it was copied from (Windows exposes the clipboard's
-// current owner window, so the source app's process name is checkable):
+// Watches the Windows clipboard for a path starting with \\DATACENTER\.
 //
-//   - Copied from Explorer (explorer.exe)  -> sharing intent. Silently
-//     rewrites the clipboard into a ```-fenced Discord code block, so a
-//     plain Ctrl+V into a channel already renders with Discord's own
-//     one-click copy button. No popup, no click, nothing to notice.
-//   - Copied from anywhere else (Discord's code-block copy button, a
-//     browser, ...) -> consuming intent. Immediately opens that path in
-//     File Explorer. No confirmation, no menu.
+//   - Copied from Explorer (explorer.exe) -> a tiny two-item popup menu
+//     appears right at the mouse cursor: "Ostavi kao putanju" (do
+//     nothing — the plain path is already on the clipboard, exactly what
+//     Photoshop/3ds Max/Explorer's own address bar need) or "Pripremi za
+//     Discord" (rewrites the clipboard into a ```-fenced code block).
+//     Ignoring the popup (click elsewhere, Escape, or just leave it — it
+//     auto-closes after a few seconds) leaves the plain path untouched,
+//     so a copy-and-paste-elsewhere workflow is never silently mangled.
+//     (An earlier version auto-rewrote *every* Explorer copy into a
+//     Discord block with no choice at all, which broke exactly those
+//     other paste targets — don't reintroduce that.)
+//   - Copied from anywhere else (most commonly: clicking the copy button
+//     on a Discord code block) -> consuming intent. Immediately opens that
+//     path in File Explorer. No popup needed here since nobody copies a
+//     path out of Discord for any reason other than wanting to get to
+//     that folder.
+//   - Left-click the tray icon at any time -> same "Pripremi za Discord"
+//     rewrite, applied to whatever's currently on the clipboard. Kept as a
+//     fallback for when the popup was dismissed/missed and you want to
+//     wrap the last-copied path after the fact.
 //
-// So the whole round trip is: copy in Explorer, paste in Discord (exactly
-// normal Ctrl+C/Ctrl+V, nothing extra) -> whoever reads it clicks Discord's
-// copy button once -> their Explorer opens. One click, on the receiving
-// end, and it's Discord's own button, not a link we control.
+// So: copy a path in Explorer, a small choice appears — pick a lane, or
+// ignore it and keep working (Photoshop/Max/anywhere paste unaffected).
+// Receiving end: click Discord's copy button once, Explorer opens.
 //
 // Deliberately simple and boring otherwise: no browser, no custom URL
 // protocol, no PowerShell, no admin rights, no network calls — just a
@@ -28,8 +38,7 @@
 // software flags exactly that browser-triggers-local-execution pattern
 // (even Windows' own search-ms: protocol, once a documented phishing
 // vector, now gets flagged too). Moving the trigger out of the browser
-// entirely — a background app reacting to what's already in the clipboard,
-// keyed off which app put it there — sidesteps both.
+// entirely sidesteps both.
 //
 // Autostart: this .exe itself doesn't register anything — Setup.cs (built
 // as DarkroomPathWatcherSetup.exe, see README) is what installs it and
@@ -61,6 +70,8 @@ namespace DarkroomPathWatcher
 
         private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string PathPrefix = @"\\DATACENTER\";
+        private const string IdleTooltip = "Darkroom — pratilac putanja";
+        private const string WrappedTooltip = "Spremno za Discord — nalepi (Ctrl+V)";
 
         private readonly NotifyIcon trayIcon;
         private readonly Icon appIcon;
@@ -81,12 +92,16 @@ namespace DarkroomPathWatcher
             trayIcon = new NotifyIcon
             {
                 Icon = appIcon,
-                Text = "Darkroom — pratilac putanja",
+                Text = IdleTooltip,
                 Visible = true
             };
             var menu = new ContextMenuStrip();
             menu.Items.Add("Izađi", null, (s, e) => Application.Exit());
             trayIcon.ContextMenuStrip = menu;
+            trayIcon.MouseClick += (s, e) =>
+            {
+                if (e.Button == MouseButtons.Left) TryWrapClipboardForDiscord();
+            };
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -133,12 +148,31 @@ namespace DarkroomPathWatcher
 
             if (string.Equals(SourceProcessName(), "explorer", StringComparison.OrdinalIgnoreCase))
             {
-                RewriteForDiscord(text);
+                ShowChoicePopup(text);
             }
             else
             {
                 OpenInExplorer(text);
             }
+        }
+
+        // A tiny popup right at the cursor, offering an explicit choice
+        // instead of guessing — dismissing it (click away, Escape, or just
+        // ignore it) leaves the clipboard exactly as Explorer put it.
+        private void ShowChoicePopup(string path)
+        {
+            var menu = new ContextMenuStrip();
+            menu.Items.Add("📁 Ostavi kao putanju", null, (s, e) => { });
+            menu.Items.Add("💬 Pripremi za Discord", null, (s, e) => WrapForDiscord(path));
+
+            var autoClose = new System.Windows.Forms.Timer { Interval = 6000 };
+            autoClose.Tick += (s, e) => { if (!menu.IsDisposed) menu.Close(); };
+            // Cleanup happens exactly once here, regardless of whether the menu
+            // closed because of a click or because the timer above fired.
+            menu.Closed += (s, e) => { autoClose.Stop(); autoClose.Dispose(); };
+            autoClose.Start();
+
+            menu.Show(Cursor.Position);
         }
 
         // Whoever last called SetClipboardData still "owns" the clipboard until
@@ -177,15 +211,39 @@ namespace DarkroomPathWatcher
             }
         }
 
-        private void RewriteForDiscord(string path)
+        // Fallback: click the tray icon to turn whatever datacenter path is
+        // currently on the clipboard into a Discord-ready code block, for
+        // when the popup was missed/dismissed. Only acts on a plain path
+        // (not already wrapped), so clicking twice in a row is harmless.
+        private void TryWrapClipboardForDiscord()
+        {
+            string text;
+            try
+            {
+                if (!Clipboard.ContainsText()) return;
+                text = Clipboard.GetText();
+            }
+            catch (ExternalException)
+            {
+                return;
+            }
+            if (text == null) return;
+            text = text.Trim();
+            if (!text.StartsWith(PathPrefix, StringComparison.OrdinalIgnoreCase)) return;
+            WrapForDiscord(text);
+        }
+
+        private void WrapForDiscord(string path)
         {
             try
             {
-                // Triple-backtick fence is what makes Discord render a code block
-                // with its own one-click copy button on the receiving end.
+                // Triple-backtick fence is what makes Discord render a code
+                // block with its own one-click copy button on the receiving end.
                 string wrapped = "```\r\n" + path + "\r\n```";
                 Clipboard.SetText(wrapped);
                 lastSeenText = wrapped; // don't re-process our own rewrite
+                trayIcon.Text = WrappedTooltip;
+                trayIcon.ShowBalloonTip(4000, "Darkroom", "Putanja je spremna za Discord — nalepi je (Ctrl+V).", ToolTipIcon.Info);
             }
             catch (ExternalException)
             {

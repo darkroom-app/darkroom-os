@@ -4,17 +4,29 @@ Small Windows tray app: watches the clipboard for a path starting with
 `\\DATACENTER\` and reacts based on which app copied it — Windows exposes
 the clipboard's current owner window, so the source process is checkable:
 
-- **Copied from Explorer** → sharing intent. Silently rewrites the
-  clipboard into a `` ``` ``-fenced Discord code block, so a plain Ctrl+V
-  into a channel already renders with Discord's own one-click copy button.
-  No popup, no click needed — you don't do anything differently.
+- **Copied from Explorer** → a tiny two-item menu pops up right at the
+  mouse cursor: **📁 Ostavi kao putanju** (do nothing — the plain path stays
+  on the clipboard exactly as Explorer put it, for pasting into Photoshop's
+  or 3ds Max's Open/Save dialog, Explorer's own address bar, etc.) or
+  **💬 Pripremi za Discord** (rewrites the clipboard into a `` ``` ``-fenced
+  code block, so a Ctrl+V into a channel renders with Discord's own
+  one-click copy button). Ignoring the popup — click elsewhere, Escape, or
+  just keep working; it auto-closes after a few seconds — leaves the path
+  untouched, so a copy that was never meant for Discord is never silently
+  mangled. (An earlier version rewrote every Explorer copy automatically
+  with no choice at all, which broke pasting into anything else — don't
+  reintroduce that.)
 - **Copied from anywhere else** (Discord's code-block copy button, a
   browser, ...) → consuming intent. Immediately opens that path in File
-  Explorer. No confirmation, no menu.
+  Explorer. No popup here — nobody copies a path out of Discord for any
+  reason other than wanting to get to that folder.
+- **Left-click the tray icon** at any time → same "Pripremi za Discord"
+  rewrite, applied to whatever's currently on the clipboard. A fallback for
+  when the popup was missed or dismissed.
 
-So the whole round trip is: copy in Explorer, paste in Discord — exactly
-normal Ctrl+C/Ctrl+V, nothing extra — and whoever reads it clicks Discord's
-own copy button once and their Explorer opens. One click, on the receiving
+So the whole round trip is: copy in Explorer, pick "Pripremi za Discord" in
+the popup, paste in Discord — and whoever reads it clicks Discord's own
+copy button once and their Explorer opens. One click, on the receiving
 end, using Discord's button rather than a link we control.
 
 Built this way (rather than a clickable Discord link) because a browser
@@ -29,10 +41,10 @@ browser involved, no custom protocol, no PowerShell, no admin rights, just
 
 ## Using it
 
-Nothing to remember — just copy and paste as usual. Copying a
-`\\DATACENTER\...` path anywhere that *isn't* Explorer (most commonly:
-clicking the copy button on a Discord code block) opens it in Explorer
-immediately.
+Copy a `\\DATACENTER\...` path in Explorer, pick from the popup that
+appears at your cursor. Copying one from anywhere that *isn't* Explorer
+(most commonly: clicking the copy button on a Discord code block) opens it
+in Explorer immediately, no popup.
 
 ## Installing (per machine, one-time)
 
