@@ -11616,8 +11616,15 @@ function login(id){
   // makes that href meaningful on load: a freshly opened tab lands on the
   // requested section instead of always defaulting to Pregled.
   const NAV_VIEWS = ['pregled','kalendar','projekti','klijenti','playbook','skripte','portfolio','statistika','tim','finansije'];
-  const requestedView = new URLSearchParams(location.search).get('view');
-  if(requestedView && NAV_VIEWS.includes(requestedView)) showView(requestedView);
+  const params = new URLSearchParams(location.search);
+  const requestedView = params.get('view');
+  const requestedProject = params.get('project');
+  // Discord notifications link straight to the project that changed (via
+  // ?project=<code>) — openProjectDetail() switches the view itself, so this
+  // takes priority over a plain ?view= when both would apply.
+  const proj = requestedProject ? allProjects.find(p=>p.code===requestedProject) : null;
+  if(proj) openProjectDetail(proj);
+  else if(requestedView && NAV_VIEWS.includes(requestedView)) showView(requestedView);
 }
 function logout(){
   if(sb) sb.auth.signOut();

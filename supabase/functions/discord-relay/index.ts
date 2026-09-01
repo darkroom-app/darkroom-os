@@ -23,6 +23,16 @@
 // odsustva" Discord group, via its own dedicated webhook secret. This is
 // deliberately narrow (checked by `kind`, not a general fallback) so it
 // doesn't reintroduce the Phase 3g problem for anything else.
+// Phase 3h: the project name mentioned at the end of a kadar/round
+// notification's text ("... u projekat {name}") is now a markdown link
+// back to that project's detail page in the app, so clicking it in Discord
+// takes you straight there instead of just naming it. Targets the exact
+// trailing occurrence (confirmed against every text template that carries
+// a projectCode in darkroom-app.html) rather than a blind string replace,
+// so it can't mangle a project whose name happens to repeat earlier in the
+// sentence. Falls back to the plain, unlinked text if the project's current
+// name can't be resolved or doesn't actually appear at the end (e.g. it was
+// renamed since this notification was queued).
 // Phase 20: RenderFlow render-done/render-warning notifications used to
 // post into the project's Discord channel like everything else, which
 // meant every render completion was visible to (and spammed) the whole
@@ -107,9 +117,19 @@ Deno.serve(async (req) => {
 
   const row = payload.record as Record<string, unknown>;
   const kind = typeof row.kind === "string" ? row.kind : "";
-  const text = typeof row.text === "string" ? row.text : "(bez teksta)";
+  const rawText = typeof row.text === "string" ? row.text : "(bez teksta)";
   const recipient = typeof row.recipient_name === "string" ? row.recipient_name : "Nepoznat";
   const projectCode = typeof row.project_code === "string" ? row.project_code : null;
+
+  let text = rawText;
+  if (projectCode) {
+    const { data: proj } = await supabase
+      .from("projects").select("name").eq("code", projectCode).maybeSingle();
+    if (proj?.name && rawText.endsWith(proj.name)) {
+      const projectUrl = `https://app.darkroomstudio.com/darkroom-app.html?view=projekti&project=${encodeURIComponent(projectCode)}`;
+      text = rawText.slice(0, -proj.name.length) + `[${proj.name}](${projectUrl})`;
+    }
+  }
 
   if (DM_KINDS.has(kind) && DISCORD_BOT_TOKEN) {
     const { data: member } = await supabase
