@@ -1462,3 +1462,23 @@ create policy "superadmin can update side_hustle_entries"
 create policy "superadmin can delete side_hustle_entries"
   on public.side_hustle_entries for delete to authenticated
   using ((select access from public.team_members where id = auth.uid()) = 'superadmin');
+
+-- ==== Phase 30: let an employee read their own payroll data (run this query) ====
+-- salary_entries/side_hustle_entries SELECT was superadmin-only from the start
+-- (Phase 7/29) — correct for the Finansije→Plate admin view, but it also
+-- silently blocks renderDashboardFinance() (darkroom-app.html), the personal
+-- "Moje finansije" card every employee sees on their own dashboard: a non-
+-- superadmin's own loadSalaryEntriesFromSupabase()/loadSideHustleEntriesFromSupabase()
+-- call returns zero rows, so their own card shows "Nije uneto"/"0 RSD" even
+-- though their data is sitting right there in the table. Only Dušan
+-- (the one superadmin) ever saw it render correctly. These policies are
+-- additive (OR'd with the existing superadmin-can-read-all ones) and only
+-- widen SELECT to a person's own rows — insert/update/delete stay
+-- superadmin-only, and nobody gains visibility into anyone else's numbers.
+create policy "own can read salary_entries"
+  on public.salary_entries for select to authenticated
+  using (employee_id = auth.uid());
+
+create policy "own can read side_hustle_entries"
+  on public.side_hustle_entries for select to authenticated
+  using (employee_id = auth.uid());
