@@ -340,17 +340,30 @@ select.native-select-hidden{ display:none; }
 .pd-kadar-title-row{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
 .pd-kadar-title{ font-size:12.5px; color:var(--ink); }
 .pd-kadar-title span{ color:var(--ink-faint); }
+.pd-kadar-startdate{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); }
 .pd-round-scroll{ display:flex; align-items:flex-start; gap:8px; overflow-x:auto; padding-bottom:4px; }
 .pd-round-add{ width:70px; height:56px; border-radius:10px; border:1.5px dashed var(--border); background:none; color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0; }
 .pd-round-add:hover{ border-color:var(--gold); color:var(--gold-deep); }
 .pd-round-add svg{ width:16px; height:16px; }
 .pd-round-pill{ width:70px; border:none; cursor:pointer; flex-shrink:0; display:flex; flex-direction:column; align-items:center; gap:4px; padding:0; background:none; }
-.pd-round-pill-thumb{ width:70px; height:56px; border-radius:10px; background-size:cover; background-position:center; border:2px solid transparent; }
+.pd-round-pill-thumb{ position:relative; width:70px; height:56px; border-radius:10px; background-size:cover; background-position:center; border:2px solid transparent; }
 .pd-round-pill.billable .pd-round-pill-thumb{ background-color:var(--sage-soft); border-color:var(--sage); }
 .pd-round-pill.internal .pd-round-pill-thumb{ background-color:var(--card-soft); border-color:var(--border); }
+.pd-round-pill-badge{ position:absolute; top:3px; right:3px; background:var(--ink); color:var(--card); font-family:var(--font-mono); font-size:9px; font-weight:700; line-height:1; padding:2px 4.5px; border-radius:8px; }
 .pd-round-pill-label{ font-family:var(--font-body); font-weight:700; font-size:10px; color:var(--ink); }
 .pd-round-pill-date{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); }
-.round-view-img{ width:100%; height:280px; border-radius:var(--r-md); background:var(--card-soft); background-size:cover; background-position:center; }
+.round-view-img-wrap{ position:relative; }
+.round-view-img{ width:100%; height:520px; border-radius:var(--r-md); background:var(--ink); background-size:contain; background-repeat:no-repeat; background-position:center; }
+.round-view-nav{ position:absolute; top:50%; transform:translateY(-50%); width:34px; height:34px; border-radius:50%; border:none; background:rgba(0,0,0,.5); color:#fff; font-size:20px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; z-index:2; }
+.round-view-nav:hover{ background:rgba(0,0,0,.7); }
+.round-view-prev{ left:10px; }
+.round-view-next{ right:10px; }
+.round-view-thumbs{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.round-view-thumb{ width:56px; height:40px; border-radius:6px; background-size:cover; background-position:center; cursor:pointer; border:2px solid transparent; flex-shrink:0; }
+.round-view-thumb.active{ border-color:var(--gold); }
+.round-img-preview-list{ display:flex; gap:6px; flex-wrap:wrap; }
+.round-img-preview-item{ position:relative; width:54px; height:40px; border-radius:6px; background-color:var(--card-soft); background-size:cover; background-position:center; border:1px solid var(--border); }
+.round-img-preview-remove{ position:absolute; top:-6px; right:-6px; width:18px; height:18px; border-radius:50%; border:none; background:var(--ink); color:var(--card); font-size:12px; line-height:1; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0; }
 
 /* login */
 .login-screen{ position:fixed; inset:0; background:var(--bg-outer) center/cover no-repeat; display:flex; align-items:center; justify-content:center; z-index:200; }
@@ -3116,10 +3129,15 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 </div>
 
 <div class="modal-overlay" id="roundViewOverlay">
-  <div class="modal-card">
+  <div class="modal-card" style="width:720px;">
     <div class="modal-title" id="roundViewTitle">Round 01</div>
     <div class="pd-code" id="roundViewDate" style="margin-bottom:14px;"></div>
-    <div class="round-view-img" id="roundViewImg"></div>
+    <div class="round-view-img-wrap">
+      <button type="button" class="round-view-nav round-view-prev" id="roundViewPrev">‹</button>
+      <div class="round-view-img" id="roundViewImg"></div>
+      <button type="button" class="round-view-nav round-view-next" id="roundViewNext">›</button>
+    </div>
+    <div class="round-view-thumbs" id="roundViewThumbs"></div>
     <div class="modal-actions">
       <button class="modal-delete" id="roundViewDelete">Obriši</button>
       <button class="modal-cancel" id="roundViewClose" style="flex:1;">Zatvori</button>
@@ -3183,12 +3201,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <input type="date" id="roundDate">
     </div>
     <div class="modal-field">
-      <label>Render/slika</label>
-      <div class="upload-dropzone" id="roundDropzone">
-        <div class="nc-avatar-preview np-thumb-preview" id="roundImgPreview"></div>
+      <label>Render/slike (do 5)</label>
+      <div class="upload-dropzone" id="roundDropzone" style="align-items:flex-start;">
+        <div class="round-img-preview-list" id="roundImgPreviewList"></div>
         <div class="upload-dropzone-text">
-          <span id="roundDropzoneHint">Prevuci sliku ovde ili</span>
-          <input type="file" id="roundImgInput" accept="image/*">
+          <span id="roundDropzoneHint">Prevuci do 5 slika ovde ili</span>
+          <input type="file" id="roundImgInput" accept="image/*" multiple>
         </div>
       </div>
     </div>
@@ -5359,7 +5377,7 @@ document.querySelectorAll('.cvt-btn').forEach(b=>b.classList.toggle('active', b.
 document.getElementById('calZoomOut').disabled = calViewMode==='month';
 document.getElementById('calZoomIn').disabled = calViewMode!=='month';
 
-function mkRound(label, billable, date){ return { _id:nextId(), label, billable, date, image:null }; }
+function mkRound(label, billable, date){ return { _id:nextId(), label, billable, date, image:null, extraImages:[] }; }
 function mkKadar(type, name, employee, status, rounds){
   return {
     _id:nextId(), type, name, employee, status, rounds: rounds || [],
@@ -5839,9 +5857,9 @@ async function compressImageFile(file, maxDim, quality){
   canvas.getContext('2d').drawImage(bitmap, 0, 0, width, height);
   return await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
 }
-async function processImageUpload(file, bucket){
+async function processImageUpload(file, bucket, maxDim, quality){
   let blob;
-  try { blob = await compressImageFile(file); }
+  try { blob = await compressImageFile(file, maxDim, quality); }
   catch(e){ await customAlert('Nije moguće obraditi tu sliku.'); return null; }
   if(sb){
     const path = `${crypto.randomUUID()}.jpg`;
@@ -6086,15 +6104,26 @@ function renderProjectDetailKadrovi(){
     return groups.get(b).length - groups.get(a).length;
   });
 
-  const roundPillHtml = (k)=> k.rounds.map(r=>{
-    const imgStyle = r.image ? `background-image:url('${escapeHtml(r.image)}');` : '';
-    return `
+  // "start date" is a legacy marker round from the historical import (label
+  // literally "start date", no image, billable:false) — it's not a real
+  // round, so it's excluded from the pill strip and shown as plain text on
+  // the kadar's title row instead (see startDateHtml below). Newest-first
+  // display order, matching how people actually scan these (latest
+  // revision first, not scrolling to find it).
+  const roundPillHtml = (k)=> k.rounds
+    .filter(r=>r.label!=='start date')
+    .slice().reverse()
+    .map(r=>{
+      const imgStyle = r.image ? `background-image:url('${escapeHtml(r.image)}');` : '';
+      const totalImages = (r.image ? 1 : 0) + (r.extraImages ? r.extraImages.length : 0);
+      const badge = totalImages > 1 ? `<span class="pd-round-pill-badge">${totalImages}</span>` : '';
+      return `
       <button class="pd-round-pill ${r.billable ? 'billable' : 'internal'}" data-task-id="${k._id}" data-round-id="${r._id}" type="button">
-        <span class="pd-round-pill-thumb" style="${imgStyle}"></span>
+        <span class="pd-round-pill-thumb" style="${imgStyle}">${badge}</span>
         <span class="pd-round-pill-label">${escapeHtml(r.label)}</span>
         <span class="pd-round-pill-date">${formatIsoDateHuman(r.date) || r.date}</span>
       </button>`;
-  }).join('');
+    }).join('');
 
   document.getElementById('pdTaskList').innerHTML = employees.map(name=>{
     const items = groups.get(name);
@@ -6114,10 +6143,15 @@ function renderProjectDetailKadrovi(){
         <svg class="price-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
       </div>
       <div class="price-kadar-list">
-        ${items.map(k=>`
+        ${items.map(k=>{
+          const startRound = k.rounds.find(r=>r.label==='start date');
+          const startDateHtml = startRound
+            ? `<span class="pd-kadar-startdate">Početak ${formatIsoDateHuman(startRound.date) || startRound.date}</span>` : '';
+          return `
           <div class="pd-kadar-block">
             <div class="pd-kadar-title-row">
               <div class="pd-kadar-title">${escapeHtml(k.name)} <span>· ${escapeHtml(k.type)}</span></div>
+              ${startDateHtml}
               <span class="tag ${kadarStatusTag[k.status]}">${k.status}</span>
               <button class="round-upload-btn kadar-edit-btn" data-task-id="${k._id}" title="Izmeni kadar" type="button">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
@@ -6129,7 +6163,8 @@ function renderProjectDetailKadrovi(){
               </button>
               ${roundPillHtml(k)}
             </div>
-          </div>`).join('')}
+          </div>`;
+        }).join('')}
       </div>
     </div>`;
   }).join('');
@@ -6174,6 +6209,8 @@ const roundViewOverlay = document.getElementById('roundViewOverlay');
 let activeRoundViewProjectId = null;
 let activeRoundViewTaskId = null;
 let activeRoundViewRoundId = null;
+let roundViewImages = [];
+let roundViewIndex = 0;
 function openRoundView(projectId, taskId, roundId){
   const proj = allProjects.find(p=>p._id===projectId);
   const kadar = proj && proj.kadrovi.find(k=>k._id===taskId);
@@ -6184,9 +6221,32 @@ function openRoundView(projectId, taskId, roundId){
   activeRoundViewRoundId = roundId;
   document.getElementById('roundViewTitle').textContent = round.label;
   document.getElementById('roundViewDate').textContent = formatIsoDateHuman(round.date) || round.date;
-  document.getElementById('roundViewImg').style.backgroundImage = round.image ? `url('${round.image}')` : '';
+  roundViewImages = [round.image, ...(round.extraImages||[])].filter(Boolean);
+  roundViewIndex = 0;
+  renderRoundViewImage();
   roundViewOverlay.classList.add('open');
 }
+function renderRoundViewImage(){
+  const url = roundViewImages[roundViewIndex];
+  document.getElementById('roundViewImg').style.backgroundImage = url ? `url('${url}')` : '';
+  const multi = roundViewImages.length > 1;
+  document.getElementById('roundViewPrev').style.display = multi ? '' : 'none';
+  document.getElementById('roundViewNext').style.display = multi ? '' : 'none';
+  const thumbs = document.getElementById('roundViewThumbs');
+  thumbs.innerHTML = multi ? roundViewImages.map((u,i)=>`
+    <div class="round-view-thumb ${i===roundViewIndex ? 'active' : ''}" data-idx="${i}" style="background-image:url('${u}')"></div>`).join('') : '';
+  thumbs.querySelectorAll('.round-view-thumb').forEach(t=>{
+    t.addEventListener('click', ()=>{ roundViewIndex = Number(t.dataset.idx); renderRoundViewImage(); });
+  });
+}
+document.getElementById('roundViewPrev').addEventListener('click', ()=>{
+  roundViewIndex = (roundViewIndex - 1 + roundViewImages.length) % roundViewImages.length;
+  renderRoundViewImage();
+});
+document.getElementById('roundViewNext').addEventListener('click', ()=>{
+  roundViewIndex = (roundViewIndex + 1) % roundViewImages.length;
+  renderRoundViewImage();
+});
 function closeRoundView(){
   roundViewOverlay.classList.remove('open');
 }
@@ -6208,8 +6268,9 @@ document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(sb && round.dbId){
     const { error } = await sb.from('rounds').delete().eq('id', round.dbId);
     if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
-    const imgPath = storagePathFromUrl(round.image, 'round-images');
-    if(imgPath) sb.storage.from('round-images').remove([imgPath]);
+    const imgPaths = [round.image, ...(round.extraImages||[])]
+      .map(u=>storagePathFromUrl(u, 'round-images')).filter(Boolean);
+    if(imgPaths.length) sb.storage.from('round-images').remove(imgPaths);
   }
   const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
   if(idx>-1) kadar.rounds.splice(idx,1);
@@ -6384,18 +6445,41 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
 const roundModalOverlay = document.getElementById('roundModalOverlay');
 let activeRoundProjectId = null;
 let activeRoundTaskId = null;
-let pendingRoundImage = null;
+let pendingRoundImages = [];
 let roundChoice = 'round';
+const ROUND_IMAGE_MAX_COUNT = 5;
+// Renders get reviewed at real size (the lightbox, not just the small pill
+// thumb), so they need more headroom than the 1600px default used for
+// avatars/thumbnails elsewhere — bumped from the shared default of 1600/0.85.
+const ROUND_IMAGE_MAX_DIM = 2200;
+const ROUND_IMAGE_QUALITY = 0.88;
 
 function nextRoundLabel(kadar){
   return `Round ${String((kadar.billableRoundsCount||0)+1).padStart(2,'0')}`;
 }
+function renderRoundImgPreviews(){
+  const list = document.getElementById('roundImgPreviewList');
+  list.innerHTML = pendingRoundImages.map((url, i)=>`
+    <div class="round-img-preview-item" style="background-image:url('${url}')">
+      <button type="button" class="round-img-preview-remove" data-idx="${i}" title="Ukloni">×</button>
+    </div>`).join('');
+  list.querySelectorAll('.round-img-preview-remove').forEach(btn=>{
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      pendingRoundImages.splice(Number(btn.dataset.idx), 1);
+      renderRoundImgPreviews();
+    });
+  });
+  document.getElementById('roundDropzoneHint').textContent = pendingRoundImages.length
+    ? `${pendingRoundImages.length}/${ROUND_IMAGE_MAX_COUNT} slika — prevuci još ili`
+    : `Prevuci do ${ROUND_IMAGE_MAX_COUNT} slika ovde ili`;
+}
 function openRoundModal(projectId, taskId){
   activeRoundProjectId = projectId;
   activeRoundTaskId = taskId;
-  pendingRoundImage = null;
+  pendingRoundImages = [];
   document.getElementById('roundImgInput').value = '';
-  document.getElementById('roundImgPreview').style.backgroundImage = '';
+  renderRoundImgPreviews();
   document.getElementById('roundDate').value = toISO(TODAY);
   const proj = allProjects.find(p=>p._id===projectId);
   const kadar = proj && proj.kadrovi.find(k=>k._id===taskId);
@@ -6424,16 +6508,41 @@ document.getElementById('roundChoiceRev').addEventListener('click', ()=>{
   document.getElementById('roundChoiceRev').classList.add('active');
   document.getElementById('roundChoiceRound').classList.remove('active');
 });
-async function handleRoundImageFile(file){
-  if(!file || !file.type.startsWith('image/')) return;
-  const url = await processImageUpload(file, 'round-images');
-  if(url){
-    pendingRoundImage = url;
-    document.getElementById('roundImgPreview').style.backgroundImage = `url('${url}')`;
-  }
+// A round's own multi-image dropzone — separate from wireImageDropzone
+// (single-file, shared by avatars/thumbnails/scripts) since dropping more
+// than one file here is the whole point, capped at ROUND_IMAGE_MAX_COUNT.
+function wireMultiImageDropzone(zone, onFiles){
+  if(!zone) return;
+  ['dragenter','dragover'].forEach(evt=>{
+    zone.addEventListener(evt, (e)=>{ e.preventDefault(); zone.classList.add('dragover'); });
+  });
+  ['dragleave','dragend','drop'].forEach(evt=>{
+    zone.addEventListener(evt, (e)=>{ e.preventDefault(); zone.classList.remove('dragover'); });
+  });
+  zone.addEventListener('drop', (e)=>{
+    const files = [...e.dataTransfer.files].filter(f=>f.type.startsWith('image/'));
+    if(files.length) onFiles(files);
+  });
 }
-document.getElementById('roundImgInput').addEventListener('change', (e)=> handleRoundImageFile(e.target.files[0]));
-wireImageDropzone(document.getElementById('roundDropzone'), handleRoundImageFile);
+async function handleRoundImageFiles(files){
+  const remaining = ROUND_IMAGE_MAX_COUNT - pendingRoundImages.length;
+  if(remaining <= 0){ await customAlert(`Najviše ${ROUND_IMAGE_MAX_COUNT} slika po rundi.`); return; }
+  const toProcess = files.slice(0, remaining);
+  if(files.length > toProcess.length){
+    await customAlert(`Dodato je ${toProcess.length} od ${files.length} slika — najviše ${ROUND_IMAGE_MAX_COUNT} po rundi.`);
+  }
+  for(const file of toProcess){
+    if(!file || !file.type.startsWith('image/')) continue;
+    const url = await processImageUpload(file, 'round-images', ROUND_IMAGE_MAX_DIM, ROUND_IMAGE_QUALITY);
+    if(url) pendingRoundImages.push(url);
+  }
+  renderRoundImgPreviews();
+}
+document.getElementById('roundImgInput').addEventListener('change', (e)=>{
+  handleRoundImageFiles([...e.target.files]);
+  e.target.value = '';
+});
+wireMultiImageDropzone(document.getElementById('roundDropzone'), handleRoundImageFiles);
 document.getElementById('roundCancel').addEventListener('click', closeRoundModal);
 wireOverlayClose(roundModalOverlay, closeRoundModal);
 document.getElementById('roundSubmit').addEventListener('click', async ()=>{
@@ -6450,16 +6559,19 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
   } else {
     label = nextRoundLabel(kadar); billable = true;
   }
-  const image = pendingRoundImage || null;
+  const image = pendingRoundImages[0] || null;
+  const extraImages = pendingRoundImages.slice(1);
   if(sb && kadar.dbId){
     const { data, error } = await sb.from('rounds')
-      .insert({ kadar_id:kadar.dbId, label, billable, date, image })
+      .insert({ kadar_id:kadar.dbId, label, billable, date, image, extra_images: extraImages })
       .select().single();
     if(error){ await customAlert('Dodavanje nije uspelo: ' + error.message); return; }
-    kadar.rounds.push({ _id: nextId(), dbId: data.id, label: data.label, billable: data.billable, date: data.date, image: data.image });
+    kadar.rounds.push({ _id: nextId(), dbId: data.id, label: data.label, billable: data.billable, date: data.date, image: data.image, extraImages: data.extra_images || [] });
   } else {
     kadar.rounds.push(mkRound(label, billable, date));
-    if(image) kadar.rounds[kadar.rounds.length-1].image = image;
+    const added = kadar.rounds[kadar.rounds.length-1];
+    if(image) added.image = image;
+    added.extraImages = extraImages;
   }
   recomputeKadarRoundStats(kadar);
   syncRoundsSummaryEntry(kadar, kadar.rounds[kadar.rounds.length-1], 'add');
@@ -11931,7 +12043,8 @@ async function loadKadarRoundsForProject(project){
     data.forEach(r=>{ (byKadar[r.kadar_id] = byKadar[r.kadar_id] || []).push(r); });
     project.kadrovi.forEach(k=>{
       k.rounds = (byKadar[k.dbId] || []).map(r=>({
-        _id: nextId(), dbId: r.id, label: r.label, billable: r.billable, date: r.date, image: r.image
+        _id: nextId(), dbId: r.id, label: r.label, billable: r.billable, date: r.date, image: r.image,
+        extraImages: r.extra_images || []
       }));
     });
     project._roundsLoaded = true;

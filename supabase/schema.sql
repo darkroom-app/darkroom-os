@@ -1482,3 +1482,13 @@ create policy "own can read salary_entries"
 create policy "own can read side_hustle_entries"
   on public.side_hustle_entries for select to authenticated
   using (employee_id = auth.uid());
+
+-- ==== Phase 31: up to 5 images per round (run this query) ====
+-- rounds.image stays the cover image exactly as before (untouched — the
+-- has_image/last_round_image_url denormalization trigger on kadrovi still
+-- keys off this column alone, so it needed no changes). This just adds a
+-- plain array for up to 4 more images clients sometimes want to compare as
+-- options within the same round, instead of a separate child table —
+-- lower-risk than a join since nothing else references per-image rows
+-- individually (no per-image delete/edit, just "this round's images").
+alter table public.rounds add column if not exists extra_images text[] not null default '{}';
