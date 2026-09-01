@@ -1492,3 +1492,47 @@ create policy "own can read side_hustle_entries"
 -- lower-risk than a join since nothing else references per-image rows
 -- individually (no per-image delete/edit, just "this round's images").
 alter table public.rounds add column if not exists extra_images text[] not null default '{}';
+
+-- ==== Phase 32: stop kadar/round/status-change notifications from reaching Discord (run this query) ====
+-- New kadar, new round, and approved/cancelled status-change notifications
+-- turned out to be too high-volume for Discord — every one of them spams
+-- the project channel and interrupts people. They stay exactly as they
+-- were in the app's own notification bell (that insert into `notifications`
+-- is untouched, so in-app delivery — including to the recipient's own
+-- separate session via Realtime — keeps working); this only makes the
+-- trigger skip the Discord relay call for these specific kinds. Everything
+-- else (leave requests/approvals, expense inbox, RenderFlow anomalies,
+-- weekly reports, render-done/warning DMs) still reaches Discord as before.
+create or replace function public.notify_discord()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  webhook_url text;
+begin
+  if NEW.kind in ('kadar', 'round', 'approved', 'cancelled') then
+    return NEW;
+  end if;
+  if NEW.project_code is not null then
+    select discord_webhook_url into webhook_url
+    from public.projects where code = NEW.project_code;
+  end if;
+  perform net.http_post(
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/smart-service',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-db-webhook-secret', 'darkroom-discord-relay-2026'
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'notifications',
+      'schema', 'public',
+      'record', to_jsonb(NEW),
+      'webhook_url', webhook_url
+    )
+  );
+  return NEW;
+end;
+$$;
