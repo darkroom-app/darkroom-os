@@ -1,22 +1,35 @@
 // DARKROOM OS: Datacenter path watcher (tray app)
 //
-// Watches the Windows clipboard. When you copy a path that starts with
-// \\DATACENTER\ (e.g. from a Discord message's code block, using its
-// built-in one-click copy button), it shows a balloon notification —
-// click the balloon to open that path in File Explorer.
+// Watches the Windows clipboard for a path starting with \\DATACENTER\ and
+// reacts based on WHERE it was copied from (Windows exposes the clipboard's
+// current owner window, so the source app's process name is checkable):
 //
-// Deliberately simple and boring: no browser, no custom URL protocol, no
-// PowerShell, no admin rights, no network calls. Just a clipboard listener
-// (AddClipboardFormatListener, a standard Win32 API) and Process.Start on
-// explorer.exe — the same thing double-clicking a folder shortcut does.
-// This exists because the earlier attempt at "clickable Discord link opens
-// Explorer" hit two walls that no implementation trick gets around: browsers
-// always show a confirmation dialog before handing off to any non-http(s)
-// protocol, and antivirus/EDR software flags exactly that browser-triggers-
-// local-execution pattern (even Windows' own search-ms: protocol, once a
-// documented phishing vector, now gets flagged too). Moving the trigger
-// out of the browser entirely — a background app reacting to what's
-// already sitting in the clipboard — sidesteps both.
+//   - Copied from Explorer (explorer.exe)  -> sharing intent. Silently
+//     rewrites the clipboard into a ```-fenced Discord code block, so a
+//     plain Ctrl+V into a channel already renders with Discord's own
+//     one-click copy button. No popup, no click, nothing to notice.
+//   - Copied from anywhere else (Discord's code-block copy button, a
+//     browser, ...) -> consuming intent. Immediately opens that path in
+//     File Explorer. No confirmation, no menu.
+//
+// So the whole round trip is: copy in Explorer, paste in Discord (exactly
+// normal Ctrl+C/Ctrl+V, nothing extra) -> whoever reads it clicks Discord's
+// copy button once -> their Explorer opens. One click, on the receiving
+// end, and it's Discord's own button, not a link we control.
+//
+// Deliberately simple and boring otherwise: no browser, no custom URL
+// protocol, no PowerShell, no admin rights, no network calls — just a
+// clipboard listener (AddClipboardFormatListener, a standard Win32 API)
+// and Process.Start on explorer.exe, the same thing double-clicking a
+// folder shortcut does. This exists because the earlier attempt at "a
+// clickable Discord link that opens Explorer" hit two walls no
+// implementation trick gets around: browsers always show a confirmation
+// dialog before handing off to any non-http(s) protocol, and antivirus/EDR
+// software flags exactly that browser-triggers-local-execution pattern
+// (even Windows' own search-ms: protocol, once a documented phishing
+// vector, now gets flagged too). Moving the trigger out of the browser
+// entirely — a background app reacting to what's already in the clipboard,
+// keyed off which app put it there — sidesteps both.
 //
 // Autostart: NOT registered automatically by this program. Copy the built
 // .exe somewhere permanent, then drop a shortcut to it into your Startup
@@ -40,13 +53,17 @@ namespace DarkroomPathWatcher
         [DllImport("user32.dll", SetLastError = true)]
         private static extern bool RemoveClipboardFormatListener(IntPtr hwnd);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetClipboardOwner();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+
         private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string PathPrefix = @"\\DATACENTER\";
 
         private readonly NotifyIcon trayIcon;
         private readonly Icon appIcon;
-        private const string IdleTooltip = "Darkroom — pratilac putanja";
-        private string pendingPath;
         private string lastSeenText;
 
         public HiddenListenerForm()
@@ -64,37 +81,12 @@ namespace DarkroomPathWatcher
             trayIcon = new NotifyIcon
             {
                 Icon = appIcon,
-                Text = IdleTooltip,
+                Text = "Darkroom — pratilac putanja",
                 Visible = true
             };
             var menu = new ContextMenuStrip();
             menu.Items.Add("Izađi", null, (s, e) => Application.Exit());
             trayIcon.ContextMenuStrip = menu;
-
-            // The balloon tip is a nice-to-have — Windows 10/11 sometimes suppresses
-            // it entirely depending on notification settings, so it's not the only
-            // way in. A left-click on the tray icon always works too, regardless of
-            // whether the balloon ever showed.
-            trayIcon.BalloonTipClicked += (s, e) => OpenPendingPath();
-            trayIcon.MouseClick += (s, e) =>
-            {
-                if (e.Button == MouseButtons.Left) OpenPendingPath();
-            };
-        }
-
-        private void OpenPendingPath()
-        {
-            if (pendingPath == null) return;
-            try
-            {
-                Process.Start("explorer.exe", "\"" + pendingPath + "\"");
-            }
-            catch
-            {
-                // Path might be unreachable right now (VPN off, share down) — nothing to recover here.
-            }
-            pendingPath = null;
-            trayIcon.Text = IdleTooltip;
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -137,15 +129,67 @@ namespace DarkroomPathWatcher
             if (text.Length == 0 || text == lastSeenText) return;
             lastSeenText = text;
 
-            if (text.StartsWith(PathPrefix, StringComparison.OrdinalIgnoreCase))
+            if (!text.StartsWith(PathPrefix, StringComparison.OrdinalIgnoreCase)) return;
+
+            if (string.Equals(SourceProcessName(), "explorer", StringComparison.OrdinalIgnoreCase))
             {
-                pendingPath = text;
-                // NotifyIcon.Text has a hard 63-character limit (throws past that on
-                // older .NET Framework) — truncate defensively, the full path still
-                // shows in the balloon body when that gets through.
-                string tooltip = "Klikni da otvoriš: " + text;
-                trayIcon.Text = tooltip.Length > 63 ? tooltip.Substring(0, 60) + "..." : tooltip;
-                trayIcon.ShowBalloonTip(8000, "Datacenter putanja", "Klikni da otvoriš u Exploreru:\n" + text, ToolTipIcon.Info);
+                RewriteForDiscord(text);
+            }
+            else
+            {
+                OpenInExplorer(text);
+            }
+        }
+
+        // Whoever last called SetClipboardData still "owns" the clipboard until
+        // someone else takes it — that owner window's process is what copied
+        // this text in. Returns null if it can't be determined (no owner, or
+        // the owning process has already exited).
+        private static string SourceProcessName()
+        {
+            try
+            {
+                IntPtr owner = GetClipboardOwner();
+                if (owner == IntPtr.Zero) return null;
+                uint pid;
+                GetWindowThreadProcessId(owner, out pid);
+                if (pid == 0) return null;
+                using (var proc = Process.GetProcessById((int)pid))
+                {
+                    return proc.ProcessName;
+                }
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private void OpenInExplorer(string path)
+        {
+            try
+            {
+                Process.Start("explorer.exe", "\"" + path + "\"");
+            }
+            catch
+            {
+                // Path might be unreachable right now (VPN off, share down) — nothing to recover here.
+            }
+        }
+
+        private void RewriteForDiscord(string path)
+        {
+            try
+            {
+                // Triple-backtick fence is what makes Discord render a code block
+                // with its own one-click copy button on the receiving end.
+                string wrapped = "```\r\n" + path + "\r\n```";
+                Clipboard.SetText(wrapped);
+                lastSeenText = wrapped; // don't re-process our own rewrite
+            }
+            catch (ExternalException)
+            {
+                // Clipboard briefly locked by another app — nothing to recover here.
             }
         }
 

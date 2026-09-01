@@ -1,29 +1,38 @@
 # Datacenter Path Watcher
 
-Small Windows tray app: watches the clipboard, and when you copy a path
-starting with `\\DATACENTER\` (e.g. via the one-click copy button on a
-Discord code block), it lets you open that path in File Explorer with one
-click on the tray icon.
+Small Windows tray app: watches the clipboard for a path starting with
+`\\DATACENTER\` and reacts based on which app copied it — Windows exposes
+the clipboard's current owner window, so the source process is checkable:
+
+- **Copied from Explorer** → sharing intent. Silently rewrites the
+  clipboard into a `` ``` ``-fenced Discord code block, so a plain Ctrl+V
+  into a channel already renders with Discord's own one-click copy button.
+  No popup, no click needed — you don't do anything differently.
+- **Copied from anywhere else** (Discord's code-block copy button, a
+  browser, ...) → consuming intent. Immediately opens that path in File
+  Explorer. No confirmation, no menu.
+
+So the whole round trip is: copy in Explorer, paste in Discord — exactly
+normal Ctrl+C/Ctrl+V, nothing extra — and whoever reads it clicks Discord's
+own copy button once and their Explorer opens. One click, on the receiving
+end, using Discord's button rather than a link we control.
 
 Built this way (rather than a clickable Discord link) because a browser
 always shows a confirmation dialog before handing off to any non-http(s)
 protocol, and antivirus/EDR software flags exactly that "browser triggers
 local execution" pattern — including Windows' own `search-ms:` protocol,
 which is now a known phishing vector too. A background app reacting to the
-clipboard sidesteps both: no browser involved, no custom protocol, no
-PowerShell, no admin rights, just `AddClipboardFormatListener` (a standard
-Win32 API) and `Process.Start("explorer.exe", path)`.
+clipboard, keyed off which app put the text there, sidesteps both: no
+browser involved, no custom protocol, no PowerShell, no admin rights, just
+`AddClipboardFormatListener`/`GetClipboardOwner` (standard Win32 APIs) and
+`Process.Start("explorer.exe", path)`.
 
 ## Using it
 
-1. Copy a `\\DATACENTER\...` path (e.g. the copy button on a Discord code
-   block, or select + Ctrl+C from anywhere).
-2. A balloon notification may appear — click it, **or** just left-click the
-   Darkroom tray icon. Either opens that path in Explorer.
-
-The balloon isn't fully reliable across Windows versions/notification
-settings, so the tray-icon click is the guaranteed path — that's why it's
-there as a fallback rather than the only trigger.
+Nothing to remember — just copy and paste as usual. Copying a
+`\\DATACENTER\...` path anywhere that *isn't* Explorer (most commonly:
+clicking the copy button on a Discord code block) opens it in Explorer
+immediately.
 
 ## Installing (per machine, one-time)
 
