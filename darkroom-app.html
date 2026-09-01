@@ -6077,6 +6077,11 @@ async function openProjectDetail(proj){
   document.getElementById('pdClientLabel').textContent = proj.client;
   showView('projekat-detalji');
   setActiveNav('projekti');
+  // showView() only pushes a new URL when the view NAME changes — jumping
+  // straight from one project's detail page to another's (e.g. via search)
+  // keeps the name at 'projekat-detalji' both times, so it'd otherwise skip
+  // updating the ?project= code. Force it here instead of relying on that.
+  history.replaceState({view:'projekat-detalji'}, '', viewUrl('projekat-detalji'));
   if(!proj._roundsLoaded){
     document.getElementById('pdTaskList').innerHTML = '<div class="agenda-empty">Učitavanje…</div>';
     await loadKadarRoundsForProject(proj);
@@ -10510,8 +10515,21 @@ function showView(name){
   if(name==='skripte' && !skripteInited){ skripteInited = true; initSkripte(); }
   setActiveNav(name);
   if(!_histSyncing && (!history.state || history.state.view !== name)){
-    history.pushState({view:name}, '', location.href);
+    history.pushState({view:name}, '', viewUrl(name));
   }
+}
+// Builds the URL a given view should live at — ?view=<name>, plus
+// &project=<code> while looking at a specific project's detail page, so a
+// hard refresh (not just in-app back/forward) lands back where you were
+// instead of always resetting to Pregled/Projekti.
+function viewUrl(name){
+  const params = new URLSearchParams();
+  params.set('view', name);
+  if(name==='projekat-detalji'){
+    const proj = allProjects.find(p=>p._id===activeProjectDetailId);
+    if(proj) params.set('project', proj.code);
+  }
+  return '?' + params.toString();
 }
 let _histSyncing = false;
 window.addEventListener('popstate', (e)=>{
