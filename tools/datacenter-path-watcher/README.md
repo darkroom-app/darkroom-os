@@ -36,29 +36,40 @@ immediately.
 
 ## Installing (per machine, one-time)
 
-1. Copy `DatacenterPathWatcher.exe` and `darkroom32.ico` together into a
-   permanent folder (e.g. `C:\Tools\DatacenterPathWatcher\`) — the exe
-   loads the icon from its own folder at startup, so they must stay
-   together.
-2. Right-click `DatacenterPathWatcher.exe` → **Create shortcut**.
-3. Press **Win+R**, type `shell:startup`, Enter — this opens your Startup
-   folder.
-4. Move the shortcut into that folder.
+Send people **one file**: `DarkroomPathWatcherSetup.exe`. Double-clicking it:
 
-That's it — no registry edits, no scripts. It'll launch quietly (just the
-tray icon, no window) every time you log in. To stop it permanently, delete
-the shortcut from the Startup folder; to stop it for the current session,
-right-click the tray icon → **Izađi**.
+1. Copies `DatacenterPathWatcher.exe` + `darkroom32.ico` into
+   `%LocalAppData%\DatacenterPathWatcher\` (the user's own profile folder —
+   no admin rights needed).
+2. Drops a shortcut into their Startup folder, so it launches quietly every
+   login from then on.
+3. Launches it immediately, so it's already running without waiting for a
+   logout/login.
+4. Shows a small "Instalacija završena" confirmation.
+
+No registry edits, no scripts — the shortcut is a plain `.lnk`, removable
+by deleting it from `shell:startup`. To stop the watcher for the current
+session without uninstalling, right-click its tray icon → **Izađi**.
+
+(An unsigned .exe from an unfamiliar source may trigger a Windows
+SmartScreen "protected your PC" prompt on first run — that's normal for any
+unsigned internal tool, not specific to this one. Click **More info → Run
+anyway**.)
 
 ## Rebuilding from source
 
-No build system needed — compiles with the C# compiler already bundled in
-every Windows install (`csc.exe`, part of .NET Framework):
+No build system needed — everything compiles with the C# compiler already
+bundled in every Windows install (`csc.exe`, part of .NET Framework). Two
+steps, since the installer embeds the watcher as a resource:
 
 ```
 "C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /platform:anycpu /win32icon:darkroom.ico /out:DatacenterPathWatcher.exe /reference:System.Windows.Forms.dll /reference:System.Drawing.dll PathWatcher.cs
+
+"C:\WINDOWS\Microsoft.NET\Framework64\v4.0.30319\csc.exe" /target:winexe /platform:anycpu /win32icon:darkroom.ico /out:DarkroomPathWatcherSetup.exe /reference:System.Windows.Forms.dll /resource:DatacenterPathWatcher.exe,DatacenterPathWatcher.exe /resource:darkroom32.ico,darkroom32.ico Setup.cs
 ```
 
-`darkroom.ico` (256px, used as the .exe's own file icon) and
+`darkroom.ico` (256px, used as each .exe's own file icon) and
 `darkroom32.ico` (32px, loaded at runtime for the tray icon) are both
-generated from `favicon-source.png.png` at the repo root.
+generated from `favicon-source.png.png` at the repo root. Only
+`DarkroomPathWatcherSetup.exe` needs distributing — it carries the other
+two files inside itself.

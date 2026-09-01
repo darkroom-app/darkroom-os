@@ -31,10 +31,10 @@
 // entirely — a background app reacting to what's already in the clipboard,
 // keyed off which app put it there — sidesteps both.
 //
-// Autostart: NOT registered automatically by this program. Copy the built
-// .exe somewhere permanent, then drop a shortcut to it into your Startup
-// folder (Win+R -> shell:startup) so it launches quietly every login. No
-// registry edits, no scripts — a plain shortcut, removable by deleting it.
+// Autostart: this .exe itself doesn't register anything — Setup.cs (built
+// as DarkroomPathWatcherSetup.exe, see README) is what installs it and
+// drops the Startup-folder shortcut. Running this .exe directly is fine
+// for testing, but does so as a one-off with no autostart.
 
 using System;
 using System.Diagnostics;
