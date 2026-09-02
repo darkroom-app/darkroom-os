@@ -9161,6 +9161,19 @@ async function confirmExpenseInboxItem(id){
   }).eq('id', item.dbId);
   allTransactions.unshift({ _id:nextId(), dbId:data.id, date:data.date, type:data.type, category:data.category, desc:data.description, method:data.method, amount:data.amount, extraChargeDbId:null, kadarDbId:null });
   expenseInbox.splice(expenseInbox.indexOf(item), 1);
+  // The receipt's date is when the purchase happened, not today — Transakcije
+  // defaults its filter to the CURRENT month/year (txState init, line ~9052),
+  // so a receipt from an earlier month would insert correctly but then sit
+  // invisible behind that filter, looking like confirming it did nothing.
+  // Clear every filter that could hide it so the row you just confirmed is
+  // always the one you land on.
+  txState.search = ''; txState.type = 'Sve'; txState.category = 'Sve kategorije';
+  txState.month = 'Svi meseci'; txState.year = 'Sve godine';
+  document.getElementById('txSearchInput').value = '';
+  document.getElementById('filterTxTypeLabel').textContent = 'Sve';
+  document.getElementById('filterTxCategoryLabel').textContent = 'Sve kategorije';
+  document.getElementById('filterTxMonthLabel').textContent = 'Svi meseci';
+  document.getElementById('filterTxYearLabel').textContent = 'Sve godine';
   renderExpenseInbox();
   renderTxList();
   renderFinHero();
