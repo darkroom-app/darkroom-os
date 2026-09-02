@@ -10659,9 +10659,14 @@ function renderDashboardNotifications(){
       persist();
       renderDashboardNotifications();
       if(sb && n._remoteId) sb.from('notifications').update({read:true}).eq('id', n._remoteId).then(()=>{});
+      // expense_pending always means "go look at this in Finansije", even
+      // when the expense happens to be tied to a project — checking that
+      // case first, ahead of the generic project fallback below, is what
+      // makes that so (an expense's own project_code was otherwise winning
+      // and sending you to the project page instead).
+      if(n.kind==='expense_pending'){ openExpenseInboxPanel(); return; }
       const proj = n.projectId ? allProjects.find(p=>p._id===n.projectId) : null;
       if(proj) openProjectDetail(proj);
-      else if(n.kind==='expense_pending') openExpenseInboxPanel();
     });
   });
   wrap.querySelectorAll('.notif-delete').forEach(btn=>{
