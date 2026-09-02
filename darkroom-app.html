@@ -4118,7 +4118,7 @@ function renderCalendarMySati(){
           <div class="msati-row" data-kadar-id="${kadar.dbId}" data-date="${iso}" data-reg-id="${reg?reg.dbId:''}" data-ot-id="${ot?ot.dbId:''}" data-event-id="${ev._id}">
             <div class="msati-tag-row">
               <div class="msati-tag" title="${escapeHtml(proj.name)} — ${escapeHtml(kadar.name)}">${escapeHtml(proj.code)} · ${escapeHtml(kadar.name)}</div>
-              <span class="msati-delete" title="Obriši zadatak (ili Shift+klik bilo gde na red)">×</span>
+              <span class="msati-delete" title="Ukloni ovaj dan iz zadatka (ili Shift+klik bilo gde na red)">×</span>
             </div>
             <div class="msati-inputs">
               <label>Red.<input type="number" class="msati-reg" min="0" max="24" step="0.5" value="${reg?reg.hours:''}" placeholder="0.0" title="Redovni sati"></label>
@@ -4163,12 +4163,9 @@ function renderCalendarMySati(){
   });
 
   // × button (always shown, even for a day with no hours logged yet) or
-  // Shift+click anywhere on the row — both delete the whole zadatak this
-  // row belongs to, not just this day's hours. A day-row here represents
-  // "assigned to this kadar", so removing the assignment (and every day's
-  // hours under it) is what "delete" actually means, per the studio's own
-  // call — clearing one day's number field already exists for the narrower
-  // "I mis-typed today's hours" case and is untouched.
+  // Shift+click anywhere on the row — both remove just THIS day from the
+  // zadatak (see deleteMsatiRowEvent for the range-splitting logic), with a
+  // confirm either way.
   calWeeks.querySelectorAll('.msati-delete').forEach(btn=>{
     btn.addEventListener('click', (e)=>{
       e.stopPropagation();
@@ -4181,19 +4178,58 @@ function renderCalendarMySati(){
     });
   });
 }
+// Removes just THIS day from the zadatak (and this day's hours) — not the
+// whole assignment. A day in the middle of the range splits the event in
+// two (splitRangeExcludingDates, the same range-minus-dates logic odmor/
+// birthday splitting already relies on); a day at either edge just shrinks
+// start/end; a single-day event has nothing left afterward and is deleted
+// outright.
 async function deleteMsatiRowEvent(row){
   const eventId = Number(row.dataset.eventId);
+  const iso = row.dataset.date;
   const evObj = events.find(e=>e._id===eventId);
   if(!evObj) return;
   const proj = allProjects.find(p=>p.code===evObj.projectCode);
   const kadar = proj && proj.kadrovi.find(k=>k.name===evObj.taskName);
   const label = kadar ? `"${kadar.name}" (${proj.code})` : 'ovaj zadatak';
-  const range = daysBetween(evObj.start, evObj.end) > 0
-    ? `od ${formatDateHuman(evObj.start)} do ${formatDateHuman(evObj.end).replace(/\.$/,'')}`
-    : formatDateHuman(evObj.start);
-  if(!await customConfirm(`Obrisati zadatak ${label} ${range}? Ovo briše ceo zadatak i sve unete sate za njega, ne samo ovaj dan.`)) return;
-  const ok = await deleteCalendarEvent(evObj);
-  if(!ok) return;
+  if(!await customConfirm(`Ukloniti ${formatDateHuman(fromISO(iso))} iz zadatka ${label}? Briše i unete sate za taj dan.`)) return;
+
+  const me = currentUser();
+  const kadarDbId = row.dataset.kadarId;
+  if(row.dataset.regId) await saveOneHoursCell(row.dataset.regId, me.authId, me.name, kadarDbId, iso, 0, false);
+  if(row.dataset.otId) await saveOneHoursCell(row.dataset.otId, me.authId, me.name, kadarDbId, iso, 0, true);
+
+  const ranges = splitRangeExcludingDates(evObj.start, evObj.end, new Set([iso]));
+  if(ranges.length === 0){
+    if(evObj.dbId){
+      const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
+      if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
+    }
+    const idx = events.findIndex(e=>e._id===evObj._id);
+    if(idx>-1) events.splice(idx,1);
+  } else {
+    const [first, ...rest] = ranges;
+    if(evObj.dbId){
+      const { error } = await sb.from('calendar_events')
+        .update({ start_date: toISO(first.start), end_date: toISO(first.end) }).eq('id', evObj.dbId);
+      if(error){ await customAlert('Izmena nije uspela: ' + error.message); return; }
+    }
+    evObj.start = first.start; evObj.end = first.end;
+    // The removed day was in the middle of the range — the piece after it
+    // becomes its own separate assignment (an update can only shrink one
+    // edge, not carve a hole out of the middle).
+    for(const range of rest){
+      const newEventBase = {
+        kind:evObj.kind, person:evObj.person, initials:evObj.initials, color:evObj.color,
+        projectCode:evObj.projectCode, taskName:evObj.taskName, urgency:evObj.urgency,
+        start: range.start, end: range.end,
+      };
+      const { data, error } = await sb.from('calendar_events').insert(calendarEventDbRow(newEventBase)).select().single();
+      if(!error && data) events.push({ _id: nextId(), dbId: data.id, ...newEventBase });
+    }
+  }
+  buildCalFilterMenus();
+  persist();
   renderCalendar();
   renderWeekWidget();
   renderWeeklyGoal();
