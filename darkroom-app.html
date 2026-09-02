@@ -352,8 +352,17 @@ select.native-select-hidden{ display:none; }
 .pd-round-pill-badge{ position:absolute; top:3px; right:3px; background:var(--ink); color:var(--card); font-family:var(--font-mono); font-size:9px; font-weight:700; line-height:1; padding:2px 4.5px; border-radius:8px; }
 .pd-round-pill-label{ font-family:var(--font-body); font-weight:700; font-size:10px; color:var(--ink); }
 .pd-round-pill-date{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); }
-.round-view-img-wrap{ position:relative; }
-.round-view-img{ width:100%; height:520px; border-radius:var(--r-md); background:var(--ink); background-size:cover; background-repeat:no-repeat; background-position:center; }
+/* Round view: near-fullscreen two-column layout so the render itself gets
+   the same big, edge-to-edge presentation as Portfolio's lightbox — title/
+   date/thumbs/actions live in a narrow left rail instead of stacking above
+   and below the image. */
+.round-view-card{ background:var(--card); border-radius:20px; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4); width:min(1400px, 94vw); height:88vh; display:flex; overflow:hidden; }
+.round-view-side{ width:230px; flex-shrink:0; padding:26px 22px; display:flex; flex-direction:column; gap:18px; border-right:1px solid var(--border); overflow-y:auto; }
+.round-view-side-top{ display:flex; flex-direction:column; gap:4px; }
+.round-view-side-top .modal-title{ margin-bottom:0; }
+.round-view-side-actions{ flex-direction:column; margin-top:0; }
+.round-view-img-wrap{ position:relative; flex:1; height:100%; }
+.round-view-img{ width:100%; height:100%; background:var(--ink); background-size:cover; background-repeat:no-repeat; background-position:center; }
 /* Same viewfinder-corner + type-badge treatment as Portfolio's .port-thumb,
    just sized up for the bigger detail image. */
 .round-view-img-wrap .vfc{ position:absolute; width:12px; height:12px; border-color:rgba(255,255,255,0.75); z-index:2; }
@@ -364,7 +373,7 @@ select.native-select-hidden{ display:none; }
 .round-view-nav:hover{ background:rgba(0,0,0,.7); }
 .round-view-prev{ left:10px; }
 .round-view-next{ right:10px; }
-.round-view-thumbs{ display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+.round-view-thumbs{ display:flex; gap:6px; flex-wrap:wrap; align-content:flex-start; flex:1; overflow-y:auto; }
 .round-view-thumb{ width:56px; height:40px; border-radius:6px; background-size:cover; background-position:center; cursor:pointer; border:2px solid transparent; flex-shrink:0; }
 .round-view-thumb.active{ border-color:var(--gold); }
 .round-img-preview-list{ display:flex; gap:6px; flex-wrap:wrap; }
@@ -3146,20 +3155,24 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 </div>
 
 <div class="modal-overlay" id="roundViewOverlay">
-  <div class="modal-card" style="width:720px;">
-    <div class="modal-title" id="roundViewTitle">Round 01</div>
-    <div class="pd-code" id="roundViewDate" style="margin-bottom:14px;"></div>
+  <div class="round-view-card">
+    <div class="round-view-side">
+      <div class="round-view-side-top">
+        <div class="modal-title" id="roundViewTitle">Round 01</div>
+        <div class="pd-code" id="roundViewDate"></div>
+      </div>
+      <div class="round-view-thumbs" id="roundViewThumbs"></div>
+      <div class="modal-actions round-view-side-actions">
+        <button class="modal-delete" id="roundViewDelete">Obriši</button>
+        <button class="modal-cancel" id="roundViewClose">Zatvori</button>
+      </div>
+    </div>
     <div class="round-view-img-wrap">
       <button type="button" class="round-view-nav round-view-prev" id="roundViewPrev">‹</button>
       <div class="round-view-img" id="roundViewImg"></div>
       <button type="button" class="round-view-nav round-view-next" id="roundViewNext">›</button>
       <div class="round-view-type-badge" id="roundViewTypeBadge"></div>
       <div class="vfc tl"></div><div class="vfc br"></div>
-    </div>
-    <div class="round-view-thumbs" id="roundViewThumbs"></div>
-    <div class="modal-actions">
-      <button class="modal-delete" id="roundViewDelete">Obriši</button>
-      <button class="modal-cancel" id="roundViewClose" style="flex:1;">Zatvori</button>
     </div>
   </div>
 </div>
