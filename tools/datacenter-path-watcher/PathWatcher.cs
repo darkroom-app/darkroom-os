@@ -22,10 +22,27 @@
 //     rewrite, applied to whatever's currently on the clipboard. Kept as a
 //     fallback for when the popup was dismissed/missed and you want to
 //     wrap the last-copied path after the fact.
+//   - Pressing Ctrl+V while Discord is the focused (foreground) window ->
+//     if the clipboard currently holds a plain \\DATACENTER\ path, it's
+//     swapped for the ```-fenced version just long enough for that one
+//     paste to pick it up, then quietly restored a moment later. This is
+//     the no-extra-click path: copy normally, switch to Discord, paste
+//     normally — the destination decides the formatting, not a click
+//     beforehand. Pasting that same clipboard content into anything other
+//     than Discord is completely unaffected, since the swap only ever
+//     happens while Discord itself is focused.
 //
-// So: copy a path in Explorer, a small choice appears — pick a lane, or
-// ignore it and keep working (Photoshop/Max/anywhere paste unaffected).
-// Receiving end: click Discord's copy button once, Explorer opens.
+//     This needs a system-wide low-level keyboard hook (WH_KEYBOARD_LL) to
+//     see Ctrl+V before it reaches the app. That specific API is also what
+//     real keyloggers use, so it's a known antivirus/EDR flagging pattern —
+//     unlike everything else in this file, there's a real chance this
+//     specific piece gets flagged even though it does nothing with any key
+//     other than reacting to Ctrl+V. The popup and tray-click paths above
+//     stay in place as a fallback if that happens on some machine.
+//
+// So: copy a path in Explorer — either pick "Pripremi za Discord" from the
+// popup, or just switch to Discord and paste normally, both work. Receiving
+// end: click Discord's copy button once, Explorer opens.
 //
 // Deliberately simple and boring otherwise: no browser, no custom URL
 // protocol, no PowerShell, no admin rights, no network calls — just a
@@ -68,6 +85,42 @@ namespace DarkroomPathWatcher
         [DllImport("user32.dll")]
         private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook, LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll")]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+
+        [DllImport("user32.dll")]
+        private static extern short GetAsyncKeyState(int vKey);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct KBDLLHOOKSTRUCT
+        {
+            public uint vkCode;
+            public uint scanCode;
+            public uint flags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_SYSKEYDOWN = 0x0104;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_V = 0x56;
         private const int WM_CLIPBOARDUPDATE = 0x031D;
         private const string PathPrefix = @"\\DATACENTER\";
         private const string IdleTooltip = "Darkroom — pratilac putanja";
@@ -75,6 +128,8 @@ namespace DarkroomPathWatcher
 
         private readonly NotifyIcon trayIcon;
         private readonly Icon appIcon;
+        private readonly LowLevelKeyboardProc keyboardProc;
+        private IntPtr keyboardHookId = IntPtr.Zero;
         private string lastSeenText;
 
         public HiddenListenerForm()
@@ -102,6 +157,17 @@ namespace DarkroomPathWatcher
             {
                 if (e.Button == MouseButtons.Left) TryWrapClipboardForDiscord();
             };
+
+            // Field, not a local — SetWindowsHookEx only keeps a weak reference
+            // to the delegate; if it were a local/lambda with nothing else
+            // holding it, the GC could collect it and crash the process the
+            // next time Windows calls into the (now-garbage) callback.
+            keyboardProc = KeyboardHookCallback;
+            using (Process curProcess = Process.GetCurrentProcess())
+            using (ProcessModule curModule = curProcess.MainModule)
+            {
+                keyboardHookId = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardProc, GetModuleHandle(curModule.ModuleName), 0);
+            }
         }
 
         protected override void OnHandleCreated(EventArgs e)
@@ -181,6 +247,80 @@ namespace DarkroomPathWatcher
             autoClose.Start();
 
             menu.Show(Cursor.Position);
+        }
+
+        // Fires on every keydown, system-wide — must return fast. Only acts
+        // on Ctrl+V; everything else is passed straight through untouched.
+        private IntPtr KeyboardHookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            if (nCode >= 0 && (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_SYSKEYDOWN))
+            {
+                var hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+                if (hookStruct.vkCode == VK_V && (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0)
+                {
+                    OnCtrlV();
+                }
+            }
+            return CallNextHookEx(keyboardHookId, nCode, wParam, lParam);
+        }
+
+        // Never blocks or suppresses the keystroke — the original Ctrl+V is
+        // always let through via CallNextHookEx above. This only swaps what's
+        // sitting in the clipboard for the brief window before Discord's own
+        // paste handler reads it, then puts the original back.
+        private void OnCtrlV()
+        {
+            if (!IsForegroundDiscord()) return;
+
+            string original;
+            try
+            {
+                if (!Clipboard.ContainsText()) return;
+                original = Clipboard.GetText();
+            }
+            catch (ExternalException) { return; }
+
+            if (original == null) return;
+            string trimmed = original.Trim();
+            if (!trimmed.StartsWith(PathPrefix, StringComparison.OrdinalIgnoreCase)) return;
+
+            string wrapped = "```\r\n" + trimmed + "\r\n```";
+            try
+            {
+                Clipboard.SetText(wrapped);
+            }
+            catch (ExternalException) { return; }
+            lastSeenText = wrapped; // don't let the passive watcher reprocess our own swap
+
+            var restore = new System.Windows.Forms.Timer { Interval = 400 };
+            restore.Tick += (s, e) =>
+            {
+                restore.Stop();
+                restore.Dispose();
+                try { Clipboard.SetText(original); } catch (ExternalException) { }
+                lastSeenText = original;
+            };
+            restore.Start();
+        }
+
+        private static bool IsForegroundDiscord()
+        {
+            try
+            {
+                IntPtr hwnd = GetForegroundWindow();
+                if (hwnd == IntPtr.Zero) return false;
+                uint pid;
+                GetWindowThreadProcessId(hwnd, out pid);
+                if (pid == 0) return false;
+                using (var proc = Process.GetProcessById((int)pid))
+                {
+                    return proc.ProcessName.IndexOf("discord", StringComparison.OrdinalIgnoreCase) >= 0;
+                }
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         // Whoever last called SetClipboardData still "owns" the clipboard until
@@ -263,6 +403,11 @@ namespace DarkroomPathWatcher
         {
             if (disposing)
             {
+                if (keyboardHookId != IntPtr.Zero)
+                {
+                    UnhookWindowsHookEx(keyboardHookId);
+                    keyboardHookId = IntPtr.Zero;
+                }
                 trayIcon.Visible = false;
                 trayIcon.Dispose();
                 if (appIcon != SystemIcons.Application) appIcon.Dispose();
