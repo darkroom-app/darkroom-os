@@ -1538,6 +1538,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .msati-leave{ font-size:10px; font-weight:600; color:var(--ink-dim); background:var(--card); border:1px solid var(--border); border-radius:6px; padding:3px 6px; display:flex; align-items:center; gap:4px; }
 .msati-leave-bday{ background:var(--gold-soft); border-color:var(--gold); color:var(--gold-deep); }
 
+/* ---- Radna Nedelja widget: same reg/prek inputs as Moji sati (.msati-reg/.msati-ot,
+   wired by the shared wireHoursInputs()), just narrower to fit the sidebar agenda row ---- */
+.agenda-hours-col{ display:flex; flex-direction:column; gap:4px; flex-shrink:0; width:40px; }
+.agenda-hours-col .msati-reg, .agenda-hours-col .msati-ot{ font-size:10px; padding:3px 2px; border-radius:5px; }
+
 .cal-lanes{ display:grid; grid-template-columns:repeat(7,1fr); gap:5px 0; padding:4px 0 10px; position:relative; z-index:1; }
 .cal-bar{
   display:flex; align-items:center; gap:7px; padding:0 9px 0 6px; height:27px; border-radius:9px;
@@ -4136,31 +4141,7 @@ function renderCalendarMySati(){
       }).join('')}
     </div>`).join('');
 
-  calWeeks.querySelectorAll('.msati-row input').forEach(inp=>{
-    inp.addEventListener('change', async ()=>{
-      const row = inp.closest('.msati-row');
-      const kadarDbId = row.dataset.kadarId, iso = row.dataset.date;
-      const isReg = inp.classList.contains('msati-reg');
-      const val = parseFloat(inp.value) || 0;
-      if(isReg && val>0){
-        const otherHours = timeEntries
-          .filter(t=>t.employeeId===me.authId && t.date===iso && !t.overtime && t.kadarDbId!==kadarDbId)
-          .reduce((s,t)=>s+t.hours, 0);
-        if(otherHours+val>8){
-          await customAlert(`Već imaš ${otherHours}h redovnih sati unetih za ${iso} na drugom kadru — ukupno bi bilo ${(otherHours+val).toFixed(1)}h, a dnevni maksimum je 8h. Smanji broj sati ili unesi razliku kao prekovremeno.`);
-          renderCalendar();
-          return;
-        }
-      }
-      const dbId = isReg ? (row.dataset.regId || null) : (row.dataset.otId || null);
-      const err = await saveOneHoursCell(dbId, me.authId, me.name, kadarDbId, iso, val, !isReg);
-      if(err){ await customAlert('Čuvanje sati nije uspelo: ' + err); }
-      renderCalendar();
-      renderWeekWidget();
-      renderWeeklyGoal();
-      renderOvertimeStat();
-    });
-  });
+  wireHoursInputs(calWeeks);
 
   // × button (always shown, even for a day with no hours logged yet) or
   // Shift+click anywhere on the row — both remove just THIS day from the
@@ -4175,6 +4156,40 @@ function renderCalendarMySati(){
   calWeeks.querySelectorAll('.msati-row').forEach(row=>{
     row.addEventListener('click', (e)=>{
       if(e.shiftKey) deleteMsatiRowEvent(row);
+    });
+  });
+}
+// Shared by Moji sati (.msati-row) and the dashboard's Radna Nedelja agenda
+// (.agenda-hours-col) — both wrap a pair of .msati-reg/.msati-ot inputs in an
+// element carrying data-kadar-id/data-date(/data-reg-id/data-ot-id), so the
+// same save + same-day-8h-cap validation applies wherever hours get entered.
+function wireHoursInputs(scopeEl){
+  scopeEl.querySelectorAll('.msati-reg, .msati-ot').forEach(inp=>{
+    inp.addEventListener('change', async ()=>{
+      const me = currentUser();
+      const holder = inp.closest('[data-kadar-id]');
+      if(!holder) return;
+      const kadarDbId = holder.dataset.kadarId, iso = holder.dataset.date;
+      const isReg = inp.classList.contains('msati-reg');
+      const val = parseFloat(inp.value) || 0;
+      if(isReg && val>0){
+        const otherHours = timeEntries
+          .filter(t=>t.employeeId===me.authId && t.date===iso && !t.overtime && t.kadarDbId!==kadarDbId)
+          .reduce((s,t)=>s+t.hours, 0);
+        if(otherHours+val>8){
+          await customAlert(`Već imaš ${otherHours}h redovnih sati unetih za ${iso} na drugom kadru — ukupno bi bilo ${(otherHours+val).toFixed(1)}h, a dnevni maksimum je 8h. Smanji broj sati ili unesi razliku kao prekovremeno.`);
+          renderCalendar();
+          renderWeekWidget();
+          return;
+        }
+      }
+      const dbId = isReg ? (holder.dataset.regId || null) : (holder.dataset.otId || null);
+      const err = await saveOneHoursCell(dbId, me.authId, me.name, kadarDbId, iso, val, !isReg);
+      if(err){ await customAlert('Čuvanje sati nije uspelo: ' + err); }
+      renderCalendar();
+      renderWeekWidget();
+      renderWeeklyGoal();
+      renderOvertimeStat();
     });
   });
 }
@@ -8491,6 +8506,9 @@ renderTeamPage();
 renderProjectsPage();
 
 const dowFullNames = ["Ponedeljak","Utorak","Sreda","Četvrtak","Petak","Subota","Nedelja"];
+// Remembers which day-tab the user has selected, so saving hours (which re-renders
+// this whole widget) doesn't snap the agenda back to "today" out from under them.
+let weekWidgetActiveIdx = null;
 function renderWeekWidget(){
   const weekDaysVertEl = document.getElementById('weekDaysVert');
   if(!weekDaysVertEl) return;
@@ -8500,23 +8518,35 @@ function renderWeekWidget(){
   for(let i=0;i<7;i++) days.push(addDays(monday, i));
   const myEvents = u ? events.filter(e=>e.person===u.name || e.kind==='praznik') : [];
   const eventsOnDay = (d)=> myEvents.filter(e=> daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0 );
+  const todayIdx = days.findIndex(d=>sameDate(d,TODAY));
+  const startIdx = weekWidgetActiveIdx!=null ? weekWidgetActiveIdx : (todayIdx>=0 ? todayIdx : 0);
 
   weekDaysVertEl.innerHTML = days.map((d,i)=>{
     const hasEvents = eventsOnDay(d).length>0;
-    const isToday = sameDate(d, TODAY);
-    return `<div class="wd-row${isToday ? ' active' : ''}${hasEvents ? ' has-events' : ''}" data-idx="${i}"><span class="wd-name">${dowLabels[i]}</span><span class="wd-num">${d.d}</span><span class="wd-dot"></span></div>`;
+    return `<div class="wd-row${i===startIdx ? ' active' : ''}${hasEvents ? ' has-events' : ''}" data-idx="${i}"><span class="wd-name">${dowLabels[i]}</span><span class="wd-num">${d.d}</span><span class="wd-dot"></span></div>`;
   }).join('');
 
   const weekItemCount = myEvents.filter(e=> daysBetween(e.start,days[6])>=0 && daysBetween(days[0],e.end)>=0 ).length;
   document.getElementById('weekRangeSub').textContent = `${monday.d}.${monday.m} – ${days[6].d}.${days[6].m} · ${weekItemCount} ${weekItemCount===1 ? 'zadatak' : 'zadatka'}`;
 
-  function agendaItemHtml(e){
+  function agendaItemHtml(e, iso){
     const code = eventDisplayCode(e);
     if(e.kind !== 'zadatak'){
       return `<div class="agenda-item" data-id="${e._id}"><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`;
     }
     const proj = allProjects.find(p=>p.code===e.projectCode);
+    const kadar = proj && proj.kadrovi.find(k=>k.name===e.taskName);
     const urgLabel = urgencyLabels[e.urgency] || '';
+    let hoursColHtml = '';
+    if(u && kadar && kadar.dbId){
+      const reg = timeEntries.find(t=>t.employeeId===u.authId && t.kadarDbId===kadar.dbId && t.date===iso && !t.overtime);
+      const ot = timeEntries.find(t=>t.employeeId===u.authId && t.kadarDbId===kadar.dbId && t.date===iso && t.overtime);
+      hoursColHtml = `
+      <div class="agenda-hours-col" data-kadar-id="${kadar.dbId}" data-date="${iso}" data-reg-id="${reg?reg.dbId:''}" data-ot-id="${ot?ot.dbId:''}">
+        <input type="number" class="msati-reg" min="0" max="24" step="0.5" value="${reg?reg.hours:''}" placeholder="0.0" title="Redovni sati">
+        <input type="number" class="msati-ot" min="0" max="24" step="0.5" value="${ot?ot.hours:''}" placeholder="0.0" title="Prekovremeni sati">
+      </div>`;
+    }
     return `
     <div class="agenda-item" data-id="${e._id}">
       <span class="agenda-time">${escapeHtml(code)}</span>
@@ -8525,25 +8555,29 @@ function renderWeekWidget(){
         ${proj ? `<div class="agenda-proj">${escapeHtml(proj.name)}</div>` : ''}
         <div class="agenda-urgency-row">${urgencyIndicatorHtml(e.urgency, 9)}<span class="agenda-urgency-label">${urgLabel}</span></div>
       </div>
+      ${hoursColHtml}
     </div>`;
   }
   function renderAgendaForIdx(idx){
     const d = days[idx];
+    const iso = toISO(d);
     document.getElementById('agendaTitle').textContent = `Raspored · ${dowFullNames[idx]}, ${d.d}. ${calMonthNames[d.m-1].toLowerCase()}`;
     const dayEvents = eventsOnDay(d);
-    document.getElementById('agendaList').innerHTML = dayEvents.length
-      ? dayEvents.map(agendaItemHtml).join('')
+    const agendaListEl = document.getElementById('agendaList');
+    agendaListEl.innerHTML = dayEvents.length
+      ? dayEvents.map(ev=>agendaItemHtml(ev, iso)).join('')
       : '<div class="agenda-empty">Nema zakazanih stavki.</div>';
+    wireHoursInputs(agendaListEl);
   }
   document.querySelectorAll('#weekDaysVert .wd-row').forEach(row=>{
     row.addEventListener('click', ()=>{
+      weekWidgetActiveIdx = Number(row.dataset.idx);
       document.querySelectorAll('#weekDaysVert .wd-row').forEach(x=>x.classList.remove('active'));
       row.classList.add('active');
-      renderAgendaForIdx(Number(row.dataset.idx));
+      renderAgendaForIdx(weekWidgetActiveIdx);
     });
   });
-  const todayIdx = days.findIndex(d=>sameDate(d,TODAY));
-  renderAgendaForIdx(todayIdx>=0 ? todayIdx : 0);
+  renderAgendaForIdx(startIdx);
   renderPendingLeaveRequests();
 }
 /* Odsustvo zahtevi na čekanju — samo superadmin ih vidi/odobrava, u istom
@@ -8604,6 +8638,7 @@ async function rejectLeaveRequest(eventId){
 }
 renderWeekWidget();
 document.getElementById('agendaList').addEventListener('click', (e)=>{
+  if(e.target.closest('.agenda-hours-col')) return;
   const item = e.target.closest('.agenda-item');
   if(!item) return;
   const evObj = events.find(x=>x._id===Number(item.dataset.id));
