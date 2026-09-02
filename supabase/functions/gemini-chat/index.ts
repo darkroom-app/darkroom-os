@@ -134,13 +134,8 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: "playbook_pravilnik",
-    description: "Vrati sadržaj SVAKODNEVNOG playbook-a studija — radni workflow, standardi, konvencija za nazive fajlova, procedura za isporuku, život u studiju, modelovanje. NE sadrži zvanični statut firme — za to koristi alat statut_firme. Koristi SAMO kad pitanje traži konkretnu svakodnevnu proceduru ili pravilo.",
-    parameters: {
-      type: "object",
-      properties: {
-        naslov: { type: "string", description: "Deo naslova članka za pretragu (npr. 'isporuka', 'nazivi fajlova'). Izostavi da dobiješ sve članke ovog alata odjednom." },
-      },
-    },
+    description: "Vrati CEO SVAKODNEVNI playbook studija (svi članci odjednom — radni workflow, standardi, konvencija za nazive fajlova, procedura za isporuku, život u studiju, modelovanje). NE sadrži zvanični statut firme — za to koristi alat statut_firme. Koristi SAMO kad pitanje traži konkretnu svakodnevnu proceduru ili pravilo.",
+    parameters: { type: "object", properties: {} },
   },
   {
     name: "statut_firme",
@@ -290,17 +285,20 @@ function formatPlaybookArticle(a: any) {
 // small rename in the synced Google Doc doesn't silently break the split.
 const STATUT_MARKER = "statut";
 
+// No title-filter parameter (there used to be one) — the model doesn't
+// know the article titles in advance, so asking it to guess one just
+// caused wrong-guess-then-retry round trips (confirmed live: it tried
+// naslov:"nazivi fajlova", a topic/keyword, against titles like "Workflow
+// & Standardi" that don't contain it, got nothing back, and had to call
+// again with no filter to actually get an answer). Now that statut is
+// split out, the remainder is only ~15KB — cheap enough to just always
+// return in full and skip that whole failure mode.
 // deno-lint-ignore no-explicit-any
-async function toolPlaybookPravilnik(sb: SupabaseClient, args: any) {
+async function toolPlaybookPravilnik(sb: SupabaseClient, _args: any) {
   const { data, error } = await sb.from("playbook_articles").select("nav_title,sections").order("sort_order");
   if (error) return { greska: error.message };
   // deno-lint-ignore no-explicit-any
-  let rows = (data ?? []) as any[];
-  rows = rows.filter((r) => !r.nav_title?.toLowerCase().includes(STATUT_MARKER));
-  if (args?.naslov) {
-    const needle = String(args.naslov).toLowerCase();
-    rows = rows.filter((r) => r.nav_title?.toLowerCase().includes(needle));
-  }
+  const rows = (data ?? []).filter((r: any) => !r.nav_title?.toLowerCase().includes(STATUT_MARKER));
   return { clanci: rows.map(formatPlaybookArticle) };
 }
 
