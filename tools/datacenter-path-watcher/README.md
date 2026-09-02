@@ -23,11 +23,23 @@ the clipboard's current owner window, so the source process is checkable:
 - **Left-click the tray icon** at any time → same "Pripremi za Discord"
   rewrite, applied to whatever's currently on the clipboard. A fallback for
   when the popup was missed or dismissed.
+- **Ctrl+V while Discord is the focused window** → if the clipboard holds a
+  plain path, it's swapped for the ```-fenced version just long enough for
+  that one paste, then quietly restored. This is the zero-extra-step path:
+  copy in Explorer, switch to Discord, paste normally — no popup, no click.
+  Pasting that same clipboard content anywhere else is unaffected, since the
+  swap only happens while Discord itself has focus. Needs a system-wide
+  low-level keyboard hook to see Ctrl+V before Discord does — that specific
+  API is also what keyloggers use, so unlike everything else here, there's a
+  real chance antivirus/EDR software flags this one on some machine even
+  though it only ever reacts to Ctrl+V. The popup and tray-click paths above
+  are the fallback if that happens.
 
-So the whole round trip is: copy in Explorer, pick "Pripremi za Discord" in
-the popup, paste in Discord — and whoever reads it clicks Discord's own
-copy button once and their Explorer opens. One click, on the receiving
-end, using Discord's button rather than a link we control.
+So the whole round trip is: copy in Explorer, switch to Discord, paste
+normally (or pick "Pripremi za Discord" from the popup first, if you'd
+rather) — and whoever reads it clicks Discord's own copy button once and
+their Explorer opens. One click, on the receiving end, using Discord's
+button rather than a link we control.
 
 Built this way (rather than a clickable Discord link) because a browser
 always shows a confirmation dialog before handing off to any non-http(s)
