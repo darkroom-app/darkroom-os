@@ -10841,6 +10841,7 @@ const TOOL_ACTION_LABELS = {
   detalji_projekta: '📁 Učitavam detalje projekta',
   kalendar_period: '📅 Proveravam kalendar',
   podaci_o_zaposlenom: '👤 Proveravam podatke o zaposlenom',
+  playbook_pravilnik: '📖 Proveravam pravilnik',
 };
 
 function chatStatsText(t){
@@ -10907,28 +10908,23 @@ function renderChatMessages(){
    memoriju za nižа prava), pa ovde šaljemo samo agregatni zbir, nikad
    pojedinačne iznose po zaposlenom. */
 function buildChatContext(){
-  // Went through two designs before this one: (1) a small hand-picked
+  // Went through three designs before this one: (1) a small hand-picked
   // snapshot — kept needing one more field added and gemini-chat
   // redeployed every time a real question fell outside it; (2) tools only
   // (no bulk data at all, everything fetched on demand) — technically
   // comprehensive, but every non-trivial question became 2-3 sequential
   // Gemini round-trips (each one a real network hop), which is exactly
-  // what made the assistant feel slow. Landed here: send the FULL
-  // projekti/klijenti/tim/playbook lists (summarized, not every round's
-  // image/history) up front every message, so the large majority of
-  // questions resolve in a single round with zero tool calls — genuinely
-  // fast AND comprehensive, not a tradeoff between them. Kalendar stays a
-  // tool (kalendar_period) since its full history is unbounded and it's
-  // naturally parameterized by date range anyway; detalji_projekta stays a
-  // tool since per-round image/history detail for all 334+ projects at
-  // once would be the one payload actually worth avoiding.
-  const stripHtmlForAI = (s) => String(s)
-    .replace(/<strong>(.*?)<\/strong>/gi, '**$1**')
-    .replace(/<em>(.*?)<\/em>/gi, '*$1*')
-    .replace(/<[^>]+>/g, '')
-    .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
-
+  // what made the assistant feel slow; (3) sent projekti/klijenti/tim AND
+  // the full playbook up front every message — fast again, until the
+  // studio's real data grew enough that the context itself became the
+  // bottleneck (~73K prompt tokens per message, 13+ seconds for the
+  // simplest question). playbook turned out to be ~97KB on its own —
+  // bigger than all 334 projects combined — despite being relevant to only
+  // a minority of questions, so it moved back to a tool
+  // (playbook_pravilnik, gemini-chat/index.ts) while projekti/klijenti/tim
+  // stay inline, since those get asked about in the large majority of real
+  // questions and pulling them out would just trade this same problem for
+  // the v2 one.
   const projekti = allProjects.map(p => ({
     kod: p.code, naziv: p.name, klijent: p.client, menadzer: p.managerName,
     godina: p.year, status: p.status, pocetak: p.startDate,
@@ -10942,17 +10938,6 @@ function buildChatContext(){
   const tim = teamMembers.map(t => ({
     ime: t.name, uloga: t.role, pristup: t.access,
     datum_zaposlenja: t.hireDate, datum_rodjenja: t.birthDate || null, status: t.status,
-  }));
-  const playbook = playbookArticles.map(a => ({
-    naslov: stripHtmlForAI(a.navTitle),
-    // A section can have BOTH an intro paragraph (body) and a bulleted
-    // list — collect both, don't drop one in favor of the other.
-    sadrzaj: a.sections.map(s => {
-      const parts = [];
-      if(s.body) parts.push(...s.body.map(stripHtmlForAI));
-      if(s.list) parts.push(...s.list.map(stripHtmlForAI));
-      return `${stripHtmlForAI(s.label)}: ${parts.join(' ')}`;
-    }).join(' | '),
   }));
 
   // "Koliko slobodnih dana imam?" (and the same question about
@@ -11025,7 +11010,7 @@ function buildChatContext(){
     danas: toISO(TODAY),
     nalog_trenutnog_korisnika: { nivo_pristupa: currentAccess(), ima_pristup_finansijama: canAccessFinance() },
     moji_podaci: mojiPodaci,
-    projekti, klijenti, tim, playbook,
+    projekti, klijenti, tim,
     finansije,
   });
 }

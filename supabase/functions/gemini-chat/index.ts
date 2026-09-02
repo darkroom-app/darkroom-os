@@ -29,15 +29,28 @@
 // round-trips (search, then detail, then answer), and each round-trip is a
 // real network hop — that's what made the assistant feel slow even for
 // simple questions.
-// v3 (this one): `context` carries the FULL projects/clients/team/playbook
-// lists (summarized — no round-by-round image history) built client-side
-// in buildChatContext(), sent on every message. Most questions now resolve
-// in a single round with zero tool calls: fast AND comprehensive, not a
-// trade-off between them. Tools remain only for what's genuinely unbounded
-// or parameterized rather than something worth bulk-preloading: calendar
-// events over an arbitrary date range (kalendar_period), one project's
-// full round-by-round detail (detalji_projekta), and a specific person's
-// computed leave-day statistics for a given year (podaci_o_zaposlenom).
+// v3: `context` carried the FULL projects/clients/team/playbook lists
+// (summarized — no round-by-round image history) built client-side in
+// buildChatContext(), sent on every message. Most questions resolved in a
+// single round with zero tool calls, genuinely fast — until the studio's
+// real data grew enough (334 projects, and a playbook that turned out to
+// be ~97KB of text on its own) that the context itself became the
+// bottleneck: ~73K prompt tokens on every single message, 13+ seconds for
+// even "how many projects are there".
+// v4 (this one): playbook moved back out to a tool (playbook_pravilnik) —
+// it was the single largest piece of the context (bigger than all 334
+// projects combined) and is only relevant to a minority of questions
+// (procedure/rule lookups), unlike projects/clients/team which get asked
+// about constantly. Cuts the baseline context roughly in half for the
+// common case; a playbook question now costs one extra round-trip instead
+// of every question paying its size upfront. Calendar (kalendar_period),
+// one project's full round-by-round detail (detalji_projekta), and a
+// specific person's computed leave-day statistics (podaci_o_zaposlenom)
+// stay tools for the same "genuinely unbounded or parameterized" reason as
+// before. If it's still too slow, projekti (88KB on its own) is the next
+// thing worth reconsidering — but that one's asked about in the large
+// majority of real questions, so cutting it over to a tool would trade
+// this same problem for the v2 one (multi-round-trip for the common case).
 //
 // Each tool call below runs against Supabase using THE CALLER'S OWN JWT
 // (forwarded from the incoming request), not the service-role key — so
@@ -64,7 +77,7 @@ const MAX_HISTORY_TURNS = 12;
 
 const SYSTEM_PROMPT = `Ti si DR Asistent — AI asistent unutar internog dashboard-a DARKROOM studija za 3D vizuelizaciju. Korisnici su članovi tima (dizajneri, menadžeri, vlasnik). Kad te neko pita ko si/sa kim priča, predstavi se kao "DR Asistent" — nikad ne pominji bilo koje staro/interno ime aplikacije, samo "DARKROOM". Uvek odgovaraj na srpskom jeziku, kratko i konkretno — ovo je radni alat, ne ćaskanje.
 
-Podaci o studiju su ti VEĆ DATI u nastavku ovog uputstva — polja "projekti" (SVI projekti: kod, naziv, klijent, menadžer, godina, status, broj kadrova, ko radi na njemu), "klijenti" (SVI klijenti: kontakt, broj projekata), "tim" (SVI članovi tima: uloga, nivo pristupa, datum zaposlenja/rođenja, status) i "playbook" (ceo interni pravilnik). Za pitanja koja se mogu odgovoriti iz ovih polja (npr. "koliko projekata vodi X", "koji je kontakt za klijenta Y", "ko radi na projektu Z", "koja je procedura za W", "je li svima unet datum rođenja") — ODGOVORI DIREKTNO iz ovih podataka, BEZ poziva ijednog alata. Svaki poziv alata je pun mrežni krug i realno usporava odgovor, pa ih koristi samo kad ti stvarno trebaju: detalje JEDNOG projekta uz istoriju rundi (alat detalji_projekta), kalendar (zadaci/odsustva/praznici) za bilo koji period (alat kalendar_period — kalendar NIJE u gore navedenim podacima), ili precizno izračunate dane odsustva/bolovanja za jednu osobu i godinu (alat podaci_o_zaposlenom). Ne nagađaj, ne izmišljaj brojke/datume/imena — ako podatak stvarno nije ni u datim poljima ni dostupan preko alata, jasno reci da ga nemaš.
+Podaci o studiju su ti VEĆ DATI u nastavku ovog uputstva — polja "projekti" (SVI projekti: kod, naziv, klijent, menadžer, godina, status, broj kadrova, ko radi na njemu), "klijenti" (SVI klijenti: kontakt, broj projekata), "tim" (SVI članovi tima: uloga, nivo pristupa, datum zaposlenja/rođenja, status). Za pitanja koja se mogu odgovoriti iz ovih polja (npr. "koliko projekata vodi X", "koji je kontakt za klijenta Y", "ko radi na projektu Z", "je li svima unet datum rođenja") — ODGOVORI DIREKTNO iz ovih podataka, BEZ poziva ijednog alata. Svaki poziv alata je pun mrežni krug i realno usporava odgovor, pa ih koristi samo kad ti stvarno trebaju: detalje JEDNOG projekta uz istoriju rundi (alat detalji_projekta), kalendar (zadaci/odsustva/praznici) za bilo koji period (alat kalendar_period — kalendar NIJE u gore navedenim podacima), precizno izračunate dane odsustva/bolovanja za jednu osobu i godinu (alat podaci_o_zaposlenom), ili sadržaj internog pravilnika/procedura (alat playbook_pravilnik — pravilnik NIJE u gore navedenim podacima). Ne nagađaj, ne izmišljaj brojke/datume/imena/procedure — ako podatak stvarno nije ni u datim poljima ni dostupan preko alata, jasno reci da ga nemaš.
 
 BRZINA — ako ti REALNO trebaju dva ili više alata za jedno pitanje, pozovi ih SVE ODJEDNOM u istom potezu (paralelno), ne jedan pa čekaj pa sledeći — model može tražiti više function call-ova u jednom odgovoru.
 
@@ -111,6 +124,16 @@ const TOOL_DECLARATIONS = [
       properties: {
         ime: { type: "string", description: "Puno ime ili deo imena za pretragu. Izostavi da dobiješ ceo tim." },
         godina: { type: "integer", description: "Godina za koju računaš odsustvo/bolovanje statistiku. Podrazumevano tekuća godina." },
+      },
+    },
+  },
+  {
+    name: "playbook_pravilnik",
+    description: "Vrati sadržaj internog pravilnika/playbook-a studija — procedure, pravila, uputstva za rad (npr. konvencija za nazive fajlova, procedura za isporuku, itd). Koristi SAMO kad pitanje traži konkretnu proceduru ili pravilo — ovaj sadržaj ti nije unapred dat, za razliku od projekata/klijenata/tima.",
+    parameters: {
+      type: "object",
+      properties: {
+        naslov: { type: "string", description: "Deo naslova članka pravilnika za pretragu (npr. 'isporuka', 'nazivi fajlova'). Izostavi da dobiješ SVE članke odjednom." },
       },
     },
   },
@@ -225,6 +248,41 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
   return { rezultati: results };
 }
 
+// Same HTML-stripping darkroom-app.html's buildChatContext() used to do
+// client-side for this exact content, before it moved server-side as a tool.
+function stripHtmlForAI(s: string): string {
+  return String(s)
+    .replace(/<strong>(.*?)<\/strong>/gi, "**$1**")
+    .replace(/<em>(.*?)<\/em>/gi, "*$1*")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#039;/g, "'");
+}
+
+// deno-lint-ignore no-explicit-any
+async function toolPlaybookPravilnik(sb: SupabaseClient, args: any) {
+  const { data, error } = await sb.from("playbook_articles").select("nav_title,sections").order("sort_order");
+  if (error) return { greska: error.message };
+  // deno-lint-ignore no-explicit-any
+  let rows = (data ?? []) as any[];
+  if (args?.naslov) {
+    const needle = String(args.naslov).toLowerCase();
+    rows = rows.filter((r) => r.nav_title?.toLowerCase().includes(needle));
+  }
+  return {
+    clanci: rows.map((a) => ({
+      naslov: stripHtmlForAI(a.nav_title),
+      // deno-lint-ignore no-explicit-any
+      sadrzaj: (a.sections ?? []).map((s: any) => {
+        const parts: string[] = [];
+        if (s.body) parts.push(...s.body.map(stripHtmlForAI));
+        if (s.list) parts.push(...s.list.map(stripHtmlForAI));
+        return `${stripHtmlForAI(s.label)}: ${parts.join(" ")}`;
+      }).join(" | "),
+    })),
+  };
+}
+
 // deno-lint-ignore no-explicit-any
 async function executeTool(sb: SupabaseClient, name: string, args: any): Promise<unknown> {
   try {
@@ -232,6 +290,7 @@ async function executeTool(sb: SupabaseClient, name: string, args: any): Promise
       case "detalji_projekta": return await toolDetaljiProjekta(sb, args);
       case "kalendar_period": return await toolKalendarPeriod(sb, args);
       case "podaci_o_zaposlenom": return await toolPodaciOZaposlenom(sb, args);
+      case "playbook_pravilnik": return await toolPlaybookPravilnik(sb, args);
       default: return { greska: `Nepoznat alat: ${name}` };
     }
   } catch (e) {
