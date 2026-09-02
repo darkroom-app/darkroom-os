@@ -148,7 +148,15 @@ namespace DarkroomPathWatcher
 
             if (string.Equals(SourceProcessName(), "explorer", StringComparison.OrdinalIgnoreCase))
             {
-                ShowChoicePopup(text);
+                // Showing a ContextMenuStrip pumps its own nested message loop
+                // while it's open — doing that synchronously, still inside
+                // WndProc's handling of the WM_CLIPBOARDUPDATE message that
+                // triggered it, is exactly the kind of reentrant call WinForms
+                // handles unreliably (this is the leading suspect for a real
+                // "stopped responding" hang seen in the field). BeginInvoke
+                // defers it to a fresh top-level iteration of the message
+                // loop instead.
+                BeginInvoke(new Action(() => ShowChoicePopup(text)));
             }
             else
             {
