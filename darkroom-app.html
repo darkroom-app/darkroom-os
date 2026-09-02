@@ -4115,10 +4115,10 @@ function renderCalendarMySati(){
           const reg = timeEntries.find(t=>t.employeeId===me.authId && t.kadarDbId===kadar.dbId && t.date===iso && !t.overtime);
           const ot = timeEntries.find(t=>t.employeeId===me.authId && t.kadarDbId===kadar.dbId && t.date===iso && t.overtime);
           return `
-          <div class="msati-row" data-kadar-id="${kadar.dbId}" data-date="${iso}" data-reg-id="${reg?reg.dbId:''}" data-ot-id="${ot?ot.dbId:''}">
+          <div class="msati-row" data-kadar-id="${kadar.dbId}" data-date="${iso}" data-reg-id="${reg?reg.dbId:''}" data-ot-id="${ot?ot.dbId:''}" data-event-id="${ev._id}">
             <div class="msati-tag-row">
               <div class="msati-tag" title="${escapeHtml(proj.name)} — ${escapeHtml(kadar.name)}">${escapeHtml(proj.code)} · ${escapeHtml(kadar.name)}</div>
-              ${(reg || ot) ? `<span class="msati-delete" title="Obriši unos sati">×</span>` : ''}
+              <span class="msati-delete" title="Obriši zadatak (ili Shift+klik bilo gde na red)">×</span>
             </div>
             <div class="msati-inputs">
               <label>Red.<input type="number" class="msati-reg" min="0" max="24" step="0.5" value="${reg?reg.hours:''}" placeholder="0.0" title="Redovni sati"></label>
@@ -4162,29 +4162,42 @@ function renderCalendarMySati(){
     });
   });
 
-  // Explicit delete — clearing a number field to 0 already deletes the row
-  // (saveOneHoursCell's existing behavior), but nothing about a blank input
-  // signals "this removes the entry", so people were leaving the grid to
-  // undo a mistake elsewhere instead of just clearing it here.
+  // × button (always shown, even for a day with no hours logged yet) or
+  // Shift+click anywhere on the row — both delete the whole zadatak this
+  // row belongs to, not just this day's hours. A day-row here represents
+  // "assigned to this kadar", so removing the assignment (and every day's
+  // hours under it) is what "delete" actually means, per the studio's own
+  // call — clearing one day's number field already exists for the narrower
+  // "I mis-typed today's hours" case and is untouched.
   calWeeks.querySelectorAll('.msati-delete').forEach(btn=>{
-    btn.addEventListener('click', async ()=>{
-      const row = btn.closest('.msati-row');
-      const kadarDbId = row.dataset.kadarId, iso = row.dataset.date;
-      const regId = row.dataset.regId, otId = row.dataset.otId;
-      if(regId){
-        const err = await saveOneHoursCell(regId, me.authId, me.name, kadarDbId, iso, 0, false);
-        if(err){ await customAlert('Brisanje nije uspelo: ' + err); return; }
-      }
-      if(otId){
-        const err = await saveOneHoursCell(otId, me.authId, me.name, kadarDbId, iso, 0, true);
-        if(err){ await customAlert('Brisanje nije uspelo: ' + err); return; }
-      }
-      renderCalendar();
-      renderWeekWidget();
-      renderWeeklyGoal();
-      renderOvertimeStat();
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      deleteMsatiRowEvent(btn.closest('.msati-row'));
     });
   });
+  calWeeks.querySelectorAll('.msati-row').forEach(row=>{
+    row.addEventListener('click', (e)=>{
+      if(e.shiftKey) deleteMsatiRowEvent(row);
+    });
+  });
+}
+async function deleteMsatiRowEvent(row){
+  const eventId = Number(row.dataset.eventId);
+  const evObj = events.find(e=>e._id===eventId);
+  if(!evObj) return;
+  const proj = allProjects.find(p=>p.code===evObj.projectCode);
+  const kadar = proj && proj.kadrovi.find(k=>k.name===evObj.taskName);
+  const label = kadar ? `"${kadar.name}" (${proj.code})` : 'ovaj zadatak';
+  const range = daysBetween(evObj.start, evObj.end) > 0
+    ? `od ${formatDateHuman(evObj.start)} do ${formatDateHuman(evObj.end).replace(/\.$/,'')}`
+    : formatDateHuman(evObj.start);
+  if(!await customConfirm(`Obrisati zadatak ${label} ${range}? Ovo briše ceo zadatak i sve unete sate za njega, ne samo ovaj dan.`)) return;
+  const ok = await deleteCalendarEvent(evObj);
+  if(!ok) return;
+  renderCalendar();
+  renderWeekWidget();
+  renderWeeklyGoal();
+  renderOvertimeStat();
 }
 
 /* Stats row above the calendar grid — was 5 static "0" placeholders with no
@@ -4804,18 +4817,11 @@ document.getElementById('evDelete').addEventListener('click', async ()=>{
   if(!editingEventId) return;
   if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
   const evObj = events.find(e=>e._id===editingEventId);
-  await deleteTimeEntriesForEvent(evObj);
-  if(evObj && evObj.dbId){
-    const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
-    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
-  }
-  const idx = events.findIndex(e=>e._id===editingEventId);
-  if(idx>-1) events.splice(idx,1);
+  const ok = await deleteCalendarEvent(evObj);
+  if(!ok) return;
   closeEventModal();
-  buildCalFilterMenus();
   renderCalendar();
   renderWeekWidget();
-  persist();
 });
 document.getElementById('evSubmit').addEventListener('click', async ()=>{
   const kind = evActiveTab;
@@ -4989,6 +4995,26 @@ async function deleteTimeEntriesForEvent(evObj){
   }
   renderWeeklyGoal();
   renderOvertimeStat();
+}
+/* Shared by the "Izmeni stavku" modal's Obriši button and the Moji sati
+   grid's delete button/shift-click shortcut — both need the exact same
+   sequence (time entries first, then the event row itself, then local
+   state), so this is the one place that does it instead of two copies
+   drifting apart. Caller is responsible for its own confirm() prompt and
+   re-render calls, since those differ by context (modal close vs. staying
+   on the grid). */
+async function deleteCalendarEvent(evObj){
+  if(!evObj) return false;
+  await deleteTimeEntriesForEvent(evObj);
+  if(evObj.dbId){
+    const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return false; }
+  }
+  const idx = events.findIndex(e=>e._id===evObj._id);
+  if(idx>-1) events.splice(idx,1);
+  buildCalFilterMenus();
+  persist();
+  return true;
 }
 /* Poredi staro (sacuvano) stanje zadatka sa novim submit-ovanim stanjem pri
    izmeni postojeceg zadatka i brise time_entries za (zaposleni,kadar,dan)
@@ -6224,9 +6250,25 @@ function renderProjectDetailKadrovi(){
     });
   });
   document.querySelectorAll('#pdTaskList .pd-round-pill').forEach(pill=>{
-    pill.addEventListener('click', (e)=>{
+    pill.addEventListener('click', async (e)=>{
       e.stopPropagation();
-      openRoundView(proj._id, Number(pill.dataset.taskId), Number(pill.dataset.roundId));
+      const taskId = Number(pill.dataset.taskId), roundId = Number(pill.dataset.roundId);
+      if(e.shiftKey){
+        // Shortcut for the same delete the round-view modal's Obriši button
+        // does, without opening it first — same confirm, same cleanup.
+        const kadar = proj.kadrovi.find(k=>k._id===taskId);
+        const round = kadar && kadar.rounds.find(r=>r._id===roundId);
+        if(!round) return;
+        if(!await customConfirm(`Obrisati "${round.label}"?`)) return;
+        const ok = await deleteRound(kadar, round);
+        if(!ok) return;
+        renderProjectDetailStats();
+        renderProjectDetailKadrovi();
+        renderProjectsPage();
+        renderPortfolioGrid();
+        return;
+      }
+      openRoundView(proj._id, taskId, roundId);
     });
   });
 }
@@ -6296,6 +6338,24 @@ function storagePathFromUrl(url, bucket){
   const idx = url.indexOf(marker);
   return idx===-1 ? null : url.slice(idx + marker.length);
 }
+// Shared by the round-view modal's Obriši button and the Shift+click
+// shortcut on a round pill — both need the same delete-plus-cleanup
+// sequence. Caller owns its own confirm() prompt (the two have different
+// wording) and whatever re-render/close calls fit its own context.
+async function deleteRound(kadar, round){
+  if(sb && round.dbId){
+    const { error } = await sb.from('rounds').delete().eq('id', round.dbId);
+    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return false; }
+    const imgPaths = [round.image, ...(round.extraImages||[])]
+      .map(u=>storagePathFromUrl(u, 'round-images')).filter(Boolean);
+    if(imgPaths.length) sb.storage.from('round-images').remove(imgPaths);
+  }
+  const idx = kadar.rounds.findIndex(r=>r._id===round._id);
+  if(idx>-1) kadar.rounds.splice(idx,1);
+  recomputeKadarRoundStats(kadar);
+  syncRoundsSummaryEntry(kadar, round, 'remove');
+  return true;
+}
 document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(!await customConfirm('Obrisati ovu rundu?')) return;
   const proj = allProjects.find(p=>p._id===activeRoundViewProjectId);
@@ -6303,17 +6363,8 @@ document.getElementById('roundViewDelete').addEventListener('click', async ()=>{
   if(!kadar) return;
   const round = kadar.rounds.find(r=>r._id===activeRoundViewRoundId);
   if(!round) return;
-  if(sb && round.dbId){
-    const { error } = await sb.from('rounds').delete().eq('id', round.dbId);
-    if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
-    const imgPaths = [round.image, ...(round.extraImages||[])]
-      .map(u=>storagePathFromUrl(u, 'round-images')).filter(Boolean);
-    if(imgPaths.length) sb.storage.from('round-images').remove(imgPaths);
-  }
-  const idx = kadar.rounds.findIndex(r=>r._id===activeRoundViewRoundId);
-  if(idx>-1) kadar.rounds.splice(idx,1);
-  recomputeKadarRoundStats(kadar);
-  syncRoundsSummaryEntry(kadar, round, 'remove');
+  const ok = await deleteRound(kadar, round);
+  if(!ok) return;
   closeRoundView();
   renderProjectDetailStats();
   renderProjectDetailKadrovi();
