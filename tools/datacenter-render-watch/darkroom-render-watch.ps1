@@ -88,12 +88,29 @@ foreach ($projFolder in $projectFolders) {
         # name the plan itself listed as a real kadar for this project.
         if (-not $validKadarFolders.ContainsKey($kadarName)) { continue }
 
-        $files = Get-ChildItem -Path $kadarFolder.FullName -File -ErrorAction SilentlyContinue |
+        # -Recurse: artists routinely drop each round's deliverables into
+        # their own subfolder under the kadar folder (e.g. "Round 01",
+        # "Round 02", alongside dozens of unrelated .exr/.psb/.log files
+        # from the same pass) rather than dumping everything flat — a
+        # non-recursive listing here found nothing at all in that layout.
+        # The extension filter below still only ever picks up jpg/png
+        # either way, so the .exr/.psb/.log clutter is never touched.
+        $files = Get-ChildItem -Path $kadarFolder.FullName -File -Recurse -ErrorAction SilentlyContinue |
             Where-Object { $AllowedExtensions -contains $_.Extension.ToLower() }
 
         foreach ($file in $files) {
             $key = $file.FullName
             if ($seen.ContainsKey($key)) { continue }
+
+            # Path relative to the kadar folder (e.g. "Round 02/2500.jpg"),
+            # not just $file.Name — two different round subfolders can
+            # easily both contain a same-named file (a generic export name
+            # like "2500.jpg" repeated per round is a real pattern), and
+            # pending_renders' uniqueness is keyed on file_name per kadar —
+            # a bare filename would make the second one look like an
+            # already-ingested duplicate of the first and get silently
+            # dropped.
+            $relativePath = $file.FullName.Substring($kadarFolder.FullName.Length + 1) -replace '\\', '/'
 
             try {
                 $bytes = [System.IO.File]::ReadAllBytes($file.FullName)
@@ -101,7 +118,7 @@ foreach ($projFolder in $projectFolders) {
                 $bodyObj = @{
                     projectCode = $projectCode
                     kadarName   = $kadarName
-                    fileName    = $file.Name
+                    fileName    = $relativePath
                     imageBase64 = $base64
                 }
                 $body = $bodyObj | ConvertTo-Json -Compress
