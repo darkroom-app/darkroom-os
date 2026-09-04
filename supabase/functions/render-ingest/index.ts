@@ -49,6 +49,20 @@ const EXT_CONTENT_TYPE: Record<string, string> = {
   png: "image/png",
 };
 
+// Must match datacenter-folder-plan's sanitizeForPath exactly — the bridge
+// script sends the folder name it found ON DISK, which has already been
+// through Windows' own trailing dot/space stripping (a kadar named "01."
+// really creates a folder named "01"). Comparing kadar.name to kadarName
+// with a plain `.eq()` would miss every kadar whose real name needed that
+// transformation, since the folder name is a lossy one-way mapping of the
+// original name, not the name itself. Fetching all of a project's kadrovi
+// and matching by their own sanitized name (computed the same way here)
+// is the only way to reverse that correctly, at the cost of one extra
+// query instead of a single indexed .eq() lookup.
+function sanitizeForPath(s: string): string {
+  return s.replace(/[\\/:*?"<>|]/g, "-").trim().replace(/[.\s]+$/, "");
+}
+
 Deno.serve(async (req) => {
   if (req.method !== "POST") {
     return jsonResponse({ ok: false, error: "method not allowed" }, 405);
@@ -79,10 +93,12 @@ Deno.serve(async (req) => {
   if (projError) return jsonResponse({ ok: false, error: projError.message }, 500);
   if (!project) return jsonResponse({ ok: false, error: `Projekat '${projectCode}' nije pronađen.` }, 404);
 
-  const { data: kadar, error: kadError } = await supabase
-    .from("kadrovi").select("id, team_members(name)")
-    .eq("project_id", project.id).eq("name", kadarName).maybeSingle();
+  const { data: kadrovi, error: kadError } = await supabase
+    .from("kadrovi").select("id, name, team_members(name)")
+    .eq("project_id", project.id);
   if (kadError) return jsonResponse({ ok: false, error: kadError.message }, 500);
+  // deno-lint-ignore no-explicit-any
+  const kadar = (kadrovi ?? []).find((k: any) => sanitizeForPath(k.name) === kadarName);
   if (!kadar) return jsonResponse({ ok: false, error: `Kadar '${kadarName}' nije pronađen u projektu '${projectCode}'.` }, 404);
 
   // Idempotent: an already-ingested file for this kadar is skipped, not
@@ -112,7 +128,7 @@ Deno.serve(async (req) => {
     await supabase.from("notifications").insert({
       recipient_name: recipientName,
       kind: "render_pending",
-      text: `Novi render detektovan za kadar "${kadarName}" u projektu ${project.name} — potvrdi da li je runda ili revizija.`,
+      text: `Novi render detektovan za kadar "${kadar.name}" u projektu ${project.name} — potvrdi da li je runda ili revizija.`,
       project_code: projectCode,
     });
   }
