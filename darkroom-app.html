@@ -4967,7 +4967,11 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
     if(error || !data){ await customAlert('Čuvanje nije uspelo: ' + (error?.message||'')); return; }
     events.push({ _id:nextId(), dbId:data.id, ...newEvent });
     if(kind==='odsustvo' && newEvent.approvalStatus==='na_cekanju'){
-      const text = `${newEvent.person} traži odsustvo od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end).replace(/\.$/,'')}.`;
+      // Uključuje tip odsustva (leaveLabels) — bez toga, dva različita zahteva
+      // za isti datum (npr. neko prvo pošalje pogrešan tip, obriše, pa pošalje
+      // ispravan) izgledaju kao identične duplirane notifikacije u feed-u.
+      const vrstaOdsustva = (leaveLabels[newEvent.leaveType] || 'odsustvo').toLowerCase();
+      const text = `${newEvent.person} traži ${vrstaOdsustva} od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end).replace(/\.$/,'')}.`;
       teamMembers.filter(t=>t.access==='superadmin').forEach(sa=> pushNotification(sa._id, 'odsustvo_zahtev', text, null));
     }
   }
