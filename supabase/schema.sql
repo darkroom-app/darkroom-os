@@ -1536,3 +1536,77 @@ begin
   return NEW;
 end;
 $$;
+
+-- ==== Phase 33: pending renders auto-detected from the datacenter (run this query) ====
+-- New render files appearing on \DATACENTER\Projekti\<code> - <name>\Renderi\<kadar>\
+-- (jpg/png only) get picked up by a script on the RenderFlow bridge machine and
+-- POSTed to the render-ingest Edge Function, which uploads the image here and
+-- creates a row — nothing writes to this table except that function
+-- (service_role key, same automation-only-write boundary as
+-- datacenter-folder-plan/pulse-webhook/bootstrap-team). A human still has to
+-- open the existing round-add modal and pick Round/Rev before this becomes a
+-- real, billable `rounds` row — this table is only the "detected, not yet
+-- confirmed" queue, per the explicit decision to keep a person in the loop
+-- rather than auto-creating billable rounds sight-unseen. Only applies to
+-- projects created from now on, same as datacenter-folder-plan's own
+-- SYNC_CUTOFF — the folder-per-kadar convention this depends on didn't exist
+-- for older projects, so there's nothing consistent for it to watch there.
+create table public.pending_renders (
+  id uuid primary key default gen_random_uuid(),
+  kadar_id uuid not null references public.kadrovi(id) on delete cascade,
+  file_name text not null,
+  image_url text not null,
+  detected_at timestamptz not null default now(),
+  unique (kadar_id, file_name)
+);
+alter table public.pending_renders enable row level security;
+
+create policy "authenticated can read pending_renders" on public.pending_renders for select to authenticated using (true);
+create policy "authenticated can delete pending_renders" on public.pending_renders for delete to authenticated using (true);
+-- Deliberately no insert/update policy for any client role — only
+-- render-ingest (service_role) ever writes here.
+
+insert into storage.buckets (id, name, public) values ('pending-renders', 'pending-renders', true);
+create policy "Public read pending-renders" on storage.objects for select using (bucket_id = 'pending-renders');
+-- No insert/delete storage policy for authenticated — same boundary as the
+-- table above. An orphaned file left behind if someone deletes a
+-- pending_renders row without confirming it is harmless clutter, same
+-- tradeoff already accepted for thumbnail/avatar re-uploads elsewhere.
+
+-- render_pending joins the same "too high-volume for Discord" exclusion list
+-- Phase 32 set up for kadar/round/approved/cancelled — it's per-kadar and
+-- could fire often, and the in-app bell (this insert, untouched) is already
+-- exactly where the studio asked for it to surface.
+create or replace function public.notify_discord()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  webhook_url text;
+begin
+  if NEW.kind in ('kadar', 'round', 'approved', 'cancelled', 'render_pending') then
+    return NEW;
+  end if;
+  if NEW.project_code is not null then
+    select discord_webhook_url into webhook_url
+    from public.projects where code = NEW.project_code;
+  end if;
+  perform net.http_post(
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/smart-service',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-db-webhook-secret', 'darkroom-discord-relay-2026'
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'notifications',
+      'schema', 'public',
+      'record', to_jsonb(NEW),
+      'webhook_url', webhook_url
+    )
+  );
+  return NEW;
+end;
+$$;
