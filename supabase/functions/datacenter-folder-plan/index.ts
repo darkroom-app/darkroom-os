@@ -71,9 +71,18 @@ function jsonResponse(body: unknown, status: number) {
 // Windows forbids these in a path segment — a project name typed by a PM
 // could contain any of them (e.g. "Client: Phase 2"), so they're swapped
 // for a hyphen rather than letting the datacenter script choke on an
-// invalid path.
+// invalid path. Also strips trailing dots/spaces: Win32's own folder-
+// creation API silently drops a trailing "." or " " from whatever name you
+// ask for (a decades-old NTFS/Win32 compatibility quirk), so a kadar named
+// e.g. "01." would make this function say the folder is "01." while the
+// real folder Windows creates is "01" — every consumer of this plan
+// (darkroom-datacenter-sync.ps1 creating folders, darkroom-render-watch.ps1
+// matching them back to real kadar names) needs to agree with what Windows
+// actually does, not what was literally typed. Caught live: a test kadar
+// named "01." produced exactly this mismatch and the render watcher never
+// found the folder.
 function sanitizeForPath(s: string): string {
-  return s.replace(/[\\/:*?"<>|]/g, "-").trim();
+  return s.replace(/[\\/:*?"<>|]/g, "-").trim().replace(/[.\s]+$/, "");
 }
 
 // Only these three kadar types get a per-kadar folder today (in both Max
