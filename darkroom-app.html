@@ -2004,7 +2004,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="panel panel-flex grow" style="flex:1;">
           <div class="panel-head">
             <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>Obaveštenja</div>
-            <button type="button" class="panel-head-btn" id="notifClearAllBtn" style="display:none;">Obriši sve</button>
+            <div style="display:flex; align-items:center; gap:10px;">
+              <button type="button" class="panel-head-btn" id="pushToggleBtn" style="display:none;">Uključi push</button>
+              <button type="button" class="panel-head-btn" id="notifClearAllBtn" style="display:none;">Obriši sve</button>
+            </div>
           </div>
           <div class="notif-scroll" id="notifScroll"></div>
         </div>
@@ -11037,6 +11040,73 @@ document.getElementById('notifClearAllBtn').addEventListener('click', async ()=>
   }
 });
 
+/* ==== Web Push (Phase 34) ====
+   Public half of the VAPID key pair generated for this app — safe to ship
+   client-side by design (only the private half, held server-side by
+   push-notify, can actually sign anything). Browsers want it as a raw
+   Uint8Array, not the base64url string Web Push tooling normally hands
+   around, hence the small decode helper below. */
+const VAPID_PUBLIC_KEY = 'BJs9BCVv2cKHOuZ-YI5WsHCg6Dth54_ow8dhF76qmD9UWFdIujkA9fN6jE-qaSxsy7YsY6Yw-VYuWhMUXTfZwOA';
+function urlBase64ToUint8Array(base64String){
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+function pushSupported(){
+  return 'serviceWorker' in navigator && 'PushManager' in window;
+}
+async function refreshPushToggleUI(){
+  const btn = document.getElementById('pushToggleBtn');
+  if(!btn) return;
+  if(!pushSupported() || !currentUser()){ btn.style.display = 'none'; return; }
+  btn.style.display = '';
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    btn.textContent = sub ? 'Isključi push' : 'Uključi push';
+  } catch(e){ btn.style.display = 'none'; }
+}
+async function subscribeToPush(){
+  const me = currentUser();
+  if(!me || !me.authId || !sb) return;
+  if(Notification.permission === 'denied'){
+    await customAlert('Notifikacije su blokirane za ovaj sajt u podešavanjima browsera — odblokiraj ih pa probaj ponovo.');
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if(permission !== 'granted') return;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+  });
+  const json = sub.toJSON();
+  const { error } = await sb.from('push_subscriptions').upsert({
+    employee_id: me.authId,
+    endpoint: json.endpoint,
+    p256dh: json.keys.p256dh,
+    auth: json.keys.auth
+  }, { onConflict: 'endpoint' });
+  if(error){ await customAlert('Čuvanje pretplate nije uspelo: ' + error.message); return; }
+  await refreshPushToggleUI();
+}
+async function unsubscribeFromPush(){
+  if(!sb) return;
+  const reg = await navigator.serviceWorker.ready;
+  const sub = await reg.pushManager.getSubscription();
+  if(sub){
+    await sb.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+    await sub.unsubscribe();
+  }
+  await refreshPushToggleUI();
+}
+document.getElementById('pushToggleBtn').addEventListener('click', async ()=>{
+  const btn = document.getElementById('pushToggleBtn');
+  if(btn.textContent === 'Isključi push') await unsubscribeFromPush();
+  else await subscribeToPush();
+});
+
 /* ==== Remote notifications (Supabase) — Pulse render-finished push.
    No-ops entirely when `sb` is null (placeholder config / offline), so the
    rest of the notification system (local pushNotification(), seed data)
@@ -12107,6 +12177,7 @@ function login(id){
   const proj = requestedProject ? allProjects.find(p=>p.code===requestedProject) : null;
   if(proj) openProjectDetail(proj);
   else if(requestedView && NAV_VIEWS.includes(requestedView)) showView(requestedView);
+  refreshPushToggleUI();
 }
 function logout(){
   if(sb) sb.auth.signOut();

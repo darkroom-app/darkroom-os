@@ -1610,3 +1610,67 @@ begin
   return NEW;
 end;
 $$;
+
+-- ==== Phase 34: Web Push subscriptions (run this query) ====
+-- One row per (device, browser) a person has enabled push notifications
+-- on — someone with a phone and a desktop both subscribed gets two rows,
+-- both reachable. `endpoint` is the push service's own per-subscription
+-- URL (unique per browser install, not per person), so it's the natural
+-- primary key to upsert against when a browser re-subscribes (e.g. after
+-- clearing site data) rather than accumulating duplicates.
+create table public.push_subscriptions (
+  id uuid primary key default gen_random_uuid(),
+  employee_id uuid not null references public.team_members(id) on delete cascade,
+  endpoint text not null unique,
+  p256dh text not null,
+  auth text not null,
+  created_at timestamptz not null default now()
+);
+alter table public.push_subscriptions enable row level security;
+
+-- Someone only ever needs to see/manage their own subscriptions (turning
+-- push on/off on their own devices) — the send side (push-notify Edge
+-- Function) reads every subscription for a recipient using the
+-- service_role key, which bypasses RLS entirely, so this doesn't need a
+-- superadmin-can-read-all exception the way other tables do.
+create policy "own can read push_subscriptions" on public.push_subscriptions
+  for select to authenticated using (employee_id = auth.uid());
+create policy "own can insert push_subscriptions" on public.push_subscriptions
+  for insert to authenticated with check (employee_id = auth.uid());
+create policy "own can delete push_subscriptions" on public.push_subscriptions
+  for delete to authenticated using (employee_id = auth.uid());
+
+-- Fans every new notification out to Web Push, the same way notify_discord()
+-- already fans out to Discord — one insert into `notifications`, reaches
+-- every channel that cares, with zero changes needed at any of the many
+-- call sites that create a notification. Kept as its own trigger/function
+-- rather than folded into notify_discord() so the two channels can be
+-- silenced/tuned independently later (e.g. if push turns out too noisy for
+-- a kind Discord is fine with, or vice versa) without touching the other.
+create or replace function public.notify_push()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  perform net.http_post(
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/push-notify',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-db-webhook-secret', 'darkroom-discord-relay-2026'
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'notifications',
+      'schema', 'public',
+      'record', to_jsonb(NEW)
+    )
+  );
+  return NEW;
+end;
+$$;
+
+create trigger notify_push_on_notification
+  after insert on public.notifications
+  for each row execute function public.notify_push();

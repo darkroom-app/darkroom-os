@@ -1,10 +1,10 @@
 // DARKROOM OS: service worker
 //
-// Deliberately does NOT cache anything. This file's only two jobs right
-// now are (1) satisfy the browser's requirement that an installable PWA
-// have an active service worker with a fetch handler, and (2) be the
-// landing spot for push notifications later (receiving a Web Push event
-// requires an active service worker regardless of any caching strategy).
+// Deliberately does NOT cache anything. This file's two jobs are
+// (1) satisfy the browser's requirement that an installable PWA have an
+// active service worker with a fetch handler, and (2) receive Web Push
+// events (Phase 34) and show them as real OS notifications — this is what
+// lets a notification reach someone even with no tab/window open at all.
 //
 // darkroom-app.html changes constantly during active development — a
 // cache-first (or any caching) strategy is exactly how PWAs famously get
@@ -28,4 +28,38 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   event.respondWith(fetch(event.request));
+});
+
+// push-notify (the Edge Function) sends { title, body, url } as JSON —
+// url is where notificationclick below should land, already resolved
+// server-side (e.g. straight to the relevant project) so this stays dumb.
+self.addEventListener('push', (event) => {
+  let data = { title: 'DARKROOM OS', body: '', url: '/darkroom-app.html' };
+  try { data = { ...data, ...event.data.json() }; } catch (e) { /* non-JSON payload — fall back to defaults */ }
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: data.url },
+    })
+  );
+});
+
+// Focuses an already-open app window if there is one (rather than opening
+// a duplicate), navigating it to the notification's target first.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = event.notification.data?.url || '/darkroom-app.html';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      for (const client of clientList) {
+        if ('focus' in client) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(targetUrl);
+    })
+  );
 });
