@@ -43,15 +43,28 @@ Deno.serve(async (req) => {
 
   const since = new Date(Date.now() - 7 * DAY_MS).toISOString();
 
-  const { count: newProjects } = await supabase.from("projects").select("id", { count: "exact", head: true }).gte("created_at", since);
-  const { count: newKadrovi } = await supabase.from("kadrovi").select("id", { count: "exact", head: true }).gte("created_at", since);
-  const { count: newRounds } = await supabase.from("rounds").select("id", { count: "exact", head: true }).gte("created_at", since);
-  const { count: newReceipts } = await supabase.from("expense_inbox").select("id", { count: "exact", head: true }).gte("created_at", since);
+  // Full rows, not just counts — stored verbatim in raw_payload below so the
+  // app can show a detailed breakdown when someone clicks the notification,
+  // instead of just the one-line summary text.
+  const { data: newProjectRows } = await supabase
+    .from("projects").select("code, name, created_at").gte("created_at", since).order("created_at", { ascending: false });
+  const { data: newKadarRows } = await supabase
+    .from("kadrovi").select("name, type, created_at, projects(code, name)").gte("created_at", since).order("created_at", { ascending: false });
+  const { data: newRoundRows } = await supabase
+    .from("rounds").select("label, billable, date, created_at, kadrovi(name, projects(code, name))").gte("created_at", since).order("created_at", { ascending: false });
+  const { data: newReceiptRows } = await supabase
+    .from("expense_inbox").select("file_name, extracted_amount, extracted_date, extracted_description, extracted_category, status, created_at")
+    .gte("created_at", since).order("created_at", { ascending: false });
   const { count: pendingReceipts } = await supabase.from("expense_inbox").select("id", { count: "exact", head: true }).eq("status", "na_cekanju");
 
+  const newProjects = newProjectRows?.length ?? 0;
+  const newKadrovi = newKadarRows?.length ?? 0;
+  const newRounds = newRoundRows?.length ?? 0;
+  const newReceipts = newReceiptRows?.length ?? 0;
+
   const lines: string[] = [
-    `📁 ${newProjects ?? 0} novih projekata, ${newKadrovi ?? 0} novih kadrova, ${newRounds ?? 0} novih rundi (poslednjih 7 dana).`,
-    `🧾 ${newReceipts ?? 0} novih računa iz Dropbox-a ove nedelje, ${pendingReceipts ?? 0} trenutno čeka potvrdu.`,
+    `📁 ${newProjects} novih projekata, ${newKadrovi} novih kadrova, ${newRounds} novih rundi (poslednjih 7 dana).`,
+    `🧾 ${newReceipts} novih računa iz Dropbox-a ove nedelje, ${pendingReceipts ?? 0} trenutno čeka potvrdu.`,
   ];
 
   const warnings: string[] = [];
@@ -74,13 +87,40 @@ Deno.serve(async (req) => {
 
   const text = [...lines, ...warnings].join(" ");
 
+  // Flattened into plain fields (no nested embeds) so the client can render
+  // this directly without re-deriving anything — stored verbatim in
+  // raw_payload, read back by darkroom-app.html when someone clicks the
+  // notification to see the detailed breakdown instead of just `text`.
+  const detail = {
+    // deno-lint-ignore no-explicit-any
+    projects: (newProjectRows ?? []).map((p: any) => ({ code: p.code, name: p.name, createdAt: p.created_at })),
+    // deno-lint-ignore no-explicit-any
+    kadrovi: (newKadarRows ?? []).map((k: any) => ({
+      name: k.name, type: k.type, createdAt: k.created_at,
+      projectCode: k.projects?.code ?? null, projectName: k.projects?.name ?? null,
+    })),
+    // deno-lint-ignore no-explicit-any
+    rounds: (newRoundRows ?? []).map((r: any) => ({
+      label: r.label, billable: r.billable, date: r.date, createdAt: r.created_at,
+      kadarName: r.kadrovi?.name ?? null,
+      projectCode: r.kadrovi?.projects?.code ?? null, projectName: r.kadrovi?.projects?.name ?? null,
+    })),
+    // deno-lint-ignore no-explicit-any
+    receipts: (newReceiptRows ?? []).map((e: any) => ({
+      fileName: e.file_name, amount: e.extracted_amount, date: e.extracted_date,
+      description: e.extracted_description, category: e.extracted_category, status: e.status, createdAt: e.created_at,
+    })),
+    pendingReceipts: pendingReceipts ?? 0,
+    warnings,
+  };
+
   const { data: superadmins, error: saError } = await supabase.from("team_members").select("name").eq("access", "superadmin");
   if (saError) return jsonResponse({ ok: false, error: saError.message }, 500);
 
   const names = (superadmins ?? []).map((r: { name: string }) => r.name);
   if (names.length) {
     const { error: insertError } = await supabase.from("notifications").insert(
-      names.map((name) => ({ recipient_name: name, kind: "weekly_report", text, project_code: null })),
+      names.map((name) => ({ recipient_name: name, kind: "weekly_report", text, project_code: null, raw_payload: detail })),
     );
     if (insertError) return jsonResponse({ ok: false, error: insertError.message }, 500);
   }

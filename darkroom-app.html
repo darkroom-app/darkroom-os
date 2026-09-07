@@ -2994,6 +2994,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   </div>
 </div>
 
+<div class="modal-overlay" id="weeklyReportModalOverlay">
+  <div class="modal-card" style="width:640px; max-height:82vh;">
+    <div class="modal-title">Nedeljni pregled — poslednjih 7 dana</div>
+    <div id="weeklyReportBody" style="overflow-y:auto; max-height:64vh;"></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" id="weeklyReportClose">Zatvori</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-overlay" id="teamModalOverlay">
   <div class="modal-card">
     <div class="modal-title" id="ntTitle">Novi član tima</div>
@@ -10898,6 +10908,7 @@ function renderDashboardNotifications(){
       // makes that so (an expense's own project_code was otherwise winning
       // and sending you to the project page instead).
       if(n.kind==='expense_pending'){ openExpenseInboxPanel(); return; }
+      if(n.kind==='weekly_report'){ openWeeklyReportModal(n); return; }
       const proj = n.projectId ? allProjects.find(p=>p._id===n.projectId) : null;
       if(proj) openProjectDetail(proj);
     });
@@ -10914,6 +10925,56 @@ function renderDashboardNotifications(){
       if(sb && n._remoteId) sb.from('notifications').delete().eq('id', n._remoteId).then(()=>{});
     });
   });
+}
+
+const weeklyReportModalOverlay = document.getElementById('weeklyReportModalOverlay');
+function closeWeeklyReportModal(){ weeklyReportModalOverlay.classList.remove('open'); }
+document.getElementById('weeklyReportClose').addEventListener('click', closeWeeklyReportModal);
+wireOverlayClose(weeklyReportModalOverlay, closeWeeklyReportModal);
+/* weekly-health-report (Edge Function) je počeo da čuva pun spisak (ne samo
+   brojeve) u notifications.raw_payload — stariji unosi poslati pre te
+   izmene nemaju rawPayload, pa modal u tom slučaju samo objasni da detalji
+   nisu dostupni umesto da pukne. */
+function openWeeklyReportModal(n){
+  const body = document.getElementById('weeklyReportBody');
+  const d = n.rawPayload;
+  if(!d){
+    body.innerHTML = `<div class="agenda-empty">Detaljan spisak nije dostupan za ovo obaveštenje (poslato pre uvođenja detaljnog pregleda).</div>`;
+    weeklyReportModalOverlay.classList.add('open');
+    return;
+  }
+  const row = (name, meta, right) => `
+    <div class="price-kadar-row">
+      <div class="price-kadar-name">${name}${meta ? ` <span class="price-extra-hint">· ${meta}</span>` : ''}</div>
+      <div class="price-kadar-right">${right || ''}</div>
+    </div>`;
+  const section = (title, items, html) => items.length
+    ? `<div class="fin-section-label">${escapeHtml(title)} (${items.length})</div>${items.map(html).join('')}`
+    : '';
+
+  const warningsHtml = (d.warnings||[]).length
+    ? `<div style="margin-bottom:12px;">${d.warnings.map(w=>`<div style="color:var(--coral); font-size:12.5px; margin-bottom:4px;">${escapeHtml(w)}</div>`).join('')}</div>`
+    : '';
+
+  const projectsHtml = section('📁 Novi projekti', d.projects, p =>
+    row(escapeHtml(p.code) + ' — ' + escapeHtml(p.name), null, `<span class="notif-time">${notifTimeAgo(new Date(p.createdAt).getTime())}</span>`));
+
+  const kadroviHtml = section('🎬 Novi kadrovi', d.kadrovi, k =>
+    row(escapeHtml(k.name), escapeHtml([k.projectCode, k.projectName].filter(Boolean).join(' ')), `<span class="notif-time">${notifTimeAgo(new Date(k.createdAt).getTime())}</span>`));
+
+  const roundsHtml = section('🖼️ Nove runde', d.rounds, r =>
+    row(escapeHtml(r.label), escapeHtml([r.kadarName, r.projectCode].filter(Boolean).join(' · ')),
+      `${r.billable ? '' : '<span class="tag tag-wip">interno</span> '}<span class="notif-time">${notifTimeAgo(new Date(r.createdAt).getTime())}</span>`));
+
+  const receiptsHtml = section('🧾 Novi računi (Dropbox)', d.receipts, e =>
+    row(escapeHtml(e.description || e.fileName), e.category ? escapeHtml(e.category) : null,
+      `${e.amount!=null ? fmtRSD(e.amount)+' · ' : ''}<span class="tag ${e.status==='na_cekanju' ? 'tag-wip' : 'tag-final'}">${escapeHtml(e.status)}</span>`));
+
+  const nothingAtAll = !d.projects.length && !d.kadrovi.length && !d.rounds.length && !d.receipts.length;
+
+  body.innerHTML = warningsHtml + projectsHtml + kadroviHtml + roundsHtml + receiptsHtml +
+    (nothingAtAll ? '<div class="agenda-empty">Nema nove aktivnosti u poslednjih 7 dana.</div>' : '');
+  weeklyReportModalOverlay.classList.add('open');
 }
 document.getElementById('notifClearAllBtn').addEventListener('click', async ()=>{
   const mine = myNotifications();
@@ -10946,6 +11007,7 @@ function mapRemoteNotifRow(row){
     kind: row.kind,
     text: row.text,
     projectId: proj ? proj._id : null,
+    rawPayload: row.raw_payload || null,
     read: row.read,
     createdAt: new Date(row.created_at).getTime()
   };
