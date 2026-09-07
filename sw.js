@@ -36,11 +36,12 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('push', (event) => {
   let data = { title: 'DARKROOM OS', body: '', url: '/darkroom-app.html' };
   try { data = { ...data, ...event.data.json() }; } catch (e) { /* non-JSON payload — fall back to defaults */ }
+  // No explicit icon/badge — Windows already shows its own small app icon
+  // next to the title automatically; adding icon/badge here duplicated it
+  // as a second, bigger image in the notification body.
   event.waitUntil(
     self.registration.showNotification(data.title, {
       body: data.body,
-      icon: '/icons/icon-192.png',
-      badge: '/icons/icon-192.png',
       data: { url: data.url },
     })
   );
