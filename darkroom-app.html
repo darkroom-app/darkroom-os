@@ -472,7 +472,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .upload-dropzone.dragover{ border-color:var(--gold); background:var(--card-soft); }
 .upload-dropzone-text{ display:flex; flex-direction:column; gap:4px; }
 .upload-dropzone-text span{ font-size:11px; color:var(--ink-faint); }
-.upload-dropzone-text input[type="file"]{ font-size:11px; color:var(--ink-dim); max-width:200px; }
+/* The native file input's own "Choose File"/"No file chosen" chrome is
+   rendered by the browser in the OS/browser UI language, not ours — on a
+   Serbian-Cyrillic Windows/Chrome setup it shows in Cyrillic regardless of
+   this page's lang="sr" (Latin). Visually hidden (not display:none, which
+   would drop it from the tab order) and triggered instead via a real
+   <label for="..."> — a native, JS-free way to open the file picker — plus
+   our own Latin-script button and filename text. */
+.upload-dropzone-text input[type="file"]{ position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+.upload-btn{ display:inline-block; width:fit-content; font-size:11px; padding:5px 10px; border-radius:6px; background:var(--card-soft); color:var(--ink-dim); cursor:pointer; border:1px solid var(--border); }
+.upload-btn:hover{ border-color:var(--gold); color:var(--ink); }
+.upload-filename{ font-size:11px; color:var(--ink-faint); }
 .team-section-divider{ grid-column:1/-1; display:flex; align-items:center; gap:10px; margin:8px 0 2px; font-family:var(--font-display); font-weight:700; font-size:11.5px; letter-spacing:0.03em; text-transform:uppercase; color:var(--ink-faint); }
 .team-section-divider::after{ content:""; flex:1; height:1px; background:var(--border); }
 .team-card-inactive{ opacity:0.55; filter:grayscale(0.6); }
@@ -3049,7 +3059,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="nc-avatar-preview" id="ntAvatarPreview"></div>
         <div class="upload-dropzone-text">
           <span>Prevuci sliku ovde ili</span>
+          <label class="upload-btn" for="ntAvatarInput">Odaberi fajl</label>
           <input type="file" id="ntAvatarInput" accept="image/*">
+          <span class="upload-filename" id="ntAvatarInputName">Nije odabran fajl</span>
         </div>
       </div>
     </div>
@@ -3104,7 +3116,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="nc-avatar-preview" id="ncAvatarPreview"></div>
         <div class="upload-dropzone-text">
           <span>Prevuci sliku ovde ili</span>
+          <label class="upload-btn" for="ncAvatarInput">Odaberi fajl</label>
           <input type="file" id="ncAvatarInput" accept="image/*">
+          <span class="upload-filename" id="ncAvatarInputName">Nije odabran fajl</span>
         </div>
       </div>
     </div>
@@ -3150,7 +3164,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="nc-avatar-preview np-thumb-preview" id="npThumbPreview"></div>
         <div class="upload-dropzone-text">
           <span>Prevuci sliku ovde ili</span>
+          <label class="upload-btn" for="npThumbInput">Odaberi fajl</label>
           <input type="file" id="npThumbInput" accept="image/*">
+          <span class="upload-filename" id="npThumbInputName">Nije odabran fajl</span>
         </div>
       </div>
     </div>
@@ -3250,6 +3266,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="round-img-preview-list" id="roundImgPreviewList"></div>
         <div class="upload-dropzone-text">
           <span id="roundDropzoneHint">Prevuci do 5 slika ovde ili</span>
+          <label class="upload-btn" for="roundImgInput">Odaberi fajlove</label>
           <input type="file" id="roundImgInput" accept="image/*" multiple>
         </div>
       </div>
@@ -3395,7 +3412,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <div class="upload-dropzone" id="skriptFileDropzone">
         <div class="upload-dropzone-text">
           <span id="skriptFileHint">Prevuci fajl ovde ili</span>
+          <label class="upload-btn" for="skriptFileInput">Odaberi fajl</label>
           <input type="file" id="skriptFileInput">
+          <span class="upload-filename" id="skriptFileInputName">Nije odabran fajl</span>
         </div>
       </div>
     </div>
@@ -3405,7 +3424,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <div class="nc-avatar-preview np-thumb-preview" id="skriptThumbPreview"></div>
         <div class="upload-dropzone-text">
           <span>Prevuci sliku ovde ili</span>
+          <label class="upload-btn" for="skriptThumbInput">Odaberi fajl</label>
           <input type="file" id="skriptThumbInput" accept="image/*">
+          <span class="upload-filename" id="skriptThumbInputName">Nije odabran fajl</span>
         </div>
       </div>
     </div>
@@ -6043,6 +6064,19 @@ function wireDropzone(zone, onFile, accept){
 function wireImageDropzone(zone, onFile){
   wireDropzone(zone, onFile, file=>file.type.startsWith('image/'));
 }
+// Native file inputs are visually hidden (see .upload-dropzone-text
+// input[type="file"]) in favor of our own Latin-script label+filename text
+// — this just keeps that filename text in sync with whatever the browser's
+// (hidden) picker actually selected. Skips roundImgInput on purpose: it's
+// multi-file and already shows real thumbnail previews instead.
+['ntAvatarInput','ncAvatarInput','npThumbInput','skriptFileInput','skriptThumbInput'].forEach(id=>{
+  const input = document.getElementById(id);
+  const nameSpan = document.getElementById(id+'Name');
+  if(!input || !nameSpan) return;
+  input.addEventListener('change', ()=>{
+    nameSpan.textContent = input.files.length ? input.files[0].name : 'Nije odabran fajl';
+  });
+});
 
 /* Uploads an arbitrary file (script, template, tool — not an image, so no
    compression/re-encoding like processImageUpload) to Storage and returns
@@ -6081,6 +6115,7 @@ function openProjectModal(proj){
   document.getElementById('npStartDate').value = proj.startDate;
   document.getElementById('npStatus').value = proj.status;
   document.getElementById('npThumbInput').value = '';
+  document.getElementById('npThumbInputName').textContent = 'Nije odabran fajl';
   pendingProjectThumbnail = undefined;
   setProjectThumbPreview(proj.thumbnail);
   document.getElementById('npDiscordWebhook').value = proj.discordWebhookUrl || '';
@@ -6097,6 +6132,7 @@ document.getElementById('newProjectBtn').addEventListener('click', ()=>{
   document.getElementById('npStartDate').value = toISO(TODAY);
   document.getElementById('npStatus').value='U toku';
   document.getElementById('npThumbInput').value = '';
+  document.getElementById('npThumbInputName').textContent = 'Nije odabran fajl';
   pendingProjectThumbnail = undefined;
   setProjectThumbPreview(null);
   document.getElementById('npDiscordWebhook').value = '';
@@ -6977,6 +7013,7 @@ function openClientModal(client){
   document.getElementById('ncPhone').value = client.phone;
   document.getElementById('ncWebsite').value = client.website || '';
   document.getElementById('ncAvatarInput').value = '';
+  document.getElementById('ncAvatarInputName').textContent = 'Nije odabran fajl';
   pendingClientAvatar = undefined;
   setAvatarPreview(client.name, client.avatar);
   clientModalOverlay.classList.add('open');
@@ -6989,6 +7026,7 @@ document.getElementById('newClientBtn').addEventListener('click', ()=>{
   document.getElementById('ncDelete').style.display = 'none';
   ['ncName','ncContact','ncEmail','ncPhone','ncWebsite'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ncAvatarInput').value = '';
+  document.getElementById('ncAvatarInputName').textContent = 'Nije odabran fajl';
   pendingClientAvatar = undefined;
   setAvatarPreview('', null);
   clientModalOverlay.classList.add('open');
@@ -7330,8 +7368,10 @@ function openSkriptModal(existing){
   document.getElementById('skriptCategoryInput').value = existing ? existing.category : '3ds Max';
   document.getElementById('skriptDescInput').value = existing ? existing.description : '';
   document.getElementById('skriptFileInput').value = '';
+  document.getElementById('skriptFileInputName').textContent = 'Nije odabran fajl';
   document.getElementById('skriptFileHint').textContent = existing ? `Trenutni fajl: ${existing.fileName} — prevuci novi da zameniš` : 'Prevuci fajl ovde ili';
   document.getElementById('skriptThumbInput').value = '';
+  document.getElementById('skriptThumbInputName').textContent = 'Nije odabran fajl';
   document.getElementById('skriptThumbPreview').style.backgroundImage = existing && existing.thumbnailUrl ? `url('${existing.thumbnailUrl}')` : '';
   skriptModalOverlay.classList.add('open');
 }
@@ -8502,6 +8542,7 @@ function openTeamModal(member){
   document.getElementById('ntAccess').value = member.access || 'user';
   document.getElementById('ntAccessField').style.display = isSuperAdmin() ? '' : 'none';
   document.getElementById('ntAvatarInput').value = '';
+  document.getElementById('ntAvatarInputName').textContent = 'Nije odabran fajl';
   pendingTeamAvatar = undefined;
   setTeamAvatarPreview(member.name, member.avatar);
   teamModalOverlay.classList.add('open');
@@ -8520,6 +8561,7 @@ document.getElementById('newTeamBtn').addEventListener('click', ()=>{
   document.getElementById('ntAccess').value = 'user';
   document.getElementById('ntAccessField').style.display = '';
   document.getElementById('ntAvatarInput').value = '';
+  document.getElementById('ntAvatarInputName').textContent = 'Nije odabran fajl';
   pendingTeamAvatar = undefined;
   setTeamAvatarPreview('', null);
   teamModalOverlay.classList.add('open');
