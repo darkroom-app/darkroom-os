@@ -6663,7 +6663,7 @@ document.getElementById('taskSubmit').addEventListener('click', async ()=>{
     notifText = `Dodat je novi kadar "${name}" (${pendingTaskEmployee}) u projekat ${proj.name}`;
     notifKind = 'kadar';
   }
-  if(notifText) pushNotification(notifRecipientId(proj.managerName), notifKind, notifText, proj._id);
+  if(notifText) pushNotification(notifRecipientId(pendingTaskEmployee), notifKind, notifText, proj._id);
   closeTaskModal();
   buildFilterMenus();
   renderProjectDetailStats();
@@ -10862,9 +10862,9 @@ function openExpenseInboxPanel(){
   showView('finansije');
   document.querySelector('#view-finansije .fin-tab-btn[data-fintab="transakcije"]')?.click();
 }
-function notifRecipientId(managerName){
-  const mgr = teamMembers.find(t=>t.name===managerName);
-  return mgr ? mgr._id : null;
+function notifRecipientId(name){
+  const member = teamMembers.find(t=>t.name===name);
+  return member ? member._id : null;
 }
 function myNotifications(){
   return notifications.filter(n=>n.recipientId===currentUserId).sort((a,b)=>b.createdAt-a.createdAt);
