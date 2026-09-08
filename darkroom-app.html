@@ -1680,7 +1680,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ev-praznik-note{ font-size:11px; color:var(--ink-faint); line-height:1.5; margin-top:2px; }
 
 /* radni sati — dnevni redovi unutar zadatak-modala */
-.ev-hours-row{ display:grid; grid-template-columns:1fr 56px 56px; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); }
+.ev-hours-row{ display:grid; grid-template-columns:1fr 56px 56px 18px; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); }
 .ev-hours-row:last-child{ border-bottom:none; }
 .ev-hours-header{ font-family:var(--font-mono); font-size:9px; text-transform:uppercase; letter-spacing:0.04em; color:var(--ink-faint); text-align:center; padding:0 0 5px 0; }
 .ev-hours-header span:first-child{ text-align:left; }
@@ -1689,6 +1689,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ev-hours-row input[type="number"]{ width:100%; text-align:center; border:1px solid var(--border); background:var(--card-soft); border-radius:7px; padding:6px 4px; font-family:var(--font-body); font-size:11.5px; outline:none; color:var(--ink); }
 .ev-hours-row input[type="number"]:focus{ border-color:var(--gold); }
 .ev-hours-row input[type="number"]:disabled{ opacity:0.5; }
+.ev-hours-delete{ width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); background:transparent; cursor:pointer; font-size:12px; line-height:1; transition:background .12s ease, color .12s ease; }
+.ev-hours-delete:hover{ background:var(--coral-soft); color:var(--coral); }
 
 /* date range trigger + picker popover */
 .date-range-trigger{ display:flex; align-items:center; gap:8px; width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; box-sizing:border-box; }
@@ -3325,7 +3327,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <div class="modal-field ev-hours-field" id="evzHoursField" style="display:none;">
         <label>Sati po danu</label>
         <div class="ev-hours-row ev-hours-header">
-          <span></span><span>Redovno</span><span>Prekovr.</span>
+          <span></span><span>Redovno</span><span>Prekovr.</span><span></span>
         </div>
         <div class="ev-hours-list" id="evzHoursList"></div>
       </div>
@@ -4252,12 +4254,60 @@ function wireHoursInputs(scopeEl){
     });
   });
 }
-// Removes just THIS day from the zadatak (and this day's hours) — not the
-// whole assignment. A day in the middle of the range splits the event in
+// Removes just ISO from evObj's range (zeroing that day's hours first) — not
+// the whole assignment. A day in the middle of the range splits the event in
 // two (splitRangeExcludingDates, the same range-minus-dates logic odmor/
 // birthday splitting already relies on); a day at either edge just shrinks
 // start/end; a single-day event has nothing left afterward and is deleted
-// outright.
+// outright. Shared by the Moji sati grid's × button/Shift+click and the
+// "Izmeni stavku" modal's per-day ×, so both stay in sync — looks up the
+// employee from evObj.person (not currentUser()) since the modal path can be
+// an admin editing someone else's zadatak. Returns the (possibly shrunk)
+// evObj, or null if nothing of it survived; caller owns its own confirm()
+// prompt and re-renders, since those differ by context (modal vs. grid).
+async function deleteOneDayFromZadatak(evObj, iso){
+  const proj = allProjects.find(p=>p.code===evObj.projectCode);
+  const kadar = proj && proj.kadrovi.find(k=>k.name===evObj.taskName);
+  const emp = teamMembers.find(t=>t.name===evObj.person);
+  if(kadar && kadar.dbId && emp && emp.authId){
+    const reg = timeEntries.find(t=>t.employeeId===emp.authId && t.kadarDbId===kadar.dbId && t.date===iso && !t.overtime);
+    const ot = timeEntries.find(t=>t.employeeId===emp.authId && t.kadarDbId===kadar.dbId && t.date===iso && t.overtime);
+    if(reg) await saveOneHoursCell(reg.dbId, emp.authId, emp.name, kadar.dbId, iso, 0, false);
+    if(ot) await saveOneHoursCell(ot.dbId, emp.authId, emp.name, kadar.dbId, iso, 0, true);
+  }
+
+  const ranges = splitRangeExcludingDates(evObj.start, evObj.end, new Set([iso]));
+  if(ranges.length === 0){
+    if(evObj.dbId){
+      const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
+      if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return evObj; }
+    }
+    const idx = events.findIndex(e=>e._id===evObj._id);
+    if(idx>-1) events.splice(idx,1);
+    return null;
+  }
+
+  const [first, ...rest] = ranges;
+  if(evObj.dbId){
+    const { error } = await sb.from('calendar_events')
+      .update({ start_date: toISO(first.start), end_date: toISO(first.end) }).eq('id', evObj.dbId);
+    if(error){ await customAlert('Izmena nije uspela: ' + error.message); return evObj; }
+  }
+  evObj.start = first.start; evObj.end = first.end;
+  // The removed day was in the middle of the range — the piece after it
+  // becomes its own separate assignment (an update can only shrink one
+  // edge, not carve a hole out of the middle).
+  for(const range of rest){
+    const newEventBase = {
+      kind:evObj.kind, person:evObj.person, initials:evObj.initials, color:evObj.color,
+      projectCode:evObj.projectCode, taskName:evObj.taskName, urgency:evObj.urgency,
+      start: range.start, end: range.end,
+    };
+    const { data, error } = await sb.from('calendar_events').insert(calendarEventDbRow(newEventBase)).select().single();
+    if(!error && data) events.push({ _id: nextId(), dbId: data.id, ...newEventBase });
+  }
+  return evObj;
+}
 async function deleteMsatiRowEvent(row){
   const eventId = Number(row.dataset.eventId);
   const iso = row.dataset.date;
@@ -4268,40 +4318,8 @@ async function deleteMsatiRowEvent(row){
   const label = kadar ? `"${kadar.name}" (${proj.code})` : 'ovaj zadatak';
   if(!await customConfirm(`Ukloniti ${formatDateHuman(fromISO(iso))} iz zadatka ${label}? Briše i unete sate za taj dan.`)) return;
 
-  const me = currentUser();
-  const kadarDbId = row.dataset.kadarId;
-  if(row.dataset.regId) await saveOneHoursCell(row.dataset.regId, me.authId, me.name, kadarDbId, iso, 0, false);
-  if(row.dataset.otId) await saveOneHoursCell(row.dataset.otId, me.authId, me.name, kadarDbId, iso, 0, true);
+  await deleteOneDayFromZadatak(evObj, iso);
 
-  const ranges = splitRangeExcludingDates(evObj.start, evObj.end, new Set([iso]));
-  if(ranges.length === 0){
-    if(evObj.dbId){
-      const { error } = await sb.from('calendar_events').delete().eq('id', evObj.dbId);
-      if(error){ await customAlert('Brisanje nije uspelo: ' + error.message); return; }
-    }
-    const idx = events.findIndex(e=>e._id===evObj._id);
-    if(idx>-1) events.splice(idx,1);
-  } else {
-    const [first, ...rest] = ranges;
-    if(evObj.dbId){
-      const { error } = await sb.from('calendar_events')
-        .update({ start_date: toISO(first.start), end_date: toISO(first.end) }).eq('id', evObj.dbId);
-      if(error){ await customAlert('Izmena nije uspela: ' + error.message); return; }
-    }
-    evObj.start = first.start; evObj.end = first.end;
-    // The removed day was in the middle of the range — the piece after it
-    // becomes its own separate assignment (an update can only shrink one
-    // edge, not carve a hole out of the middle).
-    for(const range of rest){
-      const newEventBase = {
-        kind:evObj.kind, person:evObj.person, initials:evObj.initials, color:evObj.color,
-        projectCode:evObj.projectCode, taskName:evObj.taskName, urgency:evObj.urgency,
-        start: range.start, end: range.end,
-      };
-      const { data, error } = await sb.from('calendar_events').insert(calendarEventDbRow(newEventBase)).select().single();
-      if(!error && data) events.push({ _id: nextId(), dbId: data.id, ...newEventBase });
-    }
-  }
   buildCalFilterMenus();
   persist();
   renderCalendar();
@@ -5067,6 +5085,11 @@ function renderEvzHours(ev){
   const emp = ev ? teamMembers.find(t=>t.name===ev.person) : null;
   if(!ev || !proj || !kadar || !emp){ field.style.display = 'none'; return; }
   const readOnly = !canEditCalendarFor(ev.person);
+  // Only an already-saved event (has ._id/.dbId) can have a day removed from
+  // it — currentEvzFormState() (live-preview while still filling out a NEW,
+  // unsaved zadatak) returns a plain {kind,person,...} snapshot with neither,
+  // and there's nothing in the DB yet to split/delete anyway.
+  const isExisting = ev._id != null;
   const list = document.getElementById('evzHoursList');
   list.innerHTML = evzHoursDays(ev.start, ev.end).map(d=>{
     const iso = toISO(d);
@@ -5078,11 +5101,33 @@ function renderEvzHours(ev){
       <span class="ev-hours-date">${dow} ${d.d}. ${calMonthNames[d.m-1].slice(0,3).toLowerCase()}</span>
       <input type="number" class="ev-hours-reg" min="0" max="24" step="0.5" value="${reg ? reg.hours : ''}" ${readOnly?'disabled':''}>
       <input type="number" class="ev-hours-ot" min="0" max="24" step="0.5" value="${ot ? ot.hours : ''}" ${readOnly?'disabled':''}>
+      ${(!readOnly && isExisting) ? `<span class="ev-hours-delete" title="Ukloni ovaj dan iz zadatka">×</span>` : '<span></span>'}
     </div>`;
   }).join('');
   field.dataset.kadarDbId = kadar.dbId;
   field.dataset.employeeId = emp.authId;
   field.style.display = '';
+  if(!readOnly && isExisting){
+    list.querySelectorAll('.ev-hours-delete').forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        e.stopPropagation();
+        const iso = btn.closest('.ev-hours-row').dataset.date;
+        if(!await customConfirm(`Ukloniti ${formatDateHuman(fromISO(iso))} iz zadatka "${kadar.name}" (${proj.code})? Briše i unete sate za taj dan.`)) return;
+        const remaining = await deleteOneDayFromZadatak(ev, iso);
+        buildCalFilterMenus();
+        persist();
+        renderCalendar();
+        renderWeekWidget();
+        renderWeeklyGoal();
+        renderOvertimeStat();
+        if(!remaining){ closeEventModal(); return; }
+        document.getElementById('evzStart').value = toISO(remaining.start);
+        document.getElementById('evzEnd').value = toISO(remaining.end);
+        updateRangeLabel('evzRangeLabel', document.getElementById('evzStart').value, document.getElementById('evzEnd').value);
+        renderEvzHours(remaining);
+      });
+    });
+  }
 }
 /* time_entries are keyed on (employee, kadar, date) and logged inside the
    zadatak event's edit modal, but they're a fully separate Supabase table
