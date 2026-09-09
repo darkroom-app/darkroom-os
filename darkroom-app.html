@@ -3198,6 +3198,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       </div>
       <div class="round-view-thumbs" id="roundViewThumbs"></div>
       <div class="modal-actions round-view-side-actions">
+        <button class="modal-submit" id="roundViewEdit">Izmeni</button>
         <button class="modal-delete" id="roundViewDelete">Obriši</button>
         <button class="modal-cancel" id="roundViewClose">Zatvori</button>
       </div>
@@ -6521,6 +6522,11 @@ function closeRoundView(){
 }
 document.getElementById('roundViewClose').addEventListener('click', closeRoundView);
 wireOverlayClose(roundViewOverlay, closeRoundView);
+document.getElementById('roundViewEdit').addEventListener('click', ()=>{
+  const projectId = activeRoundViewProjectId, taskId = activeRoundViewTaskId, roundId = activeRoundViewRoundId;
+  closeRoundView();
+  openRoundModalForEdit(projectId, taskId, roundId);
+});
 function storagePathFromUrl(url, bucket){
   if(!url) return null;
   const marker = `/storage/v1/object/public/${bucket}/`;
@@ -6725,6 +6731,13 @@ let activeRoundProjectId = null;
 let activeRoundTaskId = null;
 let pendingRoundImages = [];
 let roundChoice = 'round';
+// Set when the modal is editing an existing round instead of creating a new
+// one — see openRoundModalForEdit(). Round vs Rev (billable) and the label
+// stay locked during edit since nextRoundLabel()/hasRounds are keyed off
+// kadar.billableRoundsCount, which already counts the round being edited —
+// letting the choice change here would desync it from the number actually
+// printed on the label (see roundSubmit for the full reasoning).
+let editingRoundId = null;
 // Set only when the modal was opened from a "🎬 render čeka potvrdu" badge
 // (Phase 33) — a successful submit then also clears that pending_renders
 // row, since confirming it as a real round is what it was queued for.
@@ -6759,6 +6772,7 @@ function renderRoundImgPreviews(){
 function openRoundModal(projectId, taskId){
   activeRoundProjectId = projectId;
   activeRoundTaskId = taskId;
+  editingRoundId = null;
   pendingRoundImages = [];
   document.getElementById('roundImgInput').value = '';
   renderRoundImgPreviews();
@@ -6785,8 +6799,31 @@ function openRoundModalFromPending(projectId, taskId, pending){
   renderRoundImgPreviews();
   activePendingRenderId = pending.dbId;
 }
+// Lets a mistake (wrong render, wrong date) be fixed in place instead of
+// forcing a delete-and-redo — but only date/images are editable. Round vs
+// Rev is locked (see editingRoundId's comment above) since changing it after
+// the fact would desync from nextRoundLabel()'s live count-based numbering
+// for whatever gets added next; that's rare enough to just delete+redo.
+function openRoundModalForEdit(projectId, taskId, roundId){
+  const proj = allProjects.find(p=>p._id===projectId);
+  const kadar = proj && proj.kadrovi.find(k=>k._id===taskId);
+  const round = kadar && kadar.rounds.find(r=>r._id===roundId);
+  if(!round) return;
+  activeRoundProjectId = projectId;
+  activeRoundTaskId = taskId;
+  editingRoundId = roundId;
+  activePendingRenderId = null;
+  pendingRoundImages = [round.image, ...(round.extraImages||[])].filter(Boolean);
+  document.getElementById('roundImgInput').value = '';
+  renderRoundImgPreviews();
+  document.getElementById('roundDate').value = round.date || toISO(TODAY);
+  document.getElementById('roundChoiceField').style.display = 'none';
+  document.getElementById('roundTitle').textContent = `Izmeni "${round.label}"`;
+  roundModalOverlay.classList.add('open');
+}
 function closeRoundModal(){
   roundModalOverlay.classList.remove('open');
+  editingRoundId = null;
   activeRoundProjectId = null;
   activeRoundTaskId = null;
   activePendingRenderId = null;
@@ -6843,6 +6880,40 @@ document.getElementById('roundSubmit').addEventListener('click', async ()=>{
   const kadar = proj && proj.kadrovi.find(k=>k._id===activeRoundTaskId);
   if(!kadar) return;
   const date = document.getElementById('roundDate').value || toISO(TODAY);
+
+  if(editingRoundId){
+    const round = kadar.rounds.find(r=>r._id===editingRoundId);
+    if(!round) return;
+    const image = pendingRoundImages[0] || null;
+    const extraImages = pendingRoundImages.slice(1);
+    // Storage objects dropped from the edit (replaced or removed outright)
+    // would otherwise sit orphaned in round-images forever — rounds was
+    // flagged as the highest-volume bucket with no cleanup path, so this
+    // matters more here than it would for a one-off thumbnail/avatar edit.
+    const removedImages = [round.image, ...(round.extraImages||[])]
+      .filter(Boolean).filter(u=>!pendingRoundImages.includes(u));
+    if(sb && round.dbId){
+      const { data, error } = await sb.from('rounds')
+        .update({ date, image, extra_images: extraImages })
+        .eq('id', round.dbId).select().single();
+      if(error){ await customAlert('Čuvanje nije uspelo: ' + error.message); return; }
+      Object.assign(round, { date: data.date, image: data.image, extraImages: data.extra_images || [] });
+      if(removedImages.length){
+        const paths = removedImages.map(u=>storagePathFromUrl(u, 'round-images')).filter(Boolean);
+        if(paths.length) sb.storage.from('round-images').remove(paths);
+      }
+    } else {
+      Object.assign(round, { date, image, extraImages });
+    }
+    recomputeKadarRoundStats(kadar);
+    syncRoundsSummaryEntry(kadar, round, 'update');
+    closeRoundModal();
+    renderProjectsPage();
+    renderPortfolioGrid();
+    if(activeProjectDetailId){ renderProjectDetailStats(); renderProjectDetailKadrovi(); }
+    return;
+  }
+
   const hasRounds = (kadar.totalRoundsCount||0) > 0;
   let label, billable;
   if(!hasRounds){
@@ -7909,6 +7980,9 @@ function syncRoundsSummaryEntry(kadar, round, action){
   if(!roundsSummaryLoaded) return;
   if(action==='add'){
     roundsSummary.push({ id: round.dbId, kadar_id: kadar.dbId, date: round.date, billable: round.billable });
+  } else if(action==='update'){
+    const entry = roundsSummary.find(r=>r.id===round.dbId);
+    if(entry){ entry.date = round.date; entry.billable = round.billable; }
   } else {
     const idx = roundsSummary.findIndex(r=>r.id===round.dbId);
     if(idx>-1) roundsSummary.splice(idx,1);

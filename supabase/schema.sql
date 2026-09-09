@@ -245,8 +245,7 @@ alter table public.rounds enable row level security;
 create policy "authenticated can read rounds" on public.rounds for select to authenticated using (true);
 create policy "authenticated can insert rounds" on public.rounds for insert to authenticated with check (true);
 create policy "authenticated can delete rounds" on public.rounds for delete to authenticated using (true);
--- Deliberately no update policy — roundSubmit only ever inserts, there's no
--- edit-round handler in the app today.
+-- Update policy added in Phase 35, once an edit-round handler existed.
 
 
 -- ==== Phase 3e: relay new notifications to Discord (run as a seventh query) ====
@@ -1674,3 +1673,17 @@ $$;
 create trigger notify_push_on_notification
   after insert on public.notifications
   for each row execute function public.notify_push();
+
+
+-- ==== Phase 35: allow editing an existing round (run this query) ====
+-- Phase 3b deliberately shipped rounds with no update policy — roundSubmit
+-- only ever inserted, there was no edit-round handler in the app. Adding one
+-- now (date + images, not label/billable — see darkroom-app.html for why)
+-- needs this RLS policy or every update silently fails with a 403. The
+-- rounds_sync_kadar_stats trigger (Phase 6) already fires on UPDATE too and
+-- recomputes correctly, so no trigger changes are needed here — just the
+-- missing policy. Matches insert/delete's existing fully-open shape (zero
+-- access-gating on kadrovi/rounds, same as every phase since 3b).
+
+create policy "authenticated can update rounds" on public.rounds
+  for update to authenticated using (true) with check (true);
