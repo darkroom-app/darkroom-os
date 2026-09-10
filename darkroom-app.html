@@ -10996,16 +10996,43 @@ function notifTimeAgo(ts){
   if(h < 24) return `pre ${h}h`;
   return `pre ${Math.floor(h/24)}d`;
 }
+// Kinds that get bursty from manual data entry (re-entering kadrovi from an
+// old project, bulk-approving, bulk-uploading rounds) — routed through the
+// push_notification_batched() RPC (Phase 36) instead of a plain insert, so
+// repeats within a short window merge into one growing-count notification
+// (and one push/Discord message) instead of one of each per row. One-off
+// kinds (odsustvo_*, weekly_report, expense_pending, render_pending) never
+// arrive in a burst from a single person's actions, so they're untouched.
+const BATCHABLE_NOTIF_KINDS = new Set(['kadar','round','approved','cancelled']);
 async function pushNotification(recipientId, kind, text, projectId){
   if(recipientId==null) return;
+  const recipient = teamMembers.find(t=>t._id===recipientId);
+  const proj = projectId ? allProjects.find(p=>p._id===projectId) : null;
+
+  if(sb && recipient && proj && BATCHABLE_NOTIF_KINDS.has(kind)){
+    const { data, error } = await sb.rpc('push_notification_batched', {
+      p_recipient_name: recipient.name, p_kind: kind, p_project_code: proj.code,
+      p_project_name: proj.name, p_single_text: text
+    });
+    if(error){
+      // RPC missing/failed (e.g. Phase 36 migration not run yet) — fall back
+      // to a plain insert below rather than silently dropping the notification.
+    } else if(data){
+      const local = notifications.find(n=>n._remoteId===data.id);
+      if(local){ local.text = data.text; local.read = data.read; }
+      else notifications.unshift({ _id:nextId(), _remoteId:data.id, recipientId, kind, text:data.text, projectId, read:data.read, createdAt:new Date(data.created_at).getTime() });
+      persist();
+      renderDashboardNotifications();
+      return;
+    }
+  }
+
   const local = { _id:nextId(), recipientId, kind, text, projectId, read:false, createdAt:Date.now() };
   notifications.unshift(local);
   persist();
   renderDashboardNotifications();
   if(!sb) return;
-  const recipient = teamMembers.find(t=>t._id===recipientId);
   if(!recipient) return;
-  const proj = projectId ? allProjects.find(p=>p._id===projectId) : null;
   const insertQuery = sb.from('notifications')
     .insert({ recipient_name: recipient.name, kind, text, project_code: proj ? proj.code : null });
   // The "read own notifications" RLS policy only allows recipient_name === your own
@@ -11249,6 +11276,14 @@ function mergeRemoteNotif(row){
   if(notifications.some(n=>n._remoteId===row.id)) return;
   notifications.unshift(mapRemoteNotifRow(row));
 }
+// A batched notification (Phase 36) grows via UPDATE, not another INSERT —
+// without this, an already-open session only ever sees the first item of a
+// burst and the growing count only shows up after a reload.
+function updateRemoteNotif(row){
+  const local = notifications.find(n=>n._remoteId===row.id);
+  if(local){ local.text = row.text; local.read = row.read; }
+  else notifications.unshift(mapRemoteNotifRow(row));
+}
 async function syncRemoteNotifications(){
   if(!sb) return;
   const u = currentUser();
@@ -11270,6 +11305,10 @@ function subscribeRemoteNotifications(){
     .on('postgres_changes',
       { event:'INSERT', schema:'public', table:'notifications', filter:`recipient_name=eq.${u.name}` },
       (payload)=>{ mergeRemoteNotif(payload.new); renderDashboardNotifications(); }
+    )
+    .on('postgres_changes',
+      { event:'UPDATE', schema:'public', table:'notifications', filter:`recipient_name=eq.${u.name}` },
+      (payload)=>{ updateRemoteNotif(payload.new); renderDashboardNotifications(); }
     ).subscribe();
 }
 function unsubscribeRemoteNotifications(){

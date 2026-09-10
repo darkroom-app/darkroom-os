@@ -1687,3 +1687,95 @@ create trigger notify_push_on_notification
 
 create policy "authenticated can update rounds" on public.rounds
   for update to authenticated using (true) with check (true);
+
+
+-- ==== Phase 36: batch bursty notifications instead of one push per row (run this query) ====
+-- A couple people re-entering kadrovi from an old project (or bulk-approving/
+-- uploading rounds) fired one push + one Discord message PER row, seconds
+-- apart — unusable when someone adds a dozen kadrovi in a row. Scoped to the
+-- 4 "editing a project's structure" kinds that actually get bursty from
+-- manual data entry (kadar/round/approved/cancelled) — one-off kinds
+-- (odsustvo_*, weekly_report, expense_pending, render_pending) are untouched.
+--
+-- Why a SECURITY DEFINER function instead of just widening the notifications
+-- RLS/grants: the coalescing check needs to read+update whichever row was
+-- last sent to that (recipient, kind, project) — almost always someone
+-- OTHER than the person triggering the write (an admin adding kadrovi
+-- assigned to someone else). The existing "own notifications" read/update
+-- policies (Phase 2) are correctly scoped to recipient_name = your own name,
+-- and widening them so any authenticated user can read/rewrite anyone else's
+-- notification feed is a real privacy loosening this doesn't need — a
+-- narrow function that does the read+write internally (like
+-- sync_kadar_round_stats()/notify_push() already do) gets the same result
+-- without touching that boundary at all.
+--
+-- Only the FIRST notification in a burst is a real INSERT — every merge
+-- after that is an UPDATE, and notify_push_on_notification/
+-- notify_discord_on_notification are both `after insert` triggers, so they
+-- correctly fire exactly once per burst without any changes to either of
+-- them. `read` is reset to false on each merge so a growing count actually
+-- resurfaces as unread.
+
+alter table public.notifications add column if not exists batch_count int not null default 1;
+
+create or replace function public.push_notification_batched(
+  p_recipient_name text,
+  p_kind text,
+  p_project_code text,
+  p_project_name text,
+  p_single_text text,
+  p_window_seconds int default 90
+)
+returns public.notifications
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  existing_id uuid;
+  existing_count int;
+  new_count int;
+  new_text text;
+  result public.notifications;
+begin
+  select id, batch_count into existing_id, existing_count
+  from public.notifications
+  where recipient_name = p_recipient_name
+    and kind = p_kind
+    and project_code is not distinct from p_project_code
+    and created_at >= now() - make_interval(secs => p_window_seconds)
+  order by created_at desc
+  limit 1;
+
+  if existing_id is null then
+    insert into public.notifications (recipient_name, kind, text, project_code, batch_count)
+    values (p_recipient_name, p_kind, p_single_text, p_project_code, 1)
+    returning * into result;
+    return result;
+  end if;
+
+  new_count := coalesce(existing_count, 1) + 1;
+  new_text := case p_kind
+    when 'kadar' then new_count || ' novih kadrova dodato u projekat ' || p_project_name
+    when 'round' then new_count || ' novih rundi dodato u projektu ' || p_project_name
+    when 'approved' then new_count || ' kadrova odobreno u projektu ' || p_project_name
+    when 'cancelled' then new_count || ' kadrova otkazano u projektu ' || p_project_name
+    else p_single_text
+  end;
+
+  update public.notifications
+  set text = new_text, batch_count = new_count, read = false
+  where id = existing_id
+  returning * into result;
+  return result;
+end;
+$$;
+
+grant execute on function public.push_notification_batched(text, text, text, text, text, int) to authenticated;
+
+-- Realtime only ever announced INSERTs to the client (subscribeRemoteNotifications()
+-- in darkroom-app.html) — a merge is an UPDATE, so an already-open session needs
+-- Postgres's UPDATE events too, or the growing count only shows up after a reload.
+-- Dashboard → Database → Replication → the "notifications" table's replica identity
+-- must include old/new columns for updates, which is already the default (FULL isn't
+-- required since RLS-filtered realtime only needs the new row).
