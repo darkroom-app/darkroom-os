@@ -5029,7 +5029,8 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
       // ispravan) izgledaju kao identične duplirane notifikacije u feed-u.
       const vrstaOdsustva = (leaveLabels[newEvent.leaveType] || 'odsustvo').toLowerCase();
       const text = `${newEvent.person} traži ${vrstaOdsustva} od ${formatDateHuman(newEvent.start)} do ${formatDateHuman(newEvent.end).replace(/\.$/,'')}.`;
-      teamMembers.filter(t=>t.access==='superadmin').forEach(sa=> pushNotification(sa._id, 'odsustvo_zahtev', text, null));
+      const retroactive = daysBetween(newEvent.end, TODAY) > 0;
+      teamMembers.filter(t=>t.access==='superadmin').forEach(sa=> pushNotification(sa._id, 'odsustvo_zahtev', text, null, { retroactive }));
     }
   }
   // A birthday in the middle of the requested range splits it into more
@@ -8855,7 +8856,7 @@ async function approveLeaveRequest(eventId){
   ev.approvalStatus = 'odobreno';
   const emp = teamMembers.find(t=>t.name===ev.person);
   const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end).replace(/\.$/,'')}`;
-  if(emp) pushNotification(emp._id, 'odsustvo_odobreno', `Tvoj zahtev za odsustvo od ${rangeText} je odobren.`, null);
+  if(emp) pushNotification(emp._id, 'odsustvo_odobreno', `Tvoj zahtev za odsustvo od ${rangeText} je odobren.`, null, { retroactive: daysBetween(ev.end, TODAY) > 0 });
   await sb.from('notifications').insert({
     recipient_name: 'Discord — odsustva i remote',
     kind: 'odsustvo_discord',
@@ -8874,7 +8875,7 @@ async function rejectLeaveRequest(eventId){
   ev.approvalStatus = 'odbijeno';
   const emp = teamMembers.find(t=>t.name===ev.person);
   const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end).replace(/\.$/,'')}`;
-  if(emp) pushNotification(emp._id, 'odsustvo_odbijeno', `Tvoj zahtev za odsustvo od ${rangeText} je odbijen.`, null);
+  if(emp) pushNotification(emp._id, 'odsustvo_odbijeno', `Tvoj zahtev za odsustvo od ${rangeText} je odbijen.`, null, { retroactive: daysBetween(ev.end, TODAY) > 0 });
   renderPendingLeaveRequests();
   renderCalendar();
   persist();
@@ -11004,8 +11005,15 @@ function notifTimeAgo(ts){
 // kinds (odsustvo_*, weekly_report, expense_pending, render_pending) never
 // arrive in a burst from a single person's actions, so they're untouched.
 const BATCHABLE_NOTIF_KINDS = new Set(['kadar','round','approved','cancelled']);
-async function pushNotification(recipientId, kind, text, projectId){
+// opts.retroactive (Phase 37): set true when the notification concerns a
+// leave period whose last day has already passed (someone backfilling old
+// odmor/bolovanje for the record) — the in-app bell still shows it as
+// normal, but notify_discord() skips the Discord relay for it, since a
+// live-looking "traži odsustvo od <date in the past>" reads as confusing
+// rather than informative once the dates are already behind us.
+async function pushNotification(recipientId, kind, text, projectId, opts){
   if(recipientId==null) return;
+  const retroactive = !!(opts && opts.retroactive);
   const recipient = teamMembers.find(t=>t._id===recipientId);
   const proj = projectId ? allProjects.find(p=>p._id===projectId) : null;
 
@@ -11034,7 +11042,7 @@ async function pushNotification(recipientId, kind, text, projectId){
   if(!sb) return;
   if(!recipient) return;
   const insertQuery = sb.from('notifications')
-    .insert({ recipient_name: recipient.name, kind, text, project_code: proj ? proj.code : null });
+    .insert({ recipient_name: recipient.name, kind, text, project_code: proj ? proj.code : null, retroactive });
   // The "read own notifications" RLS policy only allows recipient_name === your own
   // name, and Postgres checks that policy against the RETURNING row of an INSERT too —
   // so chaining .select() here fails with a 403 whenever recipientId isn't the current

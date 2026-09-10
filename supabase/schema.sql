@@ -1779,3 +1779,53 @@ grant execute on function public.push_notification_batched(text, text, text, tex
 -- Dashboard → Database → Replication → the "notifications" table's replica identity
 -- must include old/new columns for updates, which is already the default (FULL isn't
 -- required since RLS-filtered realtime only needs the new row).
+
+
+-- ==== Phase 37: don't relay retroactive leave notifications to Discord (run this query) ====
+-- Someone backfilling already-past leave days (e.g. entering last month's sick
+-- day for the record) still fires the normal odsustvo_zahtev/odsustvo_odobreno/
+-- odsustvo_odbijeno notifications, which read like a live, time-sensitive
+-- request/decision in Discord even though the dates already passed — confusing,
+-- not informative. Same shape as Phase 32 (kadar/round/approved/cancelled): the
+-- in-app bell (this insert, untouched) still shows it for the record; only the
+-- Discord relay call is skipped. Scoped by a flag set at insert time rather than
+-- parsing dates back out of the pre-rendered Serbian `text` column.
+
+alter table public.notifications add column if not exists retroactive boolean not null default false;
+
+create or replace function public.notify_discord()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  webhook_url text;
+begin
+  if NEW.kind in ('kadar', 'round', 'approved', 'cancelled', 'render_pending') then
+    return NEW;
+  end if;
+  if NEW.retroactive then
+    return NEW;
+  end if;
+  if NEW.project_code is not null then
+    select discord_webhook_url into webhook_url
+    from public.projects where code = NEW.project_code;
+  end if;
+  perform net.http_post(
+    url := 'https://gvwvvqiaggvopxsfyfsa.supabase.co/functions/v1/smart-service',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-db-webhook-secret', 'darkroom-discord-relay-2026'
+    ),
+    body := jsonb_build_object(
+      'type', 'INSERT',
+      'table', 'notifications',
+      'schema', 'public',
+      'record', to_jsonb(NEW),
+      'webhook_url', webhook_url
+    )
+  );
+  return NEW;
+end;
+$$;
