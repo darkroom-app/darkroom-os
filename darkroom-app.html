@@ -592,8 +592,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-mini-stat-val{ font-family:var(--font-display); font-weight:700; font-size:22px; }
 .fin-mini-stat-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; }
 
-.expense-inbox-row{ background:var(--card-soft); border-radius:12px; padding:12px 14px; margin-bottom:10px; }
+.expense-inbox-row{ background:var(--card-soft); border-radius:12px; padding:12px 14px; margin-bottom:10px; transition:background .3s ease, box-shadow .3s ease; }
 .expense-inbox-row:last-child{ margin-bottom:0; }
+.expense-inbox-row-highlight{ background:var(--gold-soft); box-shadow:0 0 0 2px var(--gold); }
 .expense-inbox-file{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px; }
 .expense-inbox-file-link{ font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--ink); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .expense-inbox-file-link:hover{ color:var(--gold-deep); }
@@ -10977,10 +10978,42 @@ if(!_persistedRaw){
   }
 }
 
-function openExpenseInboxPanel(){
+// n (optional): the expense_pending notification that was clicked. Landing
+// on a tab full of OTHER pending receipts (or none obviously highlighted)
+// reads as "the receipt just isn't here" — when it's actually still sitting
+// unconfirmed, waiting for a manual Potvrdi click in this same panel. This
+// was mistaken for a bug more than once (linked_transaction_id stayed null
+// because nobody had actually clicked Potvrdi yet) — scrolling to and
+// highlighting the exact row makes the still-pending state undeniable.
+// Matched by parsing the receipt's own description back out of the
+// notification's pre-rendered text (dropbox-expense-sync doesn't store the
+// expense_inbox row's id on the notification), so this is best-effort: if
+// nothing matches (already confirmed elsewhere, text format changed), it
+// just falls back to landing on the tab as before.
+async function openExpenseInboxPanel(n){
   if(!canAccessFinance()) return;
+  const firstVisit = !finansijeInited;
   showView('finansije');
   document.querySelector('#view-finansije .fin-tab-btn[data-fintab="transakcije"]')?.click();
+  await renderExpenseInbox();
+  // On Finansije's first visit this session, showView() above just triggered
+  // initFinansije() — which fires its OWN renderExpenseInbox() call without
+  // awaiting it (same as every other render call in there). That call can
+  // still be in flight and finish AFTER this one, silently wiping the
+  // highlight below by rebuilding the row's DOM node from scratch. There's
+  // no promise to await instead, so just give it a moment to settle first.
+  if(firstVisit) await new Promise(r=>setTimeout(r, 500));
+  const match = n && typeof n.text === 'string' && n.text.match(/^Novi račun iz Dropbox-a: (.+) \([^)]*\) čeka potvrdu\.$/);
+  const targetDesc = match ? match[1] : null;
+  const item = targetDesc ? expenseInbox.find(e=>e.description===targetDesc) : null;
+  const row = item ? document.querySelector(`.expense-inbox-row[data-id="${item._id}"]`) : document.getElementById('expenseInboxPanel');
+  if(row){
+    row.scrollIntoView({ behavior:'smooth', block:'center' });
+    if(item){
+      row.classList.add('expense-inbox-row-highlight');
+      setTimeout(()=> row.classList.remove('expense-inbox-row-highlight'), 2500);
+    }
+  }
 }
 function notifRecipientId(name){
   const member = teamMembers.find(t=>t.name===name);
@@ -11108,7 +11141,7 @@ function renderDashboardNotifications(){
       // case first, ahead of the generic project fallback below, is what
       // makes that so (an expense's own project_code was otherwise winning
       // and sending you to the project page instead).
-      if(n.kind==='expense_pending'){ openExpenseInboxPanel(); return; }
+      if(n.kind==='expense_pending'){ openExpenseInboxPanel(n); return; }
       if(n.kind==='weekly_report'){ openWeeklyReportModal(n); return; }
       const proj = n.projectId ? allProjects.find(p=>p._id===n.projectId) : null;
       if(proj) openProjectDetail(proj);
