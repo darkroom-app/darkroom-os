@@ -5220,11 +5220,20 @@ async function saveOneHoursCell(dbId, employeeId, employeeName, kadarDbId, dateV
       const local = timeEntries.find(t=>t.dbId===dbId);
       if(local) Object.assign(local, { hours:data.hours, overtime:data.overtime });
     } else {
+      // Phase 38: upsert on the (employee, kadar, date, overtime) natural
+      // key rather than a plain insert — a fast multi-cell entry burst can
+      // fire this with a stale "no existing row" DOM state for a cell
+      // that's actually already been saved a moment earlier (the render
+      // that would've updated data-reg-id hasn't caught up yet), which
+      // used to insert a silent duplicate instead of updating the real row.
       const { data, error } = await sb.from('time_entries')
-        .insert({ employee_id:employeeId, kadar_id:kadarDbId, date:dateVal, hours, overtime })
+        .upsert({ employee_id:employeeId, kadar_id:kadarDbId, date:dateVal, hours, overtime },
+          { onConflict: 'employee_id,kadar_id,date,overtime' })
         .select().single();
       if(error) return error.message;
-      timeEntries.push({ _id:nextId(), dbId:data.id, employee:employeeName, employeeId:data.employee_id, kadarDbId:data.kadar_id, date:data.date, hours:data.hours, overtime:data.overtime });
+      const local = timeEntries.find(t=>t.employeeId===data.employee_id && t.kadarDbId===data.kadar_id && t.date===data.date && t.overtime===data.overtime);
+      if(local) Object.assign(local, { dbId:data.id, hours:data.hours, overtime:data.overtime });
+      else timeEntries.push({ _id:nextId(), dbId:data.id, employee:employeeName, employeeId:data.employee_id, kadarDbId:data.kadar_id, date:data.date, hours:data.hours, overtime:data.overtime });
     }
   } else if(dbId){
     const { error } = await sb.from('time_entries').delete().eq('id', dbId);

@@ -1829,3 +1829,27 @@ begin
   return NEW;
 end;
 $$;
+
+
+-- ==== Phase 38: prevent duplicate time_entries rows (run this query) ====
+-- Found live: 7 pairs of identical (employee, kadar, date, overtime) rows,
+-- inserted a fraction of a second apart during rapid data entry (one person
+-- backfilling 5 consecutive days in ~2 seconds hit it on every single day).
+-- saveOneHoursCell() in darkroom-app.html decides insert-vs-update based on
+-- whether the cell's rendered data-reg-id/data-ot-id attribute is already
+-- populated — during a fast multi-cell entry burst, a render/rewire pass
+-- triggered by one cell's save can still be catching up when the next
+-- cell's save fires, so it reads a stale "no existing row yet" DOM state
+-- and inserts a second row instead of updating the first. This natural key
+-- (one row per employee+kadar+date+overtime, per the table's own Phase 4
+-- design) was never enforced, so nothing stopped it.
+--
+-- The client now upserts on this constraint instead of a plain insert, so
+-- a duplicate attempt merges into the existing row instead of duplicating
+-- — this is the actual fix; the constraint is what makes upsert's conflict
+-- target meaningful (and guarantees no future duplicate slips through even
+-- if some other code path ever inserts directly).
+
+alter table public.time_entries
+  add constraint time_entries_employee_kadar_date_overtime_key
+  unique (employee_id, kadar_id, date, overtime);
