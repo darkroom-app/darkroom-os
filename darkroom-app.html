@@ -8866,12 +8866,21 @@ async function approveLeaveRequest(eventId){
   ev.approvalStatus = 'odobreno';
   const emp = teamMembers.find(t=>t.name===ev.person);
   const rangeText = `${formatDateHuman(ev.start)} do ${formatDateHuman(ev.end).replace(/\.$/,'')}`;
-  if(emp) pushNotification(emp._id, 'odsustvo_odobreno', `Tvoj zahtev za odsustvo od ${rangeText} je odobren.`, null, { retroactive: daysBetween(ev.end, TODAY) > 0 });
+  const retroactive = daysBetween(ev.end, TODAY) > 0;
+  if(emp) pushNotification(emp._id, 'odsustvo_odobreno', `Tvoj zahtev za odsustvo od ${rangeText} je odobren.`, null, { retroactive });
+  // Separate dedicated insert (not pushNotification()) purely to feed the
+  // "odsustva i remote" Discord channel via discord-relay's kind==='odsustvo_discord'
+  // special case — this row is never read back into the app's own bell.
+  // Phase 37 added `retroactive` to the odsustvo_zahtev/odobreno/odbijeno
+  // notifications above but missed this one entirely (different kind, easy
+  // to overlook), so a backfilled/retroactive approval still posted here
+  // unfiltered — same flag, same reasoning, applied to this insert too.
   await sb.from('notifications').insert({
     recipient_name: 'Discord — odsustva i remote',
     kind: 'odsustvo_discord',
     text: `${ev.person} odsustvo od ${rangeText}.`,
     project_code: null,
+    retroactive,
   });
   renderPendingLeaveRequests();
   renderCalendar();
