@@ -3587,18 +3587,13 @@ function massing(seed){
   return `<div class="m">${html}</div>`;
 }
 
-const stockRenders = [
-  "https://images.unsplash.com/photo-1706164971298-7d210902ec42",
-  "https://images.unsplash.com/photo-1686164748261-33e13eef70b6",
-  "https://images.unsplash.com/photo-1706808849802-8f876ade0d1f",
-  "https://images.unsplash.com/photo-1706164971299-cfa23ec76083",
-  "https://images.unsplash.com/photo-1706808849827-7366c098b317",
-  "https://images.unsplash.com/photo-1706808849777-96e0d7be3bb7",
-];
+// A project with no thumbnail uploaded yet shows the studio's own brand
+// mark instead of an unrelated stock photo — `seed`/`w` are unused now but
+// kept in the signature since every call site still passes them (a
+// per-project random pick made sense for stock photos; it doesn't for a
+// single fixed brand image).
 function thumbStyle(seed, w){
-  const idx = Math.floor(Math.abs(seed*13)) % stockRenders.length;
-  const url = `${stockRenders[idx]}?fm=jpg&q=70&w=${w}&auto=format&fit=crop`;
-  return `background-image:url('${url}'); background-size:cover; background-position:center;`;
+  return `background-image:url('assets/project-default-thumb.jpg'); background-size:cover; background-position:center;`;
 }
 
 let dashProjTab = 'vodim'; // only relevant for admin/superadmin — see renderDashboardProjects()
