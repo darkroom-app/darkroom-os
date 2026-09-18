@@ -9803,22 +9803,45 @@ function renderPriceOverview(){
   const els = document.querySelectorAll('#priceKpiRow .fcu');
   kpis.forEach((k,i)=>{ if(els[i]) animateCountUp(els[i], k.val, k.suffix==='%' ? {suffix:'%', decimals:1} : {suffix:' RSD'}); });
 
-  waiting.sort((a,b)=> (daysSince(b.date)||0) - (daysSince(a.date)||0));
-  const top = waiting.slice(0,8);
+  // Grouped by project rather than one row per kadar/charge — a 25-kadar
+  // project with several unpaid items used to flood this list with its own
+  // rows and crowd out everything else; a studio-level "who's waiting the
+  // longest" glance cares about the PROJECT, not which specific kadar within
+  // it. maxDays (the oldest item in the group) drives both the sort and the
+  // badge, since that's the one number that actually answers "how overdue
+  // is this project".
+  const byProject = new Map();
+  waiting.forEach(w=>{
+    const key = w.project._id;
+    if(!byProject.has(key)) byProject.set(key, { project:w.project, items:[], total:0, maxDays:0, neplaceno:0, fakturisano:0 });
+    const g = byProject.get(key);
+    g.items.push(w);
+    g.total += w.amount;
+    if(w.status==='Neplaćeno') g.neplaceno += w.amount; else if(w.status==='Fakturisano') g.fakturisano += w.amount;
+    const days = daysSince(w.date) || 0;
+    if(days > g.maxDays) g.maxDays = days;
+  });
+  const groups = [...byProject.values()].sort((a,b)=> b.maxDays - a.maxDays);
+  const top = groups.slice(0,8);
   const waitPanel = document.getElementById('priceWaitPanel');
   if(!top.length){
     waitPanel.style.display = 'none';
   } else {
     waitPanel.style.display = '';
-    document.getElementById('priceWaitList').innerHTML = top.map(w=>{
-      const days = daysSince(w.date);
+    document.getElementById('priceWaitList').innerHTML = top.map(g=>{
+      const statusParts = [
+        g.neplaceno>0 ? `Neplaćeno ${fmtRSD(g.neplaceno)}` : null,
+        g.fakturisano>0 ? `Fakturisano ${fmtRSD(g.fakturisano)}` : null,
+      ].filter(Boolean).join(' · ');
       return `
       <div class="price-kadar-row">
-        <div class="price-kadar-name">${escapeHtml(w.label)} <span class="price-extra-hint" style="color:var(--ink-faint);">· ${w.project.code} · ${escapeHtml(w.project.name)}</span></div>
+        <div>
+          <div class="price-kadar-name">${g.project.code} — ${escapeHtml(g.project.name)} <span class="price-extra-hint">· ${g.items.length} ${g.items.length===1?'stavka':'stavke'}</span></div>
+          ${statusParts ? `<div class="price-project-meta">${statusParts}</div>` : ''}
+        </div>
         <div class="price-kadar-right">
-          ${days!=null ? `<span class="price-wait-badge${days>=30?' price-wait-badge-urgent':''}">${days} ${days===1?'dan':'dana'}</span>` : ''}
-          <span class="price-kadar-amt">${fmtRSD(w.amount)}</span>
-          <span class="tag ${w.status==='Fakturisano'?'tag-wip':'tag-review'}">${w.status}</span>
+          <span class="price-wait-badge${g.maxDays>=30?' price-wait-badge-urgent':''}">${g.maxDays} ${g.maxDays===1?'dan':'dana'}</span>
+          <span class="price-kadar-amt">${fmtRSD(g.total)}</span>
         </div>
       </div>`;
     }).join('');
