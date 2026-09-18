@@ -9852,7 +9852,7 @@ function renderPricingList(){
         </div>
       </div>
       <div class="price-kadar-list">
-        ${p.kadrovi.map(k=>{
+        ${[...p.kadrovi].sort((a,b)=> a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'})).map(k=>{
           const billable = k.billableRoundsCount||0;
           const extra = Math.max(0, billable-4);
           const priced = k.basePrice != null;
