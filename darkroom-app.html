@@ -635,6 +635,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .price-add-btn{ font-family:var(--font-mono); font-size:10px; color:var(--gold-deep); background:var(--gold-soft); border:none; border-radius:8px; padding:6px 11px; cursor:pointer; }
 .price-kadar-unset{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-faint); font-style:italic; }
 .price-extra-hint{ font-family:var(--font-mono); font-size:9.5px; color:var(--coral); }
+.price-charge-nested{ padding-left:18px; }
+.price-charge-nested-name{ font-size:10.5px; color:var(--coral); }
 .price-charges-list{ border-top:1px dashed var(--border); padding:10px 18px 12px; }
 .price-charges-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
 .kadar-price-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); margin:-6px 0 14px; }
@@ -9839,6 +9841,44 @@ function renderPricingList(){
   document.getElementById('priceProjectList').innerHTML = list.map(p=>{
     const charges = extraCharges.filter(c=>c.projectDbId===p.dbId);
     const total = projectPricedItems(p).reduce((s,r)=>s+r.price,0);
+    const sortedKadrovi = [...p.kadrovi].sort((a,b)=> a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'}));
+    // extra_charges has no kadar_id column — the only link back to a kadar
+    // is the "+ Dodatna naplata" modal's own typing convention of starting
+    // the description with the kadar's name (e.g. "01. APM 3ds Max scena").
+    // Matching on that lets each charge render right under the kadar it's
+    // actually about instead of in one flat list at the bottom with nothing
+    // tying it back — anything that doesn't match (a project-level cost, or
+    // a description that broke convention) still shows up, just in its own
+    // leftover section below so nothing silently disappears.
+    const matchedIds = new Set();
+    const chargeRowHtml = c => `
+          <div class="price-kadar-row price-charge-row" data-pid="${p._id}" data-cid="${c._id}" style="cursor:pointer;">
+            <div class="price-kadar-name">${escapeHtml(c.description)}</div>
+            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Plaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
+          </div>`;
+    const kadarListHtml = sortedKadrovi.map(k=>{
+      const billable = k.billableRoundsCount||0;
+      const extra = Math.max(0, billable-4);
+      const priced = k.basePrice != null;
+      const kadarCharges = charges.filter(c=>c.description.startsWith(k.name));
+      kadarCharges.forEach(c=>matchedIds.add(c._id));
+      const nestedHtml = kadarCharges.map(c=>{
+        const suffix = c.description.slice(k.name.length).replace(/^[\s·:.\-]+/, '') || c.description;
+        return `
+          <div class="price-kadar-row price-charge-row price-charge-nested" data-pid="${p._id}" data-cid="${c._id}" style="cursor:pointer;">
+            <div class="price-kadar-name price-charge-nested-name">↳ ${escapeHtml(suffix)}</div>
+            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Plaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
+          </div>`;
+      }).join('');
+      return `
+          <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
+            <div class="price-kadar-name">${escapeHtml(k.name)} <span class="price-extra-hint">· ${escapeHtml(k.type)}</span>${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
+            <div class="price-kadar-right">${priced
+              ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
+              : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
+          </div>${nestedHtml}`;
+    }).join('');
+    const unmatchedCharges = charges.filter(c=>!matchedIds.has(c._id));
     return `
     <div class="price-project${priceState.expandedIds.has(p._id)?' open':''}" data-pid="${p._id}">
       <div class="price-project-head" data-pid="${p._id}">
@@ -9852,26 +9892,10 @@ function renderPricingList(){
         </div>
       </div>
       <div class="price-kadar-list">
-        ${[...p.kadrovi].sort((a,b)=> a.name.localeCompare(b.name, undefined, {numeric:true, sensitivity:'base'})).map(k=>{
-          const billable = k.billableRoundsCount||0;
-          const extra = Math.max(0, billable-4);
-          const priced = k.basePrice != null;
-          return `
-          <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
-            <div class="price-kadar-name">${escapeHtml(k.name)} <span class="price-extra-hint">· ${escapeHtml(k.type)}</span>${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
-            <div class="price-kadar-right">${priced
-              ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
-              : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
-          </div>`;
-        }).join('')}
+        ${kadarListHtml}
       </div>
       <div class="price-charges-list">
-        ${charges.length ? `<div class="price-charges-label">Dodatna naplata</div>` : ''}
-        ${charges.map(c=>`
-          <div class="price-kadar-row price-charge-row" data-pid="${p._id}" data-cid="${c._id}" style="cursor:pointer;">
-            <div class="price-kadar-name">${escapeHtml(c.description)}</div>
-            <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Plaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
-          </div>`).join('')}
+        ${unmatchedCharges.length ? `<div class="price-charges-label">Ostalo (nije povezano ni sa jednim kadrom)</div>${unmatchedCharges.map(chargeRowHtml).join('')}` : ''}
         <div class="price-add-row"><button class="price-add-btn" data-pid="${p._id}">+ Dodatna naplata</button></div>
       </div>
     </div>`;
