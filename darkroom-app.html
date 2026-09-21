@@ -2864,6 +2864,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <option value="Neplaćeno">Neplaćeno</option>
       </select>
     </div>
+    <div class="modal-field" id="kadarPaidDateField" hidden>
+      <label>Datum uplate</label>
+      <input type="date" id="kadarPaidDateInput">
+    </div>
     <div class="modal-field">
       <label>Datum unosa cene</label>
       <input type="date" id="kadarDateInput">
@@ -2923,6 +2927,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <option value="Fakturisano">Fakturisano</option>
         <option value="Neplaćeno">Neplaćeno</option>
       </select>
+    </div>
+    <div class="modal-field" id="extraChargePaidDateField" hidden>
+      <label>Datum uplate</label>
+      <input type="date" id="extraChargePaidDateInput">
     </div>
     <div class="modal-actions">
       <button class="modal-delete" id="extraChargeDelete" style="display:none;">Obriši</button>
@@ -10036,6 +10044,9 @@ function openKadarModal(kadar, project){
   document.getElementById('kadarAmountInput').value = kadar.basePrice != null ? kadar.basePrice : '';
   document.getElementById('kadarStatusInput').value = kadar.priceStatus || 'Neplaćeno';
   document.getElementById('kadarDateInput').value = kadar.priceUpdatedAt ? kadar.priceUpdatedAt.slice(0,10) : toISO(TODAY);
+  const isPaidNow = (kadar.priceStatus || 'Neplaćeno') === 'Plaćeno';
+  document.getElementById('kadarPaidDateField').hidden = !isPaidNow;
+  document.getElementById('kadarPaidDateInput').value = isPaidNow && kadar.priceUpdatedAt ? kadar.priceUpdatedAt.slice(0,10) : toISO(TODAY);
   document.getElementById('kadarInlineChargeSection').hidden = true;
   document.getElementById('kadarAddExtraChargeBtn').textContent = '+ Dodatna naplata za ovaj kadar';
   document.getElementById('kadarChargeDescInput').value = `${kadar.name} (dodatna revizija)`;
@@ -10049,6 +10060,9 @@ function openKadarModal(kadar, project){
   renderKadarDeductionsList();
   kadarModalOverlay.classList.add('open');
 }
+document.getElementById('kadarStatusInput').addEventListener('change', ()=>{
+  document.getElementById('kadarPaidDateField').hidden = document.getElementById('kadarStatusInput').value !== 'Plaćeno';
+});
 // Phase 39: deliberately display-only per the studio's own call — reduces
 // the net price shown on the kadar and everywhere it's summed, but never
 // writes to transactions (unlike kadar_pricing's "Plaćeno" auto-log).
@@ -10140,7 +10154,12 @@ document.getElementById('kadarSubmit').addEventListener('click', async ()=>{
     if(error) return;
     activeKadar.basePrice = price; activeKadar.priceStatus = status; activeKadar.priceUpdatedAt = priceUpdatedAt;
     if(status==='Plaćeno' && !wasNaplaceno && price>0){
-      await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:dateVal, kadarDbId:activeKadar.dbId });
+      // Datum unosa cene (dateVal) is when the price was quoted/entered, not
+      // when the client actually paid — using it here logged the Priliv
+      // transaction under a stale date whenever those two differed. Datum
+      // uplate is the field meant specifically for that.
+      const paidDate = document.getElementById('kadarPaidDateInput').value || toISO(TODAY);
+      await txAutoLogPayment({ desc:`${activePriceProject.name} — ${activeKadar.name}`, amount:price, date:paidDate, kadarDbId:activeKadar.dbId });
       refreshFinAfterTxChange();
     }
   }
@@ -10185,8 +10204,14 @@ function openExtraChargeModal(project, charge){
   document.getElementById('extraChargeAmountInput').value = charge ? charge.amount : '';
   document.getElementById('extraChargeDateInput').value = charge ? charge.date : toISO(TODAY);
   document.getElementById('extraChargeStatusInput').value = charge ? charge.status : 'Neplaćeno';
+  const chargeIsPaid = charge ? charge.status === 'Plaćeno' : false;
+  document.getElementById('extraChargePaidDateField').hidden = !chargeIsPaid;
+  document.getElementById('extraChargePaidDateInput').value = chargeIsPaid ? charge.date : toISO(TODAY);
   extraChargeModalOverlay.classList.add('open');
 }
+document.getElementById('extraChargeStatusInput').addEventListener('change', ()=>{
+  document.getElementById('extraChargePaidDateField').hidden = document.getElementById('extraChargeStatusInput').value !== 'Plaćeno';
+});
 document.getElementById('extraChargeCancel').addEventListener('click', closeExtraChargeModal);
 wireOverlayClose(extraChargeModalOverlay, closeExtraChargeModal);
 document.getElementById('extraChargeDelete').addEventListener('click', async ()=>{
@@ -10217,7 +10242,10 @@ document.getElementById('extraChargeSubmit').addEventListener('click', async ()=
     if(error) return;
     Object.assign(charge, { description, amount, date, status });
     if(status==='Plaćeno' && !wasNaplaceno && amount>0){
-      await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date, extraChargeDbId:charge.dbId });
+      // Same fix as the kadar price modal: Datum is when the charge was
+      // raised, not necessarily when it was paid — use the dedicated field.
+      const paidDate = document.getElementById('extraChargePaidDateInput').value || toISO(TODAY);
+      await txAutoLogPayment({ desc:`${activeChargeProject.name} — ${description}`, amount, date:paidDate, extraChargeDbId:charge.dbId });
       refreshFinAfterTxChange();
     }
   } else {
