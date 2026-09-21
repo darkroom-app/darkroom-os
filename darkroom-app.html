@@ -639,9 +639,19 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .price-extra-hint{ font-family:var(--font-mono); font-size:9.5px; color:var(--coral); }
 .price-charge-nested{ padding-left:18px; }
 .price-charge-nested-name{ font-size:10.5px; color:var(--coral); }
+.price-deduction-nested{ padding-left:18px; }
+.price-deduction-nested-name{ font-size:10.5px; color:var(--ink-faint); }
+.price-deduction-nested .price-kadar-amt{ color:var(--coral); }
 .price-charges-list{ border-top:1px dashed var(--border); padding:10px 18px 12px; }
 .price-charges-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
 .kadar-price-meta{ font-family:var(--font-mono); font-size:10.5px; color:var(--ink-dim); margin:-6px 0 14px; }
+.kadar-deduction-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--border); font-size:11.5px; }
+.kadar-deduction-row:last-child{ border-bottom:none; }
+.kadar-deduction-desc{ color:var(--ink-dim); }
+.kadar-deduction-amt{ font-family:var(--font-mono); color:var(--coral); white-space:nowrap; }
+.kadar-deduction-del{ width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); background:transparent; cursor:pointer; font-size:12px; line-height:1; flex-shrink:0; }
+.kadar-deduction-del:hover{ background:var(--coral-soft); color:var(--coral); }
+.kadar-net-price{ font-family:var(--font-mono); font-size:11.5px; font-weight:600; padding-top:6px; }
 .price-wait-badge{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); background:var(--card-soft); border-radius:6px; padding:3px 7px; }
 .price-wait-badge-urgent{ color:var(--coral); background:var(--coral-soft); }
 
@@ -2826,6 +2836,25 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="modal-field">
       <label>Osnovna cena — uključuje 4 runde (RSD)</label>
       <input type="number" id="kadarAmountInput" placeholder="npr. 45000">
+    </div>
+    <div class="modal-field" id="kadarDeductionsField">
+      <label>Dedukcije (troškovi transakcije, itd.)</label>
+      <div id="kadarDeductionsList"></div>
+      <div class="kadar-net-price" id="kadarNetPriceDisplay"></div>
+      <button type="button" class="price-add-btn" id="kadarAddDeductionBtn" style="width:100%; margin-top:8px;">+ Dodaj dedukciju</button>
+    </div>
+    <div id="kadarInlineDeductionSection" hidden>
+      <div class="modal-field">
+        <label>Opis dedukcije (uzrok)</label>
+        <input type="text" id="kadarDeductionDescInput" placeholder="npr. Provizija banke za međunarodnu uplatu">
+      </div>
+      <div class="modal-field">
+        <label>Iznos dedukcije (RSD)</label>
+        <input type="number" id="kadarDeductionAmountInput" placeholder="npr. 5000">
+      </div>
+      <div class="modal-field">
+        <button type="button" class="modal-submit" id="kadarDeductionAddBtn" style="width:100%;">Dodaj</button>
+      </div>
     </div>
     <div class="modal-field">
       <label>Status</label>
@@ -9776,10 +9805,11 @@ function renderPriceOverview(){
       if(k.basePrice==null) return;
       pricedCount++;
       const st = k.priceStatus || 'Neplaćeno';
-      if(st==='Neplaćeno'){ neplaceno += k.basePrice; neplacenoCount++; }
-      else if(st==='Fakturisano'){ fakturisano += k.basePrice; fakturisanoCount++; }
-      else if(st==='Plaćeno'){ naplaceno += k.basePrice; }
-      if(st!=='Plaćeno') waiting.push({ project:p, label:k.name, amount:k.basePrice, status:st, date:k.priceUpdatedAt });
+      const net = kadarNetPrice(k);
+      if(st==='Neplaćeno'){ neplaceno += net; neplacenoCount++; }
+      else if(st==='Fakturisano'){ fakturisano += net; fakturisanoCount++; }
+      else if(st==='Plaćeno'){ naplaceno += net; }
+      if(st!=='Plaćeno') waiting.push({ project:p, label:k.name, amount:net, status:st, date:k.priceUpdatedAt });
     });
     extraCharges.filter(c=>c.projectDbId===p.dbId).forEach(c=>{
       if(c.status==='Neplaćeno'){ neplaceno += c.amount; neplacenoCount++; }
@@ -9909,13 +9939,23 @@ function renderPricingList(){
             <div class="price-kadar-right"><span class="price-kadar-amt">${fmtRSD(c.amount)}</span><span class="tag ${c.status==='Plaćeno'?'tag-final':(c.status==='Fakturisano'?'tag-wip':'tag-review')}">${c.status}</span></div>
           </div>`;
       }).join('');
+      // Deduction rows reuse the plain kadar-row click handler (data-pid/
+      // data-kid, no data-cid) rather than getting their own — clicking one
+      // just opens this kadar's price modal, where the deduction list itself
+      // lives and can be edited.
+      const deductionHtml = kadarDeductionsFor(k.dbId).map(d=> `
+          <div class="price-kadar-row price-deduction-nested" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
+            <div class="price-kadar-name price-deduction-nested-name">− ${escapeHtml(d.description)}</div>
+            <div class="price-kadar-right"><span class="price-kadar-amt">-${fmtRSD(d.amount)}</span></div>
+          </div>`).join('');
+      const net = kadarNetPrice(k);
       return `
           <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
             <div class="price-kadar-name">${escapeHtml(k.name)} <span class="price-extra-hint">· ${escapeHtml(k.type)}</span>${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
             <div class="price-kadar-right">${priced
-              ? `<span class="price-kadar-amt">${fmtRSD(k.basePrice)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
+              ? `<span class="price-kadar-amt">${fmtRSD(net)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
               : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
-          </div>${nestedHtml}`;
+          </div>${deductionHtml}${nestedHtml}`;
     }).join('');
     const unmatchedCharges = charges.filter(c=>!matchedIds.has(c._id));
     return `
@@ -10002,8 +10042,71 @@ function openKadarModal(kadar, project){
   document.getElementById('kadarChargeAmountInput').value = '';
   document.getElementById('kadarChargeDateInput').value = toISO(TODAY);
   document.getElementById('kadarChargeStatusInput').value = 'Neplaćeno';
+  document.getElementById('kadarInlineDeductionSection').hidden = true;
+  document.getElementById('kadarAddDeductionBtn').textContent = '+ Dodaj dedukciju';
+  document.getElementById('kadarDeductionDescInput').value = '';
+  document.getElementById('kadarDeductionAmountInput').value = '';
+  renderKadarDeductionsList();
   kadarModalOverlay.classList.add('open');
 }
+// Phase 39: deliberately display-only per the studio's own call — reduces
+// the net price shown on the kadar and everywhere it's summed, but never
+// writes to transactions (unlike kadar_pricing's "Plaćeno" auto-log).
+function renderKadarDeductionsList(){
+  if(!activeKadar) return;
+  const deductions = kadarDeductionsFor(activeKadar.dbId);
+  const listEl = document.getElementById('kadarDeductionsList');
+  listEl.innerHTML = deductions.map(d=>`
+    <div class="kadar-deduction-row">
+      <div class="kadar-deduction-desc">${escapeHtml(d.description)}</div>
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span class="kadar-deduction-amt">-${fmtRSD(d.amount)}</span>
+        <button type="button" class="kadar-deduction-del" data-did="${d._id}" title="Ukloni dedukciju">×</button>
+      </div>
+    </div>`).join('');
+  const total = deductions.reduce((s,d)=>s+d.amount,0);
+  const baseVal = parseFloat(document.getElementById('kadarAmountInput').value);
+  const netEl = document.getElementById('kadarNetPriceDisplay');
+  if(total<=0){ netEl.textContent = ''; }
+  else if(!isNaN(baseVal)){ netEl.textContent = `Neto posle dedukcija: ${fmtRSD(baseVal-total)}`; }
+  else { netEl.textContent = `Ukupno dedukcija: -${fmtRSD(total)}`; }
+  listEl.querySelectorAll('.kadar-deduction-del').forEach(btn=>{
+    btn.addEventListener('click', async (ev)=>{
+      ev.stopPropagation();
+      const did = Number(btn.dataset.did);
+      const d = kadarDeductions.find(x=>x._id===did);
+      if(!d || !confirm('Ukloniti ovu dedukciju?')) return;
+      const { error } = await sb.from('kadar_price_deductions').delete().eq('id', d.dbId);
+      if(error) return;
+      kadarDeductions = kadarDeductions.filter(x=>x._id!==did);
+      renderKadarDeductionsList();
+      renderPricingList();
+    });
+  });
+}
+document.getElementById('kadarAmountInput').addEventListener('input', ()=>{
+  if(kadarModalOverlay.classList.contains('open')) renderKadarDeductionsList();
+});
+document.getElementById('kadarAddDeductionBtn').addEventListener('click', ()=>{
+  const section = document.getElementById('kadarInlineDeductionSection');
+  section.hidden = !section.hidden;
+  document.getElementById('kadarAddDeductionBtn').textContent = section.hidden ? '+ Dodaj dedukciju' : '− Sakrij dodavanje dedukcije';
+});
+document.getElementById('kadarDeductionAddBtn').addEventListener('click', async ()=>{
+  if(!activeKadar) return;
+  const description = document.getElementById('kadarDeductionDescInput').value.trim();
+  const amount = parseFloat(document.getElementById('kadarDeductionAmountInput').value);
+  if(!description || isNaN(amount) || amount<=0) return;
+  const { data, error } = await sb.from('kadar_price_deductions').insert({ kadar_id:activeKadar.dbId, description, amount }).select().single();
+  if(error) return;
+  kadarDeductions.push({ _id:nextId(), dbId:data.id, kadarDbId:data.kadar_id, description:data.description, amount:data.amount });
+  document.getElementById('kadarDeductionDescInput').value = '';
+  document.getElementById('kadarDeductionAmountInput').value = '';
+  document.getElementById('kadarInlineDeductionSection').hidden = true;
+  document.getElementById('kadarAddDeductionBtn').textContent = '+ Dodaj dedukciju';
+  renderKadarDeductionsList();
+  renderPricingList();
+});
 document.getElementById('kadarCancel').addEventListener('click', closeKadarModal);
 wireOverlayClose(kadarModalOverlay, closeKadarModal);
 document.getElementById('kadarDelete').addEventListener('click', async ()=>{
@@ -12765,6 +12868,39 @@ async function loadKadarPricingFromSupabase(){
     return true;
   } catch(e){ return false; }
 }
+/* Phase 39: per-kadar price deductions (real costs incurred collecting an
+   invoice — bank/PayPal fees, most commonly), each with its own required
+   description. Kept as a flat array (same shape as extraCharges) rather
+   than nested onto each kadar, since it's a simple one-way "reduce the net
+   shown everywhere" concern — see kadarNetPrice() below, the only thing
+   that reads this array outside the pricing-modal UI itself. */
+let kadarDeductions = [];
+async function loadKadarDeductionsFromSupabase(){
+  if(!sb) return false;
+  try {
+    const pageSize = 1000;
+    const data = [];
+    for(let from = 0; ; from += pageSize){
+      const { data: page, error } = await sb.from('kadar_price_deductions').select('*').order('created_at', { ascending:true }).range(from, from + pageSize - 1);
+      if(error) return false;
+      if(!page || !page.length) break;
+      data.push(...page);
+      if(page.length < pageSize) break;
+    }
+    kadarDeductions = data.map(row=>({ _id: nextId(), dbId: row.id, kadarDbId: row.kadar_id, description: row.description, amount: row.amount }));
+    return true;
+  } catch(e){ return false; }
+}
+function kadarDeductionsFor(kadarDbId){ return kadarDeductions.filter(d=>d.kadarDbId===kadarDbId); }
+// The one place "what does this kadar actually net after costs" is computed
+// — every totaling/summary read (Cenovnik rows, project/KPI totals, "Čeka
+// najduže na naplatu") goes through this instead of k.basePrice directly.
+// Deliberately not clamped at 0: a deduction bigger than the price itself
+// is rare but real, and hiding that would just be lying about it.
+function kadarNetPrice(k){
+  if(k.basePrice==null) return null;
+  return k.basePrice - kadarDeductionsFor(k.dbId).reduce((s,d)=>s+d.amount,0);
+}
 /* Fetches the full round rows (with images/labels) for every kadar in one
    project, in a single query — used only when a project detail page is
    actually opened. Skips the query entirely for a project with zero
@@ -13044,7 +13180,7 @@ async function txSyncPayrollMonth(year, month){
    so pricing (kadar) and extra charges never need to be summed separately
    at each call site. */
 function projectPricedItems(p){
-  const items = p.kadrovi.filter(k=>k.basePrice!=null).map(k=>({price:k.basePrice, status:k.priceStatus||'Neplaćeno'}));
+  const items = p.kadrovi.filter(k=>k.basePrice!=null).map(k=>({price:kadarNetPrice(k), status:k.priceStatus||'Neplaćeno'}));
   extraCharges.filter(c=>c.projectDbId===p.dbId).forEach(c=>items.push({price:c.amount, status:c.status}));
   return items;
 }
@@ -13070,6 +13206,7 @@ async function resolveSessionLogin(session){
     // before anyone visited the tab this session.
     await loadPlaybookFromSupabase();
     await loadKadarPricingFromSupabase();
+    await loadKadarDeductionsFromSupabase();
     await loadTimeEntriesFromSupabase();
     await loadExtraChargesFromSupabase();
     await loadTransactionsFromSupabase();

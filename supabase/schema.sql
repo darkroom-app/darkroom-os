@@ -1853,3 +1853,34 @@ $$;
 alter table public.time_entries
   add constraint time_entries_employee_kadar_date_overtime_key
   unique (employee_id, kadar_id, date, overtime);
+
+
+-- ==== Phase 39: kadar price deductions (run this query) ====
+-- Lets an invoiced base price be reduced by real costs incurred collecting
+-- it (bank/PayPal transaction fees on an international client payment,
+-- most commonly) — each deduction is its own row with a required
+-- description ("why was this taken out"), not a single opaque discount
+-- field, since the whole point is being able to look back and see the
+-- reason later. Deliberately display-only per the studio's own call: a
+-- deduction reduces the NET price shown everywhere a kadar's price is
+-- totaled (Cenovnik rows, project/KPI totals, "Čeka najduže na naplatu"),
+-- but does NOT touch Transakcije — kadar_pricing.base_price stays the true
+-- invoiced/gross figure, unchanged, so editing the price later still shows
+-- what was actually quoted. Insert/delete only (no update policy) — same
+-- shape as rounds/extra_charges; correcting a typo is delete-and-re-add.
+
+create table public.kadar_price_deductions (
+  id uuid primary key default gen_random_uuid(),
+  kadar_id uuid not null references public.kadrovi(id) on delete cascade,
+  description text not null,
+  amount numeric not null check (amount > 0),
+  created_at timestamptz not null default now()
+);
+alter table public.kadar_price_deductions enable row level security;
+
+create policy "authenticated can read kadar_price_deductions" on public.kadar_price_deductions
+  for select to authenticated using (true);
+create policy "authenticated can insert kadar_price_deductions" on public.kadar_price_deductions
+  for insert to authenticated with check (true);
+create policy "authenticated can delete kadar_price_deductions" on public.kadar_price_deductions
+  for delete to authenticated using (true);
