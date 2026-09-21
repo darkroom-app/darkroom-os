@@ -11276,7 +11276,7 @@ function openWeeklyReportModal(n){
     row(escapeHtml(k.name), escapeHtml([k.projectCode, k.projectName].filter(Boolean).join(' ')), `<span class="notif-time">${notifTimeAgo(new Date(k.createdAt).getTime())}</span>`));
 
   const roundsHtml = section('🖼️ Nove runde', d.rounds, r =>
-    row(escapeHtml(r.label), escapeHtml([r.kadarName, r.projectCode].filter(Boolean).join(' · ')),
+    row(escapeHtml(r.label), escapeHtml([r.kadarName, [r.projectCode, r.projectName].filter(Boolean).join(' ')].filter(Boolean).join(' · ')),
       `${r.billable ? '' : '<span class="tag tag-wip">interno</span> '}<span class="notif-time">${notifTimeAgo(new Date(r.createdAt).getTime())}</span>`));
 
   const receiptsHtml = section('🧾 Novi računi (Dropbox)', d.receipts, e =>
