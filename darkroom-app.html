@@ -1503,7 +1503,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 #view-statistika.active{ overflow:hidden; }
 #view-tim.active{ display:block; overflow-y:auto; }
 #view-finansije.active{ overflow:hidden; }
-#view-projekat-detalji.active{ display:block; overflow-y:auto; }
+#view-projekat-detalji.active{ display:block; overflow-y:auto; animation:pdEnter .4s cubic-bezier(.25,.8,.35,1) both; }
+@keyframes pdEnter{ from{ opacity:0; transform:scale(0.97) translateY(12px); } to{ opacity:1; transform:scale(1) translateY(0); } }
 /* ---- toolbar ---- */
 .cal-toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:14px; }
 .cal-month{ display:flex; align-items:center; gap:14px; }
