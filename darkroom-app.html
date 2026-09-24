@@ -1208,14 +1208,15 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   font-weight:700; font-size:14px; color:#fff; margin-left:-16px;
   background-size:cover; background-position:center;
   box-shadow:0 5px 12px -4px rgba(40,30,10,0.4); transition:transform .18s ease, z-index 0s;
-  cursor:default;
+  cursor:default; opacity:0; animation:avatarPopIn .5s cubic-bezier(.34,1.56,.64,1) both;
 }
 .ta-avatar:first-child{ margin-left:0; }
-.ta-avatar:nth-child(1){ transform:rotate(-5deg); }
-.ta-avatar:nth-child(2){ transform:rotate(4deg); }
-.ta-avatar:nth-child(3){ transform:rotate(-3deg); }
-.ta-avatar:nth-child(4){ transform:rotate(3deg); }
+.ta-avatar:nth-child(1){ --rot:-5deg; }
+.ta-avatar:nth-child(2){ --rot:4deg; }
+.ta-avatar:nth-child(3){ --rot:-3deg; }
+.ta-avatar:nth-child(4){ --rot:3deg; }
 .ta-avatar:hover{ transform:translateY(-5px) scale(1.08) rotate(0deg); z-index:5; }
+@keyframes avatarPopIn{ from{ opacity:0; transform:scale(0.4) rotate(var(--rot,0deg)); } to{ opacity:1; transform:scale(1) rotate(var(--rot,0deg)); } }
 .ta-more{ background:var(--ink-solid-bg) !important; font-size:10.5px; }
 
 /* ---- HERO ROW ---- */
@@ -5451,14 +5452,23 @@ function renderWeeklyGoal(){
   const pctEl = document.querySelector('.fun-goal .ring-pct');
   const titleEl = document.querySelector('.fg-title');
   const noteEl = document.querySelector('.fg-note');
-  if(pctEl) pctEl.textContent = `${pct}%`;
   if(titleEl) titleEl.textContent = `${hours}h / 40h`;
   if(noteEl) noteEl.textContent = message;
   if(goalRing){
     goalRing.style.strokeDasharray = ringC;
     goalRing.style.strokeDashoffset = ringC;
-    setTimeout(()=>{ goalRing.style.strokeDashoffset = ringC * (1 - pct/100); }, 200);
+    // Two rAFs (not setTimeout) so the reset-to-0% actually gets painted
+    // before the target offset is set — during a busy boot (a lot of DOM
+    // gets built right around here) a fixed delay can land in the same
+    // frame as the reset and the browser just coalesces both writes,
+    // skipping the fill-in animation entirely.
+    requestAnimationFrame(()=>{
+      requestAnimationFrame(()=>{
+        goalRing.style.strokeDashoffset = ringC * (1 - pct/100);
+      });
+    });
   }
+  if(pctEl) animateCountUp(pctEl, pct, { suffix:'%' });
 }
 const ringC = 2 * Math.PI * 42;
 const goalRing = document.getElementById('goalRing');
@@ -12459,10 +12469,14 @@ function renderDashboardCollab(){
   noteEl.textContent = `${top.name.split(' ')[0]} · ${top.count} zajedničk${top.count===1?'i projekat':'a projekta'}`;
   const shown = collabs.slice(0,4);
   const extra = collabs.length - shown.length;
-  avatarsEl.innerHTML = shown.map(c=>{
+  // Staggered right-to-left: the rightmost circle (last in the stack) pops
+  // in first, each one to its left follows shortly after.
+  const total = shown.length + (extra>0 ? 1 : 0);
+  const delayFor = (i) => `${(total - 1 - i) * 90}ms`;
+  avatarsEl.innerHTML = shown.map((c,i)=>{
     const av = avatarBgInner(c.name);
-    return `<div class="ta-avatar" style="${av.bg}" title="${escapeHtml(c.name)}">${av.inner}</div>`;
-  }).join('') + (extra>0 ? `<div class="ta-avatar ta-more" title="Još ${extra}">+${extra}</div>` : '');
+    return `<div class="ta-avatar" style="${av.bg}animation-delay:${delayFor(i)};" title="${escapeHtml(c.name)}">${av.inner}</div>`;
+  }).join('') + (extra>0 ? `<div class="ta-avatar ta-more" style="animation-delay:${delayFor(shown.length)};" title="Još ${extra}">+${extra}</div>` : '');
 }
 function renderMyStats(){
   const u = currentUser();
