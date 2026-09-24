@@ -1332,8 +1332,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .proj-card{
   background:var(--card-soft); border-radius:14px; overflow:hidden; cursor:pointer;
   transition:transform .15s ease, box-shadow .15s ease; border:1px solid transparent;
+  opacity:0; animation:projCardIn .4s ease both;
 }
 .proj-card:hover{ transform:translateY(-2px); border-color:var(--gold-soft); }
+@keyframes projCardIn{ from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:translateY(0); } }
+.proj-grid.no-entrance .proj-card{ animation:none; opacity:1; }
 .proj-thumb{ height:72px; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
 .proj-thumb .m{ position:absolute; bottom:0; left:0; right:0; height:70%; }
 .proj-thumb .m .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a68f5c,#8a7443); border-top:1px solid #c2ab78; }
@@ -3646,6 +3649,11 @@ function thumbStyle(seed, w){
 let dashProjTab = 'vodim'; // only relevant for admin/superadmin — see renderDashboardProjects()
 let dashProjSearch = '';
 let dashProjViewMode = 'grid';
+// The bottom-to-top card entrance (see renderDashboardProjects) should only
+// play once, on the dashboard's first paint — this re-renders on every
+// search keystroke and tab/view switch, and replaying a slide-in on each of
+// those would just be distracting flicker instead of a one-time reveal.
+let dashProjGridAnimated = false;
 
 function renderDashboardProjects(){
   const u = currentUser();
@@ -3689,11 +3697,21 @@ function renderDashboardProjects(){
   document.querySelectorAll('.dash-proj-view-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===dashProjViewMode));
   projGridEl.classList.toggle('list-mode', dashProjViewMode==='list');
 
-  projGridEl.innerHTML = list.map(p=>{
+  // Staggered bottom-to-top, once: the last row lands first, each row above
+  // it follows shortly after. Capped at 8 rows so a long (scrollable) list
+  // doesn't push the topmost, most-visible row's entrance out too far.
+  const playEntrance = !dashProjGridAnimated;
+  dashProjGridAnimated = true;
+  projGridEl.classList.toggle('no-entrance', !playEntrance);
+  const cols = dashProjViewMode==='list' ? 1 : 2;
+  const totalRows = Math.ceil(list.length / cols);
+  const cappedRows = Math.min(totalRows, 8);
+  const rowDelay = (i) => Math.min(totalRows - 1 - Math.floor(i/cols), cappedRows-1) * 60;
+  projGridEl.innerHTML = list.map((p,i)=>{
     const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
     const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed, 180);
     return `
-    <div class="proj-card" data-id="${p._id}" style="cursor:pointer;">
+    <div class="proj-card" data-id="${p._id}" style="cursor:pointer; animation-delay:${rowDelay(i)}ms;">
       <div class="proj-thumb" style="${thumbStyleAttr}"><div class="vfc tl"></div><div class="vfc br"></div></div>
       <div class="proj-body">
         <div class="proj-name">${escapeHtml(p.name)}</div>
