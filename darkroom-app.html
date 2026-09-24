@@ -1272,6 +1272,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .wd-dot{ position:absolute; top:6px; right:7px; width:4.5px; height:4.5px; border-radius:50%; background:var(--gold); display:none; }
 .wd-row.has-events .wd-dot{ display:block; }
 .wd-row.active .wd-dot{ background:#3a2704; }
+.wd-row.wd-row-in{ opacity:0; animation:legendItemIn .4s ease both; }
 
 .week-agenda-panel{ flex:1; min-height:0; display:flex; flex-direction:column; border-left:1px solid var(--border); padding-left:16px; }
 .week-agenda-title{ font-family:var(--font-mono); font-size:9.5px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.05em; margin-bottom:10px; flex:0 0 auto; }
@@ -1281,6 +1282,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .agenda-item{ display:flex; gap:12px; align-items:flex-start; padding:9px 0; border-bottom:1px solid var(--border); cursor:pointer; }
 .agenda-item:hover{ background:var(--card-soft); }
 .agenda-item:last-child{ border-bottom:none; padding-bottom:0; }
+.agenda-item.agenda-item-in{ opacity:0; animation:legendItemIn .35s ease both; }
 .agenda-time{ font-family:var(--font-mono); font-size:11px; color:var(--gold-deep); font-weight:500; min-width:42px; flex-shrink:0; }
 .agenda-text{ font-size:12.5px; line-height:1.4; }
 .agenda-proj{ font-size:10.5px; color:var(--ink-dim); margin-top:1px; }
@@ -8854,18 +8856,22 @@ function renderWeekWidget(){
   const todayIdx = days.findIndex(d=>sameDate(d,TODAY));
   const startIdx = weekWidgetActiveIdx!=null ? weekWidgetActiveIdx : (todayIdx>=0 ? todayIdx : 0);
 
+  // Staggered top-to-bottom (Monday first) — same "loads in" idea as
+  // Aktivni Projekti/Moja Statistika, just read in the week's own natural
+  // chronological order instead of bottom-to-top.
   weekDaysVertEl.innerHTML = days.map((d,i)=>{
     const hasEvents = eventsOnDay(d).length>0;
-    return `<div class="wd-row${i===startIdx ? ' active' : ''}${hasEvents ? ' has-events' : ''}" data-idx="${i}"><span class="wd-name">${dowLabels[i]}</span><span class="wd-num">${d.d}</span><span class="wd-dot"></span></div>`;
+    return `<div class="wd-row${i===startIdx ? ' active' : ''}${hasEvents ? ' has-events' : ''} wd-row-in" style="animation-delay:${i*45}ms;" data-idx="${i}"><span class="wd-name">${dowLabels[i]}</span><span class="wd-num">${d.d}</span><span class="wd-dot"></span></div>`;
   }).join('');
 
   const weekItemCount = myEvents.filter(e=> daysBetween(e.start,days[6])>=0 && daysBetween(days[0],e.end)>=0 ).length;
   document.getElementById('weekRangeSub').textContent = `${monday.d}.${monday.m} – ${days[6].d}.${days[6].m} · ${weekItemCount} ${weekItemCount===1 ? 'zadatak' : 'zadatka'}`;
 
-  function agendaItemHtml(e, iso){
+  function agendaItemHtml(e, iso, i){
+    const delayAttr = ` style="animation-delay:${i*60}ms;"`;
     const code = eventDisplayCode(e);
     if(e.kind !== 'zadatak'){
-      return `<div class="agenda-item" data-id="${e._id}"><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`;
+      return `<div class="agenda-item agenda-item-in" data-id="${e._id}"${delayAttr}><span class="agenda-time">${code ? escapeHtml(code) : (e.kind==='praznik' ? '🎉' : '—')}</span><span class="agenda-text">${escapeHtml(eventDisplayLabel(e))}</span></div>`;
     }
     const proj = allProjects.find(p=>p.code===e.projectCode);
     const kadar = proj && proj.kadrovi.find(k=>k.name===e.taskName);
@@ -8881,7 +8887,7 @@ function renderWeekWidget(){
       </div>`;
     }
     return `
-    <div class="agenda-item" data-id="${e._id}">
+    <div class="agenda-item agenda-item-in" data-id="${e._id}"${delayAttr}>
       <span class="agenda-time">${escapeHtml(code)}</span>
       <div style="flex:1; min-width:0;">
         <div class="agenda-text">${escapeHtml(e.taskName || '')}</div>
@@ -8898,7 +8904,7 @@ function renderWeekWidget(){
     const dayEvents = eventsOnDay(d);
     const agendaListEl = document.getElementById('agendaList');
     agendaListEl.innerHTML = dayEvents.length
-      ? dayEvents.map(ev=>agendaItemHtml(ev, iso)).join('')
+      ? dayEvents.map((ev,i)=>agendaItemHtml(ev, iso, i)).join('')
       : '<div class="agenda-empty">Nema zakazanih stavki.</div>';
     wireHoursInputs(agendaListEl);
   }
