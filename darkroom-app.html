@@ -11213,6 +11213,14 @@ async function openExpenseInboxPanel(n){
   const firstVisit = !finansijeInited;
   showView('finansije');
   document.querySelector('#view-finansije .fin-tab-btn[data-fintab="transakcije"]')?.click();
+  // Always refetch fresh: `expenseInbox` is only loaded once at boot, so a
+  // receipt the Dropbox sync added WHILE this session was already open (the
+  // common case — sync runs every 5 min in the background) is sitting in
+  // the database but missing from this stale in-memory array. Without this,
+  // the match below silently fails and the click just lands on the tab with
+  // nothing highlighted — looking like the receipt "isn't there" until a
+  // manual page refresh reloads everything from scratch and it reappears.
+  await loadExpenseInboxFromSupabase();
   await renderExpenseInbox();
   // On Finansije's first visit this session, showView() above just triggered
   // initFinansije() — which fires its OWN renderExpenseInbox() call without
