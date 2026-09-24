@@ -265,6 +265,8 @@ body{
 .modal-overlay.open{ display:flex; }
 .modal-card{ background:var(--card); border-radius:20px; padding:24px; width:380px; max-width:90vw; max-height:90vh; overflow-y:auto; box-shadow:0 30px 60px -20px rgba(40,30,10,0.4); }
 .modal-title{ font-family:var(--font-display); font-weight:700; font-size:16px; margin-bottom:16px; }
+.modal-x-close{ position:absolute; top:18px; right:20px; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); background:transparent; cursor:pointer; font-size:16px; line-height:1; transition:background .12s ease, color .12s ease; }
+.modal-x-close:hover{ background:var(--coral-soft); color:var(--coral); }
 .modal-field{ margin-bottom:12px; }
 .modal-field label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; display:block; margin-bottom:5px; }
 .modal-field input, .modal-field select, .modal-field textarea{ width:100%; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; outline:none; color:var(--ink); }
@@ -3331,7 +3333,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 </div>
 
 <div class="modal-overlay" id="eventModalOverlay">
-  <div class="modal-card">
+  <div class="modal-card" style="position:relative;">
+    <span class="modal-x-close" id="evModalClose" title="Zatvori">×</span>
     <div class="modal-title" id="evTitle">Nova stavka</div>
     <div class="ev-tab-row" id="evTabRow">
       <button type="button" class="ev-tab-btn active" data-tab="zadatak">Zadatak</button>
@@ -4981,6 +4984,7 @@ function customAlert(message, opts={}){
 }
 
 wireOverlayClose(eventModalOverlay, closeEventModal);
+document.getElementById('evModalClose').addEventListener('click', closeEventModal);
 document.getElementById('evDelete').addEventListener('click', async ()=>{
   if(!editingEventId) return;
   if(!await customConfirm('Obrisati ovu stavku iz kalendara?')) return;
