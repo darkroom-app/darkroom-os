@@ -595,6 +595,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .expense-inbox-row{ background:var(--card-soft); border-radius:12px; padding:12px 14px; margin-bottom:10px; transition:background .3s ease, box-shadow .3s ease; }
 .expense-inbox-row:last-child{ margin-bottom:0; }
 .expense-inbox-row-highlight{ background:var(--gold-soft); box-shadow:0 0 0 2px var(--gold); }
+.expense-inbox-row-error{ border-left:3px solid var(--coral); }
+.expense-inbox-error-hint{ font-family:var(--font-body); font-size:11px; color:var(--ink-dim); margin-bottom:8px; }
 .expense-inbox-file{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px; }
 .expense-inbox-file-link{ font-family:var(--font-body); font-size:12px; font-weight:600; color:var(--ink); text-decoration:none; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .expense-inbox-file-link:hover{ color:var(--gold-deep); }
@@ -9560,13 +9562,19 @@ async function renderExpenseInbox(){
   const categoryOptions = Object.keys(categoryColorVar);
   document.getElementById('expenseInboxList').innerHTML = expenseInbox.map(item=>{
     const url = signedUrls[item.receiptStoragePath];
+    const isError = item.status === 'greska';
     return `
-    <div class="expense-inbox-row" data-id="${item._id}">
+    <div class="expense-inbox-row${isError ? ' expense-inbox-row-error' : ''}" data-id="${item._id}">
       <div class="expense-inbox-file">
         ${url ? `<a class="expense-inbox-file-link" href="${url}" target="_blank" rel="noopener">📄 ${escapeHtml(item.fileName)}</a>` : `<span class="expense-inbox-file-link">📄 ${escapeHtml(item.fileName)}</span>`}
         ${item.note ? `<span class="expense-inbox-note">⚠️ ${escapeHtml(item.note)}</span>` : ''}
         ${item.fxNote ? `<span class="expense-inbox-fx-note">💱 ${escapeHtml(item.fxNote)}</span>` : ''}
       </div>
+      ${isError ? `
+      <div class="expense-inbox-error-hint">Automatska obrada ovog fajla nije uspela. Ponovo sačuvaj/postavi fajl u Dropbox da pokušaš opet, ili ukloni.</div>
+      <div class="expense-inbox-actions">
+        <button class="expense-inbox-reject" data-id="${item._id}">Ukloni</button>
+      </div>` : `
       <div class="expense-inbox-fields">
         <input type="date" class="ei-date" value="${item.date||''}">
         <input type="number" class="ei-amount" placeholder="Iznos" value="${item.amount!=null?item.amount:''}">
@@ -9579,7 +9587,7 @@ async function renderExpenseInbox(){
       <div class="expense-inbox-actions">
         <button class="expense-inbox-reject" data-id="${item._id}">Odbaci</button>
         <button class="expense-inbox-confirm" data-id="${item._id}">Potvrdi</button>
-      </div>
+      </div>`}
     </div>`;
   }).join('');
 
@@ -13106,12 +13114,15 @@ let expenseInbox = [];
 async function loadExpenseInboxFromSupabase(){
   if(!sb) return false;
   try {
-    const { data, error } = await sb.from('expense_inbox').select('*').eq('status', 'na_cekanju').order('created_at', { ascending:true });
+    // 'greska' rows are files the Dropbox sync failed to process — surfaced
+    // here too (not just na_cekanju) so a failure is visible instead of
+    // silently vanishing; see dropbox-expense-sync's per-file catch block.
+    const { data, error } = await sb.from('expense_inbox').select('*').in('status', ['na_cekanju','greska']).order('created_at', { ascending:true });
     if(error || !data) return false;
     expenseInbox.length = 0;
     data.forEach(row=>{
       expenseInbox.push({
-        _id: nextId(), dbId: row.id, dropboxPath: row.dropbox_path, fileName: row.file_name,
+        _id: nextId(), dbId: row.id, dropboxPath: row.dropbox_path, fileName: row.file_name, status: row.status,
         receiptStoragePath: row.receipt_storage_path, amount: row.extracted_amount, date: row.extracted_date,
         description: row.extracted_description, category: row.extracted_category, note: row.ai_note, fxNote: row.fx_note,
       });

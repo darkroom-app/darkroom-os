@@ -46,8 +46,13 @@
 //     left off.
 //
 // A failure on one file (bad download, Gemini couldn't parse it, whatever)
-// is caught and reported per-file — it doesn't stop the rest of the batch
-// or skip advancing the cursor past files that DID succeed.
+// is caught per-file — it doesn't stop the rest of the batch or skip
+// advancing the cursor past files that DID succeed. Since the cursor moves
+// on regardless, a failed file would otherwise never be looked at again, so
+// the failure itself becomes a visible expense_inbox row (status 'greska',
+// the error in ai_note) with its own notification, instead of silently
+// vanishing — re-saving the file in Dropbox (which changes its rev) gets it
+// retried and updates that same row rather than creating a duplicate.
 
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -311,10 +316,20 @@ Deno.serve(async (req) => {
       const fileResults: Record<string, unknown>[] = [];
 
       for (const file of receiptFiles) {
+        // Kept outside the try so the catch block below can also see it —
+        // a previous failed attempt for this exact path (status 'greska')
+        // is retried by UPDATEing that same row rather than skipped or
+        // re-inserted (dropbox_path is unique, so a plain insert would
+        // collide with it).
+        let existing: { id: string; status: string } | null = null;
         try {
-          const { data: existing } = await supabase
-            .from("expense_inbox").select("id").eq("dropbox_path", file.path_lower).maybeSingle();
-          if (existing) { fileResults.push({ file: file.name, skipped: "already in inbox" }); continue; }
+          const { data } = await supabase
+            .from("expense_inbox").select("id, status").eq("dropbox_path", file.path_lower).maybeSingle();
+          existing = data ?? null;
+          if (existing && existing.status !== "greska") {
+            fileResults.push({ file: file.name, skipped: "already in inbox" });
+            continue;
+          }
 
           const bytes = await dbxDownload(token, file.path_lower);
           const mimeType = RECEIPT_EXT_MIME[extOf(file.name)];
@@ -342,8 +357,7 @@ Deno.serve(async (req) => {
             .from("expense-receipts").upload(storagePath, bytes, { contentType: mimeType });
           if (uploadError) throw new Error(`storage upload failed: ${uploadError.message}`);
 
-          const { error: insertError } = await supabase.from("expense_inbox").insert({
-            dropbox_path: file.path_lower,
+          const inboxRow = {
             file_name: file.name,
             receipt_storage_path: storagePath,
             extracted_amount: finalAmount,
@@ -352,8 +366,14 @@ Deno.serve(async (req) => {
             extracted_category: extracted.category,
             ai_note: aiNote,
             fx_note: fxNote,
-          });
-          if (insertError) throw new Error(`expense_inbox insert failed: ${insertError.message}`);
+          };
+          // A retry of a previously-failed file updates that same row back
+          // to na_cekanju (clearing the old error) instead of inserting a
+          // second row for the same dropbox_path.
+          const { error: writeError } = existing
+            ? await supabase.from("expense_inbox").update({ ...inboxRow, status: "na_cekanju" }).eq("id", existing.id)
+            : await supabase.from("expense_inbox").insert({ dropbox_path: file.path_lower, ...inboxRow });
+          if (writeError) throw new Error(`expense_inbox write failed: ${writeError.message}`);
 
           if (superadminNames.length) {
             try {
@@ -367,7 +387,33 @@ Deno.serve(async (req) => {
 
           fileResults.push({ file: file.name, ok: true });
         } catch (e) {
-          fileResults.push({ file: file.name, ok: false, error: String(e) });
+          const errMsg = String(e);
+          // Previously this was discarded once fileResults got pushed below —
+          // nobody reads a cron job's HTTP response, so a failed file just
+          // vanished with no trace and, since the Dropbox cursor already
+          // advanced past it, was never retried automatically either. Now it
+          // becomes a visible 'greska' row (surfaced in the app's expense
+          // inbox panel) instead — re-saving the file in Dropbox changes its
+          // rev, which the next sync picks up as a retry of this same row.
+          try {
+            const failRow = {
+              file_name: file.name,
+              status: "greska",
+              ai_note: `Automatska obrada nije uspela: ${errMsg}`,
+            };
+            if (existing) {
+              await supabase.from("expense_inbox").update(failRow).eq("id", existing.id);
+            } else {
+              await supabase.from("expense_inbox").insert({ dropbox_path: file.path_lower, ...failRow });
+            }
+            if (superadminNames.length) {
+              const notifText = `Obrada računa iz Dropbox-a nije uspela: ${file.name}. Proveri Finansije → Transakcije.`;
+              await supabase.from("notifications").insert(
+                superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
+              );
+            }
+          } catch { /* best-effort — the error is still visible in this run's own response below */ }
+          fileResults.push({ file: file.name, ok: false, error: errMsg });
         }
       }
 
