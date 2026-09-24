@@ -186,7 +186,7 @@ body{
 .top-pills{ display:flex; gap:8px; }
 .top-pill{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:7px 13px; text-align:center; }
 .top-pill .tp-val{ font-family:var(--font-display); font-weight:700; font-size:14.5px; }
-.top-pill .tp-val span{ font-family:var(--font-body); font-weight:500; font-size:9.5px; color:var(--ink-dim); }
+.top-pill .tp-val span:not(.tp-num){ font-family:var(--font-body); font-weight:500; font-size:9.5px; color:var(--ink-dim); }
 .top-pill .tp-label{ font-family:var(--font-mono); font-size:7.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-top:2px; }
 
 /* ==== PROJEKTI VIEW ==== */
@@ -1227,7 +1227,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .hero-row{ display:grid; grid-template-columns:300px calc(53.5% - 327px) 2fr 1fr; gap:18px; margin-bottom:16px; flex:0 0 auto; }
 .hero-todo{ display:flex; flex-direction:column; }
 
-.employee-card{ padding:0; overflow:hidden; display:flex; flex-direction:column; }
+.employee-card{ padding:0; overflow:hidden; display:flex; flex-direction:column; opacity:0; animation:empCardIn .5s cubic-bezier(.25,.8,.35,1) both; }
+@keyframes empCardIn{ from{ opacity:0; transform:scale(0.96) translateY(10px); } to{ opacity:1; transform:scale(1) translateY(0); } }
 .emp-photo{
   flex:1; position:relative; background-size:cover; background-position:center 22%;
   background-image:url('https://images.unsplash.com/photo-1500648767791-00dcc994a43e?fm=jpg&q=80&w=900&auto=format&fit=crop&crop=faces');
@@ -1386,6 +1387,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .notif-scroll{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
 .notif-item{ display:flex; gap:10px; padding:9px 0; border-bottom:1px solid var(--border); }
 .notif-item:last-child{ border-bottom:none; padding-bottom:0; }
+.notif-item.notif-item-in{ opacity:0; animation:legendItemIn .35s ease both; }
 .notif-delete{ flex-shrink:0; align-self:flex-start; width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--ink-faint); background:transparent; cursor:pointer; font-size:13px; line-height:1; transition:background .12s ease, color .12s ease; }
 .notif-delete:hover{ background:var(--coral-soft); color:var(--coral); }
 .notif-icon{ width:26px; height:26px; border-radius:8px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
@@ -1425,11 +1427,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 /* ---- Zadaci & Beleske ---- */
 .todo-scroll{ flex:1; min-height:0; overflow-y:auto; padding-right:3px; }
-.todo-row{ display:flex; align-items:center; gap:10px; padding:8px 0; }
+.todo-row{ display:flex; align-items:center; gap:10px; padding:8px 0; opacity:0; animation:legendItemIn .35s ease both; }
 .todo-check{ width:17px; height:17px; border-radius:6px; border:1.5px solid var(--ink-faint); flex-shrink:0; cursor:pointer; display:flex; align-items:center; justify-content:center; }
-.todo-check.done{ background:var(--gold); border-color:var(--gold); }
+.todo-check.done{ background:var(--gold); border-color:var(--gold); animation:checkPop .3s cubic-bezier(.34,1.56,.64,1); }
 .todo-check svg{ width:10px; height:10px; color:#3a2704; display:none; }
 .todo-check.done svg{ display:block; }
+@keyframes checkPop{ 0%{ transform:scale(0.5); } 60%{ transform:scale(1.2); } 100%{ transform:scale(1); } }
 .todo-text{ font-size:12px; flex:1; min-width:0; }
 .todo-text.done{ color:var(--ink-faint); text-decoration:line-through; }
 .todo-delete{
@@ -1843,10 +1846,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       <div>
         <div class="top-date">Utorak · 4. avgust 2026.</div>
         <div class="top-pills">
-          <div class="top-pill"><div class="tp-val" id="tpPreostalo">20 <span>dana</span></div><div class="tp-label">Preostalo slobodnih</div></div>
-          <div class="top-pill"><div class="tp-val" id="tpBolovanje">0 <span>dana</span></div><div class="tp-label">Bolovanje uzeto</div></div>
-          <div class="top-pill"><div class="tp-val" id="tpPlaceno">0 <span>dana</span></div><div class="tp-label">Plaćeno odsustvo</div></div>
-          <div class="top-pill"><div class="tp-val" id="tpNeplaceno">0 <span>dana</span></div><div class="tp-label">Neplaćeno</div></div>
+          <div class="top-pill"><div class="tp-val"><span class="tp-num" id="tpPreostalo">20</span> <span>dana</span></div><div class="tp-label">Preostalo slobodnih</div></div>
+          <div class="top-pill"><div class="tp-val"><span class="tp-num" id="tpBolovanje">0</span> <span>dana</span></div><div class="tp-label">Bolovanje uzeto</div></div>
+          <div class="top-pill"><div class="tp-val"><span class="tp-num" id="tpPlaceno">0</span> <span>dana</span></div><div class="tp-label">Plaćeno odsustvo</div></div>
+          <div class="top-pill"><div class="tp-val"><span class="tp-num" id="tpNeplaceno">0</span> <span>dana</span></div><div class="tp-label">Neplaćeno</div></div>
         </div>
       </div>
     </div>
@@ -3768,8 +3771,8 @@ let todoItems = [
 fromPersisted('todoItems', todoItems);
 
 function renderTodos(){
-  document.getElementById('todoList').innerHTML = todoItems.map(t=>`
-    <div class="todo-row">
+  document.getElementById('todoList').innerHTML = todoItems.map((t,i)=>`
+    <div class="todo-row" style="animation-delay:${i*45}ms;">
       <div class="todo-check ${t.done?'done':''}" data-id="${t._id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6 9 17l-5-5"/></svg></div>
       <div class="todo-text ${t.done?'done':''}">${escapeHtml(t.text)}</div>
       <div class="todo-delete" title="Obriši" data-id="${t._id}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0-1 14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2L4 6"/></svg></div>
@@ -11195,11 +11198,11 @@ function showView(name){
   if(name==='skripte' && !skripteInited){ skripteInited = true; initSkripte(); }
   // Pregled's panel content isn't rebuilt on revisit (unlike the lazy-inited
   // views above) — most of it just naturally replays its CSS animation on
-  // display:none→visible, but the weekly goal ring's fill and Moja
-  // Statistika's count-up/donut are JS-driven against values that aren't
-  // changing on their own, so they need an explicit re-render to actually
-  // reset-then-refill again each time you land here.
-  if(name==='pregled'){ renderWeeklyGoal(); renderMyStats(); }
+  // display:none→visible, but the weekly goal ring's fill, Moja Statistika's
+  // count-up/donut, and the top pills' count-up are all JS-driven against
+  // values that aren't changing on their own, so they need an explicit
+  // re-render to actually reset-then-refill again each time you land here.
+  if(name==='pregled'){ renderWeeklyGoal(); renderMyStats(); renderTopPills(); }
   setActiveNav(name);
   if(!_histSyncing && (!history.state || history.state.view !== name)){
     history.pushState({view:name}, '', viewUrl(name));
@@ -11383,10 +11386,11 @@ const notifIconMap = {
   weekly_report: { cls:'ic-sky', svg:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>' },
   render_pending: { cls:'ic-render', svg:'<rect x="2" y="5" width="14" height="14" rx="2"/><path d="m16 10 6-4v12l-6-4"/>' },
 };
-function notifItemHtml(n){
+function notifItemHtml(n, i){
   const meta = notifIconMap[n.kind] || notifIconMap.kadar;
+  const delayAttr = i!=null ? ` animation-delay:${Math.min(i,10)*45}ms;` : '';
   return `
-    <div class="notif-item ${n.read?'':'notif-unread'}" data-id="${n._id}" style="cursor:pointer;">
+    <div class="notif-item notif-item-in ${n.read?'':'notif-unread'}" data-id="${n._id}" style="cursor:pointer;${delayAttr}">
       <div class="notif-icon ${meta.cls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">${meta.svg}</svg></div>
       <div style="flex:1;min-width:0;">
         <div class="notif-text">${escapeHtml(n.text)}</div>
@@ -11405,9 +11409,9 @@ function renderDashboardNotifications(){
   else {
     const unread = list.filter(n=>!n.read);
     const read = list.filter(n=>n.read);
-    let html = '';
-    if(unread.length) html += `<div class="notif-section-label">🔔 Novo</div>` + unread.map(notifItemHtml).join('');
-    if(read.length) html += `<div class="notif-section-label">Ranije</div>` + read.map(notifItemHtml).join('');
+    let html = '', i = 0;
+    if(unread.length) html += `<div class="notif-section-label">🔔 Novo</div>` + unread.map(n=>notifItemHtml(n, i++)).join('');
+    if(read.length) html += `<div class="notif-section-label">Ranije</div>` + read.map(n=>notifItemHtml(n, i++)).join('');
     wrap.innerHTML = html;
   }
   wrap.querySelectorAll('.notif-item').forEach(el=>{
@@ -12587,10 +12591,10 @@ function renderTopPills(){
   const bolovanje = leaveDaysUsed(u.name, 'bolovanje', year);
   const placeno = leaveDaysUsed(u.name, 'placeno', year);
   const neplaceno = leaveDaysUsed(u.name, 'neplaceno', year);
-  document.getElementById('tpPreostalo').innerHTML = `${preostalo} <span>dana</span>`;
-  document.getElementById('tpBolovanje').innerHTML = `${bolovanje} <span>dana</span>`;
-  document.getElementById('tpPlaceno').innerHTML = `${placeno} <span>dana</span>`;
-  document.getElementById('tpNeplaceno').innerHTML = `${neplaceno} <span>dana</span>`;
+  animateCountUp(document.getElementById('tpPreostalo'), preostalo, { duration:600 });
+  animateCountUp(document.getElementById('tpBolovanje'), bolovanje, { duration:600 });
+  animateCountUp(document.getElementById('tpPlaceno'), placeno, { duration:600 });
+  animateCountUp(document.getElementById('tpNeplaceno'), neplaceno, { duration:600 });
 }
 function renderDashboardFinance(){
   const u = currentUser();
