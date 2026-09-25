@@ -1045,6 +1045,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .stat-tab-btn.active{ background:var(--ink-solid-bg); color:#FBF8F1; }
 .stat-tab-panel{ display:none; flex:1; min-height:0; overflow-y:auto; padding-right:2px; }
 .stat-tab-panel.active{ display:block; }
+/* Each top-level block (KPI row, a stat-grid-2 pair, a standalone panel)
+   rises in one after another, same wave idea as the other tabs — the data
+   fills (lb-fill/phase-fill/count-up) inside are their own, separate
+   pre-existing animation and just play out while their panel settles in. */
+.stat-tab-panel.active > *{ opacity:0; animation:twgWaveIn .4s ease both; }
+.stat-tab-panel.active > *:nth-child(1){ animation-delay:0ms; }
+.stat-tab-panel.active > *:nth-child(2){ animation-delay:70ms; }
+.stat-tab-panel.active > *:nth-child(3){ animation-delay:140ms; }
+.stat-tab-panel.active > *:nth-child(4){ animation-delay:210ms; }
+.stat-tab-panel.active > *:nth-child(5){ animation-delay:280ms; }
+.stat-tab-panel.active > *:nth-child(6){ animation-delay:350ms; }
 
 .stat-section-title{ display:flex; align-items:center; gap:9px; font-family:var(--font-display); font-weight:700; font-size:16px; margin:6px 0 16px; }
 .stat-section-title .ssn{ font-family:var(--font-mono); font-size:10px; color:var(--gold-deep); background:var(--gold-soft); padding:3px 9px; border-radius:20px; text-transform:uppercase; letter-spacing:0.04em; }
@@ -7509,19 +7520,25 @@ function canUploadScripts(){
   return currentAccess()==='admin' || isSuperAdmin();
 }
 
+// Same self-resetting suppress pattern as Projekti/Klijenti/Tim's wave entrance.
+let skripteGridSuppressEntrance = false;
 function renderSkriptePage(){
   const wrap = document.getElementById('skripteContent');
   document.getElementById('skriptAddBtn').style.display = canUploadScripts() ? '' : 'none';
   const q = skriptState.search.trim().toLowerCase();
   let items = skriptState.category==='Sve kategorije' ? scriptFiles : scriptFiles.filter(s=>s.category===skriptState.category);
   if(q) items = items.filter(s=> `${s.name} ${s.description} ${s.category}`.toLowerCase().includes(q));
+  const suppressEntrance = skripteGridSuppressEntrance;
+  skripteGridSuppressEntrance = false;
+  const waveClass = suppressEntrance ? '' : ' twg-wave-in';
+  const waveDelay = i => suppressEntrance ? '' : `animation-delay:${Math.min(i,14)*70}ms;`;
   if(!items.length){
     const emptyMsg = scriptFiles.length ? 'Nema rezultata.' : (canUploadScripts() ? 'Još uvek nema dodatih skripti. Klikni "Dodaj skriptu" da dodaš prvu.' : 'Još uvek nema dodatih skripti.');
     wrap.innerHTML = `<div class="skripte-empty">${emptyMsg}</div>`;
     return;
   }
-  if(skriptState.view === 'grid') renderSkripteGrid(wrap, items);
-  else renderSkripteList(wrap, items);
+  if(skriptState.view === 'grid') renderSkripteGrid(wrap, items, waveClass, waveDelay);
+  else renderSkripteList(wrap, items, waveClass, waveDelay);
 }
 
 function skripteDlBtnHtml(s){
@@ -7542,10 +7559,10 @@ function wireSkripteEditButtons(wrap){
   });
 }
 
-function renderSkripteList(wrap, items){
-  wrap.innerHTML = `<div class="skripte-file-list">` + items.map(s=>{
+function renderSkripteList(wrap, items, waveClass, waveDelay){
+  wrap.innerHTML = `<div class="skripte-file-list">` + items.map((s,i)=>{
     const catColor = skripteCategoryColors[s.category] || 'var(--ink-faint)';
-    return `<div class="skripte-file-row">
+    return `<div class="skripte-file-row${waveClass}" style="${waveDelay(i)}">
       <div class="skripte-file-icon"${s.thumbnailUrl ? ` style="background-image:url('${escapeHtml(s.thumbnailUrl)}'); background-size:cover; background-position:center;"` : ''}>${s.thumbnailUrl ? '' : skripteFileIcon(s.fileName)}</div>
       <div class="skripte-file-main">
         <div class="skripte-file-name">${escapeHtml(s.name)} <span class="skripte-cat-tag" style="background:${catColor}22; color:${catColor}">${escapeHtml(s.category)}</span></div>
@@ -7561,10 +7578,10 @@ function renderSkripteList(wrap, items){
   wireSkripteEditButtons(wrap);
 }
 
-function renderSkripteGrid(wrap, items){
-  wrap.innerHTML = `<div class="skripte-grid">` + items.map(s=>{
+function renderSkripteGrid(wrap, items, waveClass, waveDelay){
+  wrap.innerHTML = `<div class="skripte-grid">` + items.map((s,i)=>{
     const catColor = skripteCategoryColors[s.category] || 'var(--ink-faint)';
-    return `<div class="skripte-card">
+    return `<div class="skripte-card${waveClass}" style="${waveDelay(i)}">
       <div class="skripte-card-thumb"${s.thumbnailUrl ? ` style="background-image:url('${escapeHtml(s.thumbnailUrl)}');"` : ''}>
         ${s.thumbnailUrl ? '' : `<span class="skripte-card-thumb-icon">${skripteFileIcon(s.fileName)}</span>`}
         <span class="skripte-card-cat" style="background:${catColor}; color:#fff;">${escapeHtml(s.category)}</span>
@@ -7589,6 +7606,7 @@ function wireSkripteToolbar(){
   skripteToolbarWired = true;
   document.getElementById('skripteSearchInput').addEventListener('input', (e)=>{
     skriptState.search = e.target.value;
+    skripteGridSuppressEntrance = true;
     renderSkriptePage();
   });
   document.getElementById('skriptAddBtn').addEventListener('click', ()=> openSkriptModal(null));
