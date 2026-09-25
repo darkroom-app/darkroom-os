@@ -6080,7 +6080,7 @@ function renderProjectsPage(){
   const suppressEntrance = projGridSuppressEntrance;
   projGridSuppressEntrance = false;
   const waveClass = suppressEntrance ? '' : ' twg-wave-in';
-  const waveDelay = i => suppressEntrance ? '' : `animation-delay:${Math.min(i,14)*30}ms;`;
+  const waveDelay = i => suppressEntrance ? '' : `animation-delay:${Math.min(i,14)*70}ms;`;
   renderClientPaymentSummary();
   document.getElementById('projCountLabel').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
   document.getElementById('projectsEmpty').style.display = list.length ? 'none' : 'block';
