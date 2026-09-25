@@ -6020,6 +6020,7 @@ function bindFilterClicks(){
 }
 document.getElementById('projSearchInput').addEventListener('input', (e)=>{
   filters.search = e.target.value;
+  projGridSuppressEntrance = true;
   renderProjectsPage();
 });
 
@@ -6070,19 +6071,27 @@ function renderClientPaymentSummary(){
   wrap.style.display = 'flex';
   wrap.innerHTML = clientSummaryHtml(filters.klijent);
 }
+// Search re-renders on every keystroke, which would otherwise replay a
+// wave/stagger entrance on each letter typed — set true right before that
+// one call, consumed (and reset) here so every other caller still animates.
+let projGridSuppressEntrance = false;
 function renderProjectsPage(){
   const list = filteredProjects();
+  const suppressEntrance = projGridSuppressEntrance;
+  projGridSuppressEntrance = false;
+  const waveClass = suppressEntrance ? '' : ' twg-wave-in';
+  const waveDelay = i => suppressEntrance ? '' : `animation-delay:${Math.min(i,14)*30}ms;`;
   renderClientPaymentSummary();
   document.getElementById('projCountLabel').textContent = list.length + (list.length===1 ? ' projekat' : ' projekata');
   document.getElementById('projectsEmpty').style.display = list.length ? 'none' : 'block';
   document.getElementById('projectsGrid').style.display = (viewMode==='grid' && list.length) ? 'grid' : 'none';
   document.getElementById('projectsListWrap').style.display = (viewMode==='list' && list.length) ? 'block' : 'none';
 
-  document.getElementById('projectsGrid').innerHTML = list.map(p=>{
+  document.getElementById('projectsGrid').innerHTML = list.map((p,i)=>{
     const s = projectStats(p);
     const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed,320);
     return `
-    <div class="pg-card" data-id="${p._id}">
+    <div class="pg-card${waveClass}" style="${waveDelay(i)}" data-id="${p._id}">
       ${projectEditBtn(p)}
       <div class="pg-thumb" style="${thumbStyleAttr}"><div class="vfc tl"></div><div class="vfc br"></div></div>
       <div class="pg-body">
@@ -6101,11 +6110,11 @@ function renderProjectsPage(){
     </div>`;
   }).join('');
 
-  document.getElementById('projectsList').innerHTML = list.map(p=>{
+  document.getElementById('projectsList').innerHTML = list.map((p,i)=>{
     const s = projectStats(p);
     const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed,80);
     return `
-    <div class="plist-row" data-id="${p._id}" style="cursor:pointer;">
+    <div class="plist-row${waveClass}" data-id="${p._id}" style="cursor:pointer;${waveDelay(i)}">
       <div class="plist-name-wrap">
         <div class="plist-thumb" style="${thumbStyleAttr}"></div>
         <div class="plist-name-text"><div class="plist-name">${escapeHtml(p.name)}</div><div class="plist-code">${escapeHtml(p.code)}</div></div>
