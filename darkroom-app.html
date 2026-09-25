@@ -146,8 +146,6 @@ body{
 .nav a.active{ background:var(--ink-solid-bg); color:#FBF8F1; animation:navActiveIn .35s ease-out; }
 .nav a.active svg{ opacity:1; }
 @keyframes navActiveIn{ from{ clip-path:inset(0 100% 0 0); } to{ clip-path:inset(0 0 0 0); } }
-.nav a.nav-drop{ animation:navOthersDrop .35s ease; }
-@keyframes navOthersDrop{ 0%{ transform:translateY(0); opacity:1; } 40%{ transform:translateY(6px); opacity:0.45; } 100%{ transform:translateY(0); opacity:1; } }
 .nav-gap{ height:16px; }
 
 .sidebar-foot{ margin-top:auto; padding-top:12px; display:flex; gap:8px; align-items:center; }
@@ -11651,16 +11649,14 @@ function unsubscribeRemoteNotifications(){
 /* ==== AI ASSISTANT ==== */
 function setActiveNav(viewName){
   document.querySelectorAll('.nav a').forEach(a=>{
-    const isNowActive = a.dataset.view===viewName;
-    a.classList.toggle('active', isNowActive);
-    if(!isNowActive){
-      // Force a reflow before re-adding so the drop animation restarts even
-      // if this item was already inactive last time (classList.add alone is
-      // a no-op — and thus never replays a CSS animation — when the class
-      // is already present).
-      a.classList.remove('nav-drop');
+    a.classList.remove('active');
+    if(a.dataset.view===viewName){
+      // Force a reflow before re-adding so the reveal animation restarts
+      // even on a repeat click of the tab that's already active — plain
+      // classList.add is a no-op (and thus never replays a CSS animation)
+      // when the class is already present.
       void a.offsetWidth;
-      a.classList.add('nav-drop');
+      a.classList.add('active');
     }
   });
 }
