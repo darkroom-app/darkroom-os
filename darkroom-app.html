@@ -1505,7 +1505,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 /* ==== CALENDAR VIEW ==== */
 .view-panel{ display:none; flex:1; min-height:0; }
-.view-panel.active{ display:flex; flex-direction:column; }
+.view-panel.active{ display:flex; flex-direction:column; animation:viewEnter .35s ease both; }
+@keyframes viewEnter{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
 #view-kalendar.active{ display:block; overflow-y:auto; }
 #view-projekti.active{ display:block; overflow-y:auto; }
 #view-klijenti.active{ display:block; overflow-y:auto; }
