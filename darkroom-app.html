@@ -7128,8 +7128,16 @@ function filteredClients(){
   );
 }
 
+// Same self-resetting suppress pattern as Projekti's wave entrance — search
+// re-renders on every keystroke and shouldn't replay it, everything else
+// (filters, view toggle) should.
+let clientGridSuppressEntrance = false;
 function renderClientsPage(){
   const list = filteredClients();
+  const suppressEntrance = clientGridSuppressEntrance;
+  clientGridSuppressEntrance = false;
+  const waveClass = suppressEntrance ? '' : ' twg-wave-in';
+  const waveDelay = i => suppressEntrance ? '' : `animation-delay:${Math.min(i,14)*70}ms;`;
   document.getElementById('newClientBtn').style.display = isSuperAdmin() ? '' : 'none';
   document.getElementById('clientCountLabel').textContent = list.length + (list.length===1 ? ' klijent' : ' klijenata');
   document.getElementById('clientsEmpty').style.display = list.length ? 'none' : 'block';
@@ -7142,7 +7150,7 @@ function renderClientsPage(){
     const stats = clientProjectStats(c.name);
     const status = clientStatus(c.name);
     return `
-    <div class="client-card" data-id="${c._id}" style="cursor:pointer;">
+    <div class="client-card${waveClass}" data-id="${c._id}" style="cursor:pointer;${waveDelay(i)}">
       <div class="cc-top">
         <div class="cc-avatar" ${avatarHtml}>${c.avatar ? '' : clientInitials(c.name)}</div>
         <div class="cc-name-wrap"><div class="cc-name">${escapeHtml(c.name)}</div><div class="cc-contact">${escapeHtml(c.contact)}</div></div>
@@ -7165,7 +7173,7 @@ function renderClientsPage(){
     const stats = clientProjectStats(c.name);
     const status = clientStatus(c.name);
     return `
-    <div class="clist-row" data-id="${c._id}" style="cursor:pointer;">
+    <div class="clist-row${waveClass}" data-id="${c._id}" style="cursor:pointer;${waveDelay(i)}">
       <div class="clist-name-wrap"><div class="clist-avatar" ${avatarHtml}>${c.avatar ? '' : clientInitials(c.name)}</div><div class="clist-name">${escapeHtml(c.name)}</div></div>
       <div class="clist-cell">${escapeHtml(c.contact)}</div>
       <div class="clist-cell">${escapeHtml(c.email)}</div>
@@ -7186,6 +7194,7 @@ function renderClientsPage(){
 
 document.getElementById('clientSearchInput').addEventListener('input', (e)=>{
   clientState.search = e.target.value;
+  clientGridSuppressEntrance = true;
   renderClientsPage();
 });
 
