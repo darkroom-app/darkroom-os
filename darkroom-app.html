@@ -8548,7 +8548,7 @@ function renderEmpLeaderboard(){
   }, 150);
 }
 
-async function initStatistika(){
+async function renderStatistikaData(){
   await ensureRoundsSummaryLoaded();
   renderKpiRow();
   renderMonthChart();
@@ -8564,6 +8564,9 @@ async function initStatistika(){
   renderPeopleProductionCards();
   renderLineChart();
   renderEmpLeaderboard();
+}
+async function initStatistika(){
+  await renderStatistikaData();
 
   const statTabPanelMap = { projekti:'statTabProjekti', kvalitet:'statTabKvalitet', tim:'statTabTim' };
   document.querySelectorAll('#view-statistika .stat-tab-btn').forEach(btn=>{
@@ -11249,7 +11252,7 @@ function showView(name){
   document.getElementById('view-tim').classList.toggle('active', name==='tim');
   document.getElementById('view-finansije').classList.toggle('active', name==='finansije');
   document.getElementById('view-profil').classList.toggle('active', name==='profil');
-  if(name==='statistika' && !statistikaInited){ statistikaInited = true; initStatistika(); }
+  if(name==='statistika'){ if(!statistikaInited){ statistikaInited = true; initStatistika(); } else { renderStatistikaData(); } }
   if(name==='finansije' && !finansijeInited){ finansijeInited = true; initFinansije(); }
   if(name==='playbook' && !playbookInited){ playbookInited = true; initPlaybook(); }
   if(name==='skripte' && !skripteInited){ skripteInited = true; initSkripte(); }
