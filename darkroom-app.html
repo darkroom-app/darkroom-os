@@ -8565,24 +8565,6 @@ async function initStatistika(){
   renderLineChart();
   renderEmpLeaderboard();
 
-  // The wave entrance is applied here — AFTER every panel's real data is
-  // rendered — rather than via a CSS rule keyed to .stat-tab-panel.active,
-  // which would fire the instant the tab becomes visible. ensureRoundsSummaryLoaded()
-  // above pages through 14,000+ rounds and can easily take longer than the
-  // whole wave animation, so a CSS-only trigger played out on the still-empty
-  // panel shells and finished before the real numbers/bars ever appeared —
-  // exactly the "wave plays, then everything just dumps in" bug this fixes.
-  // Applying it to every sub-tab's children now (not just the visible one)
-  // means Kvalitet/Tim — already fully rendered too, just hidden — still get
-  // their own wave for free the first time you switch to them, since nothing
-  // async has to happen at that point anymore.
-  document.querySelectorAll('#view-statistika .stat-tab-panel').forEach(panel=>{
-    Array.from(panel.children).forEach((child,i)=>{
-      child.classList.add('twg-wave-in');
-      child.style.animationDelay = `${Math.min(i,5)*70}ms`;
-    });
-  });
-
   const statTabPanelMap = { projekti:'statTabProjekti', kvalitet:'statTabKvalitet', tim:'statTabTim' };
   document.querySelectorAll('#view-statistika .stat-tab-btn').forEach(btn=>{
     btn.addEventListener('click', ()=>{
