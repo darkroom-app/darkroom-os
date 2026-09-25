@@ -10000,6 +10000,7 @@ function renderPricingList(){
     const kadarListHtml = sortedKadrovi.map(k=>{
       const billable = k.billableRoundsCount||0;
       const extra = Math.max(0, billable-4);
+      const extraLabel = extra===1 ? 'revizija' : (extra>=2 && extra<=4 ? 'revizije' : 'revizija');
       const priced = k.basePrice != null;
       const kadarCharges = charges.filter(c=>c.description.startsWith(k.name));
       kadarCharges.forEach(c=>matchedIds.add(c._id));
@@ -10023,7 +10024,7 @@ function renderPricingList(){
       const net = kadarNetPrice(k);
       return `
           <div class="price-kadar-row" data-pid="${p._id}" data-kid="${k._id}" style="cursor:pointer;">
-            <div class="price-kadar-name">${escapeHtml(k.name)} <span class="price-extra-hint">· ${escapeHtml(k.type)}</span>${extra>0?` <span class="price-extra-hint">· ${extra} dodatno</span>`:''}</div>
+            <div class="price-kadar-name">${escapeHtml(k.name)} <span class="price-extra-hint">· ${escapeHtml(k.type)}</span>${extra>0?` <span class="price-extra-hint">· ${extra} ${extraLabel} dodatno</span>`:''}</div>
             <div class="price-kadar-right">${priced
               ? `<span class="price-kadar-amt">${fmtRSD(net)}</span><span class="tag ${k.priceStatus==='Plaćeno'?'tag-final':(k.priceStatus==='Fakturisano'?'tag-wip':'tag-review')}">${k.priceStatus||'Neplaćeno'}</span>`
               : `<span class="price-kadar-unset">nije određena cena</span>`}</div>
