@@ -8617,11 +8617,17 @@ function filteredTeam(){
 
 const accessLabel = { user:'Korisnik', admin:'Administrator', superadmin:'Super Admin' };
 const accessTagClass = { user:'tag-hold', admin:'tag-clay', superadmin:'tag-wip' };
+// Same self-resetting suppress pattern as Projekti/Klijenti's wave entrance.
+let teamGridSuppressEntrance = false;
 function renderTeamPage(){
   const list = filteredTeam();
   const activeList = list.filter(t=>t.status==='Aktivan');
   const inactiveList = list.filter(t=>t.status!=='Aktivan');
   const canManage = isSuperAdmin();
+  const suppressEntrance = teamGridSuppressEntrance;
+  teamGridSuppressEntrance = false;
+  const waveClass = suppressEntrance ? '' : ' twg-wave-in';
+  const waveDelay = i => suppressEntrance ? '' : `animation-delay:${Math.min(i,14)*70}ms;`;
   document.getElementById('newTeamBtn').style.display = canManage ? '' : 'none';
   document.getElementById('teamCountLabel').textContent = list.length + (list.length===1 ? ' član' : ' članova');
   document.getElementById('teamEmpty').style.display = list.length ? 'none' : 'block';
@@ -8636,7 +8642,7 @@ function renderTeamPage(){
     const output = typeof empYearTotal === 'function' ? empYearTotal(t.key) : 0;
     const inactive = t.status!=='Aktivan';
     return `
-    <div class="client-card team-card${inactive ? ' team-card-inactive' : ''}" data-id="${t._id}" style="cursor:pointer;">
+    <div class="client-card team-card${inactive ? ' team-card-inactive' : ''}${waveClass}" data-id="${t._id}" style="cursor:pointer;${waveDelay(i)}">
       <div class="team-card-top-row">
         <div class="cc-top" style="margin-bottom:0;">
           <div class="cc-avatar" ${avatarHtml}>${t.avatar ? '' : initials}</div>
@@ -8660,7 +8666,7 @@ function renderTeamPage(){
   };
   document.getElementById('teamGrid').innerHTML =
     activeList.map(teamCard).join('') +
-    (inactiveList.length ? `<div class="team-section-divider">Neaktivni</div>` + inactiveList.map(teamCard).join('') : '');
+    (inactiveList.length ? `<div class="team-section-divider">Neaktivni</div>` + inactiveList.map((t,i)=>teamCard(t, activeList.length+i)).join('') : '');
 
   const teamRow = (t,i)=>{
     const grad = artistGrad[t.key] || clientAvatarColors[i % clientAvatarColors.length];
@@ -8669,7 +8675,7 @@ function renderTeamPage(){
     const activeProj = teamActiveProjects(t.key);
     const inactive = t.status!=='Aktivan';
     return `
-    <div class="clist-row${inactive ? ' clist-row-inactive' : ''}" data-id="${t._id}" style="cursor:pointer;">
+    <div class="clist-row${inactive ? ' clist-row-inactive' : ''}${waveClass}" data-id="${t._id}" style="cursor:pointer;${waveDelay(i)}">
       <div class="clist-name-wrap"><div class="clist-avatar" ${avatarHtml}>${t.avatar ? '' : initials}</div><div class="clist-name">${escapeHtml(t.name)}</div></div>
       <div class="clist-cell">${escapeHtml(t.role)}</div>
       <div class="clist-cell">${escapeHtml(t.emailBusiness)}</div>
@@ -8681,7 +8687,7 @@ function renderTeamPage(){
       </div>
     </div>`;
   };
-  document.getElementById('teamList').innerHTML = activeList.map(teamRow).join('') + inactiveList.map(teamRow).join('');
+  document.getElementById('teamList').innerHTML = activeList.map(teamRow).join('') + inactiveList.map((t,i)=>teamRow(t, activeList.length+i)).join('');
 
   document.querySelectorAll('.team-delete').forEach(btn=>{
     btn.addEventListener('click', async (ev)=>{
@@ -8718,6 +8724,7 @@ function renderTeamPage(){
 
 document.getElementById('teamSearchInput').addEventListener('input', (e)=>{
   teamState.search = e.target.value;
+  teamGridSuppressEntrance = true;
   renderTeamPage();
 });
 
