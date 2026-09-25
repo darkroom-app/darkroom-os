@@ -4191,7 +4191,7 @@ function renderCalendarDay(){
 
   const wrap = document.createElement('div');
   wrap.className = 'day-view-list';
-  const cards = list.map(e=>{
+  const cards = list.map((e,i)=>{
     const code = eventDisplayCode(e);
     const label = eventDisplayLabel(e);
     const avatarHtml = e.kind==='praznik'
@@ -4201,7 +4201,7 @@ function renderCalendarDay(){
       ? urgencyIndicatorHtml(e.urgency, 18)
       : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);width:18px;height:18px;">${leaveIcon[e.leaveType]||''}</span>` : '');
     return `
-    <div class="day-view-card cal-${e.color}${e.kind==='odsustvo' ? ` leave-${e.approvalStatus||'na_cekanju'}` : ''}" data-id="${e._id}">
+    <div class="day-view-card cal-${e.color}${e.kind==='odsustvo' ? ` leave-${e.approvalStatus||'na_cekanju'}` : ''} twg-wave-in" style="animation-delay:${i*45}ms;" data-id="${e._id}">
       ${avatarHtml}
       <div style="flex:1; min-width:0;">
         <div class="cb-person" style="font-size:13px;">${e.kind==='praznik' ? 'Ceo studio — ne radi se' : escapeHtml(e.person)}</div>
@@ -4248,7 +4248,7 @@ function renderCalendarMySati(){
 
   calWeeks.innerHTML = weeks.map(week=>`
     <div class="msati-week">
-      ${week.map(d=>{
+      ${week.map((d,j)=>{
         const iso = toISO(d);
         const inMonth = d.m===calCursor.m && d.y===calCursor.y;
         const isToday = d.y===TODAY.y && d.m===TODAY.m && d.d===TODAY.d;
@@ -4285,7 +4285,7 @@ function renderCalendarMySati(){
           </div>`;
         }).join('');
         return `
-        <div class="msati-day${inMonth?'':' out-month'}">
+        <div class="msati-day${inMonth?'':' out-month'} twg-wave-in" style="animation-delay:${j*30}ms;">
           <div class="msati-daynum${isToday?' dn-today':''}">${d.d}</div>
           ${leaveRow}
           ${rows}
