@@ -1642,6 +1642,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .twg-head-day .twg-dow{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); letter-spacing:0.07em; text-transform:uppercase; }
 .twg-head-day .twg-num{ font-family:var(--font-display); font-weight:700; font-size:15px; margin-top:2px; }
 .twg-head-day.today .twg-num{ color:var(--gold-deep); }
+.twg-wave-in{ opacity:0; animation:twgWaveIn .4s ease both; }
+@keyframes twgWaveIn{ from{ opacity:0; transform:translateY(16px); } to{ opacity:1; transform:translateY(0); } }
 .twg-rows{ position:relative; }
 .twg-today-col{ position:absolute; top:0; bottom:0; background:var(--gold-soft); opacity:0.35; pointer-events:none; z-index:0; }
 .twg-holiday-col{ position:absolute; top:0; bottom:0; background:repeating-linear-gradient(45deg, var(--coral-soft), var(--coral-soft) 8px, #f0c9ba 8px, #f0c9ba 16px); opacity:0.6; pointer-events:none; z-index:0; border-left:1.5px solid var(--coral); border-right:1.5px solid var(--coral); }
@@ -3986,11 +3988,16 @@ function renderTeamSwimlane(days, opts){
   }
 
   const weekendIdx = [];
+  // Wave test: each day column rises in a beat after the one before it, left
+  // to right — applied to the header now, and to every task/holiday bar
+  // below keyed off its own start column, so the whole grid sweeps in
+  // together rather than just the header.
+  const waveDelay = i => `animation-delay:${i*30}ms;`;
   const headDays = days.map((c,i)=>{
     const dow = (toJSDate(c).getDay()+6)%7;
     const weekend = dow >= 5;
     if(weekend) weekendIdx.push(i);
-    return `<div class="twg-head-day ${sameDate(c,TODAY)?'today':''} ${weekend?'weekend':''}">
+    return `<div class="twg-head-day twg-wave-in ${sameDate(c,TODAY)?'today':''} ${weekend?'weekend':''}" style="${waveDelay(i)}">
       ${opts.showWeekday ? `<div class="twg-dow">${dowLabels[dow]}</div>` : ''}
       <div class="twg-num">${c.d}</div>
     </div>`;
@@ -4020,7 +4027,7 @@ function renderTeamSwimlane(days, opts){
       <div class="twg-person"><span class="twg-holiday-label">🎉 Praznik</span></div>
       <div class="twg-track" style="grid-template-columns:${colTemplate}; grid-template-rows:27px;">
         <div class="twg-gridlines">${weekendColsHtml}</div>
-        <div class="twg-holiday-bar" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2};" title="${escapeHtml(e.holidayName)}">🎉 ${escapeHtml(e.holidayName)} — ne radi se!</div>
+        <div class="twg-holiday-bar twg-wave-in" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; ${waveDelay(e.colStart)}" title="${escapeHtml(e.holidayName)}">🎉 ${escapeHtml(e.holidayName)} — ne radi se!</div>
       </div>
     </div>`).join('');
 
@@ -4058,8 +4065,9 @@ function renderTeamSwimlane(days, opts){
       const leadIndicator = e.kind==='zadatak'
         ? urgencyIndicatorHtml(e.urgency, 9)
         : (e.kind==='odsustvo' ? `<span class="cb-status" style="background:var(--ink-faint);">${leaveIcon[e.leaveType]||''}</span>` : '');
+      const isDragging = barDragState && barDragState.id===e._id;
       return `
-      <div class="twg-bar cal-${e.color}${e.kind==='odsustvo' ? ` leave-${e.approvalStatus||'na_cekanju'}` : ''}${barDragState && barDragState.id===e._id ? ' dragging' : ''}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1};" title="${escapeHtml(e.person)} · ${code ? escapeHtml(code)+' · ' : ''}${proj ? escapeHtml(proj.name)+' · ' : ''}${escapeHtml(label)}">
+      <div class="twg-bar cal-${e.color}${e.kind==='odsustvo' ? ` leave-${e.approvalStatus||'na_cekanju'}` : ''}${isDragging ? ' dragging' : ' twg-wave-in'}${editable ? '' : ' twg-bar-locked'}" data-id="${e._id}" style="grid-column:${e.colStart+1} / ${e.colEnd+2}; grid-row:${e.lane+1}; ${isDragging ? '' : waveDelay(e.colStart)}" title="${escapeHtml(e.person)} · ${code ? escapeHtml(code)+' · ' : ''}${proj ? escapeHtml(proj.name)+' · ' : ''}${escapeHtml(label)}">
         ${editable ? '<span class="cb-resize cb-resize-left"></span>' : ''}
         ${leadIndicator}
         ${code ? `<span class="cb-code">${escapeHtml(code)}</span>` : ''}
