@@ -331,7 +331,11 @@ select.native-select-hidden{ display:none; }
 .pd-stat-manager-label{ font-family:var(--font-mono); font-size:7.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; }
 .pd-stat-manager-name{ font-size:12px; font-weight:700; color:var(--ink); line-height:1.3; }
 .pd-tasks-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.pd-tasks-head-left{ display:flex; align-items:center; gap:14px; }
 .pd-tasks-title{ font-family:var(--font-display); font-weight:700; font-size:14px; }
+.pd-sort-toggle{ display:flex; gap:3px; background:var(--card-soft); border:1px solid var(--border); border-radius:9px; padding:3px; }
+.pd-sort-btn{ padding:5px 12px; border-radius:7px; border:none; background:transparent; font-family:var(--font-body); font-weight:600; font-size:11px; color:var(--ink-faint); cursor:pointer; }
+.pd-sort-btn.active{ background:var(--ink-solid-bg); color:#FBF8F1; }
 .round-choice-row{ display:flex; gap:8px; }
 .round-choice-btn{ flex:1; padding:9px 0; border-radius:10px; border:1.5px solid var(--border); background:var(--card-soft); color:var(--ink-dim); font-family:var(--font-body); font-weight:600; font-size:12px; cursor:pointer; }
 .round-choice-btn.active{ border-color:var(--gold); background:var(--gold-soft); color:var(--gold-deep); }
@@ -2214,7 +2218,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       </div>
       <div class="pd-stat-bar" id="pdStatBar"></div>
       <div class="pd-tasks-head">
-        <div class="pd-tasks-title">Kadrovi</div>
+        <div class="pd-tasks-head-left">
+          <div class="pd-tasks-title">Kadrovi</div>
+          <div class="pd-sort-toggle" id="pdKadarSortToggle">
+            <button class="pd-sort-btn active" data-sort="broj" type="button">Broj</button>
+            <button class="pd-sort-btn" data-sort="ime" type="button">Ime</button>
+          </div>
+        </div>
         <button class="btn-primary" id="pdAddTaskBtn" type="button">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
           Dodaj kadar
@@ -6387,6 +6397,15 @@ document.getElementById('npSubmit').addEventListener('click', async ()=>{
 
 /* ==== PROJECT DETAIL (kadrovi) — full page ==== */
 let activeProjectDetailId = null;
+let pdKadarSort = 'broj';
+document.querySelectorAll('#pdKadarSortToggle .pd-sort-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('#pdKadarSortToggle .pd-sort-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    pdKadarSort = btn.dataset.sort;
+    renderProjectDetailKadrovi();
+  });
+});
 
 function pdAvatarHtml(name, size, fontSize){
   size = size || 20; fontSize = fontSize || 8;
@@ -6460,6 +6479,7 @@ function renderProjectDetailKadrovi(){
   const employees = [...groups.keys()].sort((a,b)=>{
     if(a===myName) return -1;
     if(b===myName) return 1;
+    if(pdKadarSort==='ime') return a.localeCompare(b, 'sr');
     return groups.get(b).length - groups.get(a).length;
   });
 
