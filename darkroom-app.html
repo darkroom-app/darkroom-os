@@ -6479,9 +6479,17 @@ function renderProjectDetailKadrovi(){
   const employees = [...groups.keys()].sort((a,b)=>{
     if(a===myName) return -1;
     if(b===myName) return 1;
-    if(pdKadarSort==='ime') return a.localeCompare(b, 'sr');
     return groups.get(b).length - groups.get(a).length || a.localeCompare(b, 'sr');
   });
+  // Kadar names carry their own sequence number as a "NN. " prefix (see
+  // suggestedKadarName()/taskName) — pdKadarSort controls how each person's
+  // own kadrovi are ordered within their block: by that number, or by the
+  // descriptive name with the number stripped off.
+  const kadarNumber = k => { const m = k.name.match(/^(\d+)\./); return m ? parseInt(m[1], 10) : Infinity; };
+  const kadarDisplayName = k => k.name.replace(/^\d+\.\s*/, '');
+  const sortKadrovi = list => list.slice().sort((a,b)=>
+    pdKadarSort==='ime' ? kadarDisplayName(a).localeCompare(kadarDisplayName(b), 'sr') : kadarNumber(a) - kadarNumber(b)
+  );
 
   // "start date" is a legacy marker round from the historical import (label
   // literally "start date", no image, billable:false) — it's not a real
@@ -6505,7 +6513,7 @@ function renderProjectDetailKadrovi(){
     }).join('');
 
   document.getElementById('pdTaskList').innerHTML = employees.map(name=>{
-    const items = groups.get(name);
+    const items = sortKadrovi(groups.get(name));
     const t = teamMembers.find(m=>m.name===name);
     const { grad, initials, avatar } = t ? avatarFor(t) : { grad:'var(--ink-faint)', initials:clientInitials(name), avatar:null };
     const avatarStyle = avatar ? `background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;` : `background:${grad};`;
