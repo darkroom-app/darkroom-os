@@ -6480,7 +6480,7 @@ function renderProjectDetailKadrovi(){
     if(a===myName) return -1;
     if(b===myName) return 1;
     if(pdKadarSort==='ime') return a.localeCompare(b, 'sr');
-    return groups.get(b).length - groups.get(a).length;
+    return groups.get(b).length - groups.get(a).length || a.localeCompare(b, 'sr');
   });
 
   // "start date" is a legacy marker round from the historical import (label
