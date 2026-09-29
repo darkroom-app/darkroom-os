@@ -181,9 +181,9 @@ body{
 }
 
 .topline{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:20px; flex:0 0 auto; }
+.greet-row{ display:flex; align-items:baseline; gap:16px; }
 .greet-title{ font-family:var(--font-display); font-weight:700; font-size:23px; letter-spacing:-0.01em; }
-.greet-sub{ font-size:12.5px; color:var(--gold-deep); font-weight:600; margin-top:2px; }
-.top-date{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); text-align:right; margin-bottom:8px; }
+.top-date{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); text-align:left; margin-top:2px; }
 .top-pills{ display:flex; gap:8px; }
 .top-pill{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:7px 13px; text-align:center; }
 .top-pill .tp-val{ font-family:var(--font-display); font-weight:700; font-size:14.5px; }
@@ -1152,8 +1152,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .ring-pct{ font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--gold-deep); }
 .ring-sub{ font-family:var(--font-mono); font-size:7px; color:var(--ink-faint); margin-top:1px; text-transform:uppercase; letter-spacing:0.04em; }
-.goal-row{ justify-content:space-between; }
-.goal-item{ display:flex; align-items:center; gap:14px; min-width:0; }
+.goal-row{ justify-content:flex-start; }
+.goal-item{ flex:1; display:flex; align-items:center; gap:14px; min-width:0; }
 .goal-item-text{ min-width:0; }
 .goal-divider{ width:1px; align-self:stretch; background:var(--border); flex-shrink:0; }
 .fg-kicker{ font-family:var(--font-mono); font-size:9px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
@@ -1162,7 +1162,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fg-of{ font-size:11px; color:var(--ink-faint); }
 
 /* ==== FUN-GOAL WEATHER + CLOCK WIDGET ==== */
-.dash-weather-line{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.dash-weather-line{ display:flex; align-items:center; gap:8px; }
 .dash-weather-line .fw-icon{ width:32px; height:32px; transform:scale(0.6); transform-origin:top left; }
 .dash-weather-line .fw-clock{ font-size:15px; }
 .dash-weather-line .fw-meta{ font-size:10.5px; margin-top:1px; }
@@ -1847,21 +1847,21 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="view-panel active" id="view-pregled">
 
 
-    <div class="dash-weather-line fun-weather" id="funWeather">
-      <div class="fw-icon" id="fwIcon"></div>
-      <div class="fw-info">
-        <div class="fw-clock" id="fwClock">--:--</div>
-        <div class="fw-meta" id="fwMeta">Učitavanje vremena…</div>
-      </div>
-    </div>
-
     <div class="topline">
       <div>
-        <div class="greet-title">Zdravo, Dušan!</div>
-        <div class="greet-sub">Spreman za rad?</div>
+        <div class="greet-row">
+          <div class="greet-title">Zdravo, Dušan!</div>
+          <div class="dash-weather-line fun-weather" id="funWeather">
+            <div class="fw-icon" id="fwIcon"></div>
+            <div class="fw-info">
+              <div class="fw-clock" id="fwClock">--:--</div>
+              <div class="fw-meta" id="fwMeta">Učitavanje vremena…</div>
+            </div>
+          </div>
+        </div>
+        <div class="top-date">Utorak · 4. avgust 2026.</div>
       </div>
       <div>
-        <div class="top-date">Utorak · 4. avgust 2026.</div>
         <div class="top-pills">
           <div class="top-pill"><div class="tp-val"><span class="tp-num" id="tpPreostalo">20</span> <span>dana</span></div><div class="tp-label">Preostalo slobodnih</div></div>
           <div class="top-pill"><div class="tp-val"><span class="tp-num" id="tpBolovanje">0</span> <span>dana</span></div><div class="tp-label">Bolovanje uzeto</div></div>
