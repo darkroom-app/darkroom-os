@@ -1152,16 +1152,21 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; }
 .ring-pct{ font-family:var(--font-display); font-weight:700; font-size:15px; color:var(--gold-deep); }
 .ring-sub{ font-family:var(--font-mono); font-size:7px; color:var(--ink-faint); margin-top:1px; text-transform:uppercase; letter-spacing:0.04em; }
-.fun-goal-text{ flex:0 1 240px; min-width:0; }
+.goal-row{ justify-content:space-between; }
+.goal-item{ display:flex; align-items:center; gap:14px; min-width:0; }
+.goal-item-text{ min-width:0; }
+.goal-divider{ width:1px; align-self:stretch; background:var(--border); flex-shrink:0; }
 .fg-kicker{ font-family:var(--font-mono); font-size:9px; color:var(--gold-deep); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
-.fg-title{ font-family:var(--font-display); font-weight:700; font-size:15.5px; margin-bottom:4px; }
-.fg-note{ font-size:11.5px; color:var(--ink-dim); }
-
-.fg-ot{ font-size:10.5px; font-weight:600; color:var(--coral); margin-bottom:4px; }
-.fg-ot span{ font-weight:700; }
+.fg-title{ font-family:var(--font-display); font-weight:700; font-size:15.5px; white-space:nowrap; }
+.fg-title span{ font-family:var(--font-body); font-weight:500; }
+.fg-of{ font-size:11px; color:var(--ink-faint); }
 
 /* ==== FUN-GOAL WEATHER + CLOCK WIDGET ==== */
-.fun-weather{ flex:1; display:flex; align-items:center; justify-content:flex-end; gap:14px; min-width:0; }
+.dash-weather-line{ display:flex; align-items:center; gap:8px; margin-bottom:12px; }
+.dash-weather-line .fw-icon{ width:32px; height:32px; transform:scale(0.6); transform-origin:top left; }
+.dash-weather-line .fw-clock{ font-size:15px; }
+.dash-weather-line .fw-meta{ font-size:10.5px; margin-top:1px; }
+.fun-weather{ display:flex; align-items:center; gap:14px; min-width:0; }
 .fw-icon{ width:54px; height:54px; position:relative; flex-shrink:0; }
 .fw-info{ text-align:right; }
 .fw-clock{ font-family:var(--font-display); font-weight:700; font-size:25px; color:var(--ink); line-height:1; }
@@ -1842,6 +1847,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     <div class="view-panel active" id="view-pregled">
 
 
+    <div class="dash-weather-line fun-weather" id="funWeather">
+      <div class="fw-icon" id="fwIcon"></div>
+      <div class="fw-info">
+        <div class="fw-clock" id="fwClock">--:--</div>
+        <div class="fw-meta" id="fwMeta">Učitavanje vremena…</div>
+      </div>
+    </div>
+
     <div class="topline">
       <div>
         <div class="greet-title">Zdravo, Dušan!</div>
@@ -1859,25 +1872,46 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
 
     <div class="fun-row">
-      <div class="fun-card fun-goal">
-        <div class="ring-wrap">
-          <svg viewBox="0 0 100 100">
-            <circle class="ring-track" cx="50" cy="50" r="42"></circle>
-            <circle class="ring-fill" id="goalRing" cx="50" cy="50" r="42"></circle>
-          </svg>
-          <div class="ring-center"><div class="ring-pct">76%</div><div class="ring-sub">nedelje</div></div>
+      <div class="fun-card fun-goal goal-row">
+        <div class="goal-item">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 100 100">
+              <circle class="ring-track" cx="50" cy="50" r="42"></circle>
+              <circle class="ring-fill" id="goalRing" cx="50" cy="50" r="42"></circle>
+            </svg>
+            <div class="ring-center"><div class="ring-pct" id="weekGoalPct">76%</div></div>
+          </div>
+          <div class="goal-item-text">
+            <div class="fg-kicker">Nedeljni cilj</div>
+            <div class="fg-title"><span id="weekGoalValue">30.4</span><span>h</span><span class="fg-of"> / 40h</span></div>
+          </div>
         </div>
-        <div class="fun-goal-text">
-          <div class="fg-kicker">🔥 Nedeljni cilj</div>
-          <div class="fg-title">30.4h / 40h</div>
-          <div class="fg-ot" id="funOtStat">⏱️ Prekovremeno ove nedelje: <span id="fotValue">0.0h</span></div>
-          <div class="fg-note">Još malo pa cilj nedelje — samo napred!</div>
+        <div class="goal-divider"></div>
+        <div class="goal-item">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 100 100">
+              <circle class="ring-track" cx="50" cy="50" r="42"></circle>
+              <circle class="ring-fill" id="overtimeRing" cx="50" cy="50" r="42"></circle>
+            </svg>
+            <div class="ring-center"><div class="ring-pct" id="otPct">0%</div></div>
+          </div>
+          <div class="goal-item-text">
+            <div class="fg-kicker">Prekovremeno</div>
+            <div class="fg-title"><span id="fotValue">0.0</span><span>h</span><span class="fg-of"> / 5h</span></div>
+          </div>
         </div>
-        <div class="fun-weather" id="funWeather">
-          <div class="fw-icon" id="fwIcon"></div>
-          <div class="fw-info">
-            <div class="fw-clock" id="fwClock">--:--</div>
-            <div class="fw-meta" id="fwMeta">Učitavanje vremena…</div>
+        <div class="goal-divider"></div>
+        <div class="goal-item">
+          <div class="ring-wrap">
+            <svg viewBox="0 0 100 100">
+              <circle class="ring-track" cx="50" cy="50" r="42"></circle>
+              <circle class="ring-fill" id="monthGoalRing" cx="50" cy="50" r="42"></circle>
+            </svg>
+            <div class="ring-center"><div class="ring-pct" id="monthGoalPct">0%</div></div>
+          </div>
+          <div class="goal-item-text">
+            <div class="fg-kicker">Mesečni cilj</div>
+            <div class="fg-title"><span id="monthGoalValue">0</span><span>h</span><span class="fg-of"> / 160h</span></div>
           </div>
         </div>
       </div>
@@ -4323,6 +4357,7 @@ function wireHoursInputs(scopeEl){
       renderWeekWidget();
       renderWeeklyGoal();
       renderOvertimeStat();
+      renderMonthlyGoal();
     });
   });
 }
@@ -4398,6 +4433,7 @@ async function deleteMsatiRowEvent(row){
   renderWeekWidget();
   renderWeeklyGoal();
   renderOvertimeStat();
+  renderMonthlyGoal();
 }
 
 /* Stats row above the calendar grid — was 5 static "0" placeholders with no
@@ -5125,6 +5161,7 @@ document.getElementById('evSubmit').addEventListener('click', async ()=>{
   renderWeekWidget();
   renderWeeklyGoal();
   renderOvertimeStat();
+  renderMonthlyGoal();
   persist();
 });
 
@@ -5194,6 +5231,7 @@ function renderEvzHours(ev){
         renderWeekWidget();
         renderWeeklyGoal();
         renderOvertimeStat();
+        renderMonthlyGoal();
         if(!remaining){ closeEventModal(); return; }
         document.getElementById('evzStart').value = toISO(remaining.start);
         document.getElementById('evzEnd').value = toISO(remaining.end);
@@ -5228,6 +5266,7 @@ async function deleteTimeEntriesForEvent(evObj){
   }
   renderWeeklyGoal();
   renderOvertimeStat();
+  renderMonthlyGoal();
 }
 /* Shared by the "Izmeni stavku" modal's Obriši button and the Moji sati
    grid's delete button/shift-click shortcut — both need the exact same
@@ -5373,71 +5412,7 @@ function spawnHourCoins(originEl){
   setTimeout(()=>wrap.remove(), 1000);
 }
 
-/* ==== NEDELJNI CILJ (fun-goal) — procenat po danu + rotirajuće poruke ==== */
-const weeklyGoalMessages = {
-  low: [
-    "Nedelja tek počinje — ritam se gradi polako 💪",
-    "Ponedeljak energija: kafa u ruci, ciljevi u fokusu ☕",
-    "Svaki veliki projekat počinje jednim renderom 🎬",
-    "Lagano se zagrevamo — ostatak nedelje je pred nama",
-    "Prvi koraci su najvažniji. Nastavi tako!",
-    "Sedmica je maraton, ne sprint — polako do cilja",
-    "Rano je, ali tempo raste iz dana u dan 📈",
-    "Svaka minuta se računa — dobar start!",
-    "Ugrej motore, studio te čeka 🔥",
-    "Novi zadaci, nova energija — krećemo!",
-    "Fokus na danas, cilj se sam nameće",
-    "Mali koraci danas, veliki rezultati u petak"
-  ],
-  mid: [
-    "Na dobrom si putu — nastavi ovim tempom 🚀",
-    "Pola puta iza, pola ispred — drži fokus",
-    "Sredina nedelje, ali tempo ne posustaje",
-    "Odlično napreduješ prema nedeljnom cilju",
-    "Svaki render te bliži cilju — samo napred",
-    "Momentum je tu, iskoristi ga 💫",
-    "Solidan tempo — ekipa broji na tebe",
-    "Napredak se vidi, nastavi da guraš",
-    "Već si prešao/la pola puta do cilja",
-    "Studio radi punom parom, i ti si deo toga",
-    "Konzistentnost pobeđuje — bravo za tempo",
-    "Još malo pa je cilj nadohvat ruke",
-    "Sredina nedelje, forma na vrhuncu 💪"
-  ],
-  high: [
-    "Skoro si stigao/la — još samo malo! 🏁",
-    "Finiš je na vidiku, ne popuštaj sada",
-    "Odlična nedelja — cilj je gotovo osvojen",
-    "Još par sati i nedeljni cilj je tvoj",
-    "Ovo je taj deo nedelje kad se sve isplati",
-    "Petak je blizu, a ti si skoro na vrhu 🔝",
-    "Impresivan tempo cele nedelje — nastavi tako",
-    "Cilj se ne krije više — skoro je tu",
-    "Samo još koji render i nedelja je zapakovana",
-    "Tvoj trud se vidi u brojkama — sjajno!",
-    "Ulazimo u finiš — drži fokus do kraja",
-    "Skoro pa savršena nedelja u nastajanju",
-    "Još koji korak i slaviš nedeljni cilj 🎉"
-  ],
-  done: [
-    "Nedeljni cilj oboren — čestitamo! 🎉",
-    "Sjajna nedelja iza tebe — zasluženi odmor stiže",
-    "100% posvećenosti, 100% rezultata 💯",
-    "Cilj postignut — vreme je za kafu bez brige ☕",
-    "Ekipa DARKROOM opet dokazala klasu",
-    "Ovo se zove profesionalizam — bravo!",
-    "Nedelja završena kako treba — u stilu",
-    "Cilj oboren pre roka — impresivno",
-    "Uživaj u vikendu, zaslužio/la si ga",
-    "Ponosni smo na ovaj tempo cele nedelje",
-    "Misija izvršena — nedeljni cilj u džepu",
-    "Ovako izgleda odlično odrađen posao 🙌"
-  ]
-};
-/* Real hours logged this week for the current user (regular only — overtime
-   is tracked but deliberately excluded from the 40h goal denominator, since
-   that's what makes it "over"). Replaces the old base[dow]+jitter fake
-   formula now that time_entries is a real, Supabase-backed source. */
+/* ==== NEDELJNI/MESEČNI CILJ + PREKOVREMENO (fun-goal ring row) ==== */
 function weeklyGoalHours(){
   const u = currentUser();
   if(!u) return 0;
@@ -5450,8 +5425,7 @@ function weeklyGoalHours(){
 function weeklyGoalPercent(){
   return Math.max(0, Math.min(100, Math.round(weeklyGoalHours()/40*100)));
 }
-/* Current user's own overtime this week — shown as a small stat right next
-   to the personal 40h goal, same Mon-through-today window as weeklyGoalHours(). */
+/* Current user's own overtime this week — same Mon-through-today window as weeklyGoalHours(). */
 function weeklyOvertimeHours(){
   const u = currentUser();
   if(!u) return 0;
@@ -5461,50 +5435,63 @@ function weeklyOvertimeHours(){
     .filter(e=> e.employeeId===u.authId && e.overtime && e.date>=monISO && e.date<=todayISO)
     .reduce((sum,e)=> sum + e.hours, 0);
 }
-function renderOvertimeStat(){
-  const valEl = document.getElementById('fotValue');
-  if(valEl) valEl.textContent = `${weeklyOvertimeHours().toFixed(1)}h`;
+function weeklyOvertimePercent(){
+  return Math.max(0, Math.min(100, Math.round(weeklyOvertimeHours()/5*100)));
 }
-function weeklyGoalTier(pct){
-  if(pct < 40) return 'low';
-  if(pct < 70) return 'mid';
-  if(pct < 95) return 'high';
-  return 'done';
+/* Current user's regular hours so far this calendar month, 1st-through-today. */
+function monthlyGoalHours(){
+  const u = currentUser();
+  if(!u) return 0;
+  const monthKey = `${TODAY.y}-${String(TODAY.m).padStart(2,'0')}`;
+  return timeEntries
+    .filter(e=> e.employeeId===u.authId && !e.overtime && e.date && e.date.startsWith(monthKey))
+    .reduce((sum,e)=> sum + e.hours, 0);
 }
-function renderWeeklyGoal(){
-  const pct = weeklyGoalPercent();
-  const tier = weeklyGoalTier(pct);
-  const pool = weeklyGoalMessages[tier];
-  const message = pool[Math.floor(Math.random()*pool.length)];
-  const hours = weeklyGoalHours().toFixed(1);
-  const pctEl = document.querySelector('.fun-goal .ring-pct');
-  const titleEl = document.querySelector('.fg-title');
-  const noteEl = document.querySelector('.fg-note');
-  if(titleEl) titleEl.textContent = `${hours}h / 40h`;
-  if(noteEl) noteEl.textContent = message;
-  if(goalRing){
-    goalRing.style.strokeDasharray = ringC;
-    goalRing.style.strokeDashoffset = ringC;
-    // Two rAFs (not setTimeout) so the reset-to-0% actually gets painted
-    // before the target offset is set — during a busy boot (a lot of DOM
-    // gets built right around here) a fixed delay can land in the same
-    // frame as the reset and the browser just coalesces both writes,
-    // skipping the fill-in animation entirely.
+function monthlyGoalPercent(){
+  return Math.max(0, Math.min(100, Math.round(monthlyGoalHours()/160*100)));
+}
+const ringC = 2 * Math.PI * 42;
+// Two rAFs (not setTimeout) so the reset-to-0% actually gets painted before
+// the target offset is set — during a busy boot a fixed delay can land in
+// the same frame as the reset and the browser just coalesces both writes,
+// skipping the fill-in animation entirely.
+function animateRing(ringEl, pctEl, pct){
+  if(ringEl){
+    ringEl.style.strokeDasharray = ringC;
+    ringEl.style.strokeDashoffset = ringC;
     requestAnimationFrame(()=>{
       requestAnimationFrame(()=>{
-        goalRing.style.strokeDashoffset = ringC * (1 - pct/100);
+        ringEl.style.strokeDashoffset = ringC * (1 - pct/100);
       });
     });
   }
   if(pctEl) animateCountUp(pctEl, pct, { suffix:'%' });
 }
-const ringC = 2 * Math.PI * 42;
 const goalRing = document.getElementById('goalRing');
-// No eager call here (unlike before this became real-data-backed): weeklyGoalHours()
-// reads teamMembers/timeEntries, both declared later in the script and only populated
-// after login — calling this before then throws a TDZ ReferenceError that aborts the
-// rest of the script. applyCurrentUser() (called from login(), well after both are
-// ready) already renders it once real data exists.
+const overtimeRing = document.getElementById('overtimeRing');
+const monthGoalRing = document.getElementById('monthGoalRing');
+// No eager calls here (unlike before this became real-data-backed): these read
+// teamMembers/timeEntries, both declared later in the script and only populated
+// after login — calling this before then throws a TDZ ReferenceError that aborts
+// the rest of the script. applyCurrentUser() (called from login(), well after both
+// are ready) already renders these once real data exists.
+function renderWeeklyGoal(){
+  const pct = weeklyGoalPercent();
+  const valEl = document.getElementById('weekGoalValue');
+  if(valEl) valEl.textContent = weeklyGoalHours().toFixed(1);
+  animateRing(goalRing, document.getElementById('weekGoalPct'), pct);
+}
+function renderMonthlyGoal(){
+  const pct = monthlyGoalPercent();
+  const valEl = document.getElementById('monthGoalValue');
+  if(valEl) valEl.textContent = Math.round(monthlyGoalHours());
+  animateRing(monthGoalRing, document.getElementById('monthGoalPct'), pct);
+}
+function renderOvertimeStat(){
+  const valEl = document.getElementById('fotValue');
+  if(valEl) valEl.textContent = weeklyOvertimeHours().toFixed(1);
+  animateRing(overtimeRing, document.getElementById('otPct'), weeklyOvertimePercent());
+}
 
 /* ==== Fun-goal weather + clock widget — Open-Meteo (no API key needed), Niš coords ==== */
 const WEATHER_LAT = 43.3209, WEATHER_LON = 21.8958, WEATHER_TZ = 'Europe/Belgrade';
@@ -12177,6 +12164,7 @@ function applyCurrentUser(){
   renderDashboardFinance();
   renderWeeklyGoal();
   renderOvertimeStat();
+  renderMonthlyGoal();
   renderDashboardNotifications();
   syncRemoteNotifications();
   subscribeRemoteNotifications();
