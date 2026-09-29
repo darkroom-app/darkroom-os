@@ -12119,13 +12119,39 @@ function avatarBgInner(key){
 function formatIsoDateHuman(iso){
   return iso ? formatDateHuman(fromISO(iso)) : null;
 }
+// Zvateljski oblik (ili nadimak, kako se ko stvarno oslovljava u studiju) za
+// pozdrav na Pregledu — "Zdravo, Dušane!" umesto "Zdravo, Dušan!". Namerno
+// po punom imenu, ne po imenu samom: par ovih je lični nadimak konkretne
+// osobe (npr. Aleks za Aleksandru Vukašinović), ne opšte gramatičko pravilo
+// koje bi trebalo da važi za svakog budućeg "Aleksandra"/"Aleksandru". Neko
+// ko nije na ovoj listi (npr. novi član tima) pada nazad na golo ime.
+const greetVocative = {
+  "Dušan Stević": "Dušane",
+  "Stefana Ristić": "Stefana",
+  "Radoslav Milanović": "Raso",
+  "Dalibor Mitić": "Daco",
+  "Katarina Đorđević": "Kaco",
+  "Aleksandra Vukašinović": "Aleks",
+  "Mihajlo Nagradić": "Mihajlo",
+  "Nikola Jovanović": "Nikola",
+  "Anđela Pešić": "Anđela",
+  "Marija Todorović": "Marija",
+  "Ana Krstić": "Ana",
+  "Miljana Cvetković": "Miljana",
+  "Miloš Tasić": "Miloše",
+  "Ivana Sazdov": "Ivana",
+  "Lazar Pešić": "Lazare",
+  "Damjan Mitrović": "Damjane",
+  "Aleksandar Jovanović": "Aleksandre",
+  "Marija Milenković": "Marija",
+};
 function applyCurrentUser(){
   const u = teamMembers.find(t=>t._id===currentUserId);
   if(!u){ logout(); return; }
   const { grad, initials, avatar } = avatarFor(u);
   const firstName = u.name.split(' ')[0];
   const greetEl = document.querySelector('.greet-title');
-  if(greetEl) greetEl.textContent = `Zdravo, ${firstName}!`;
+  if(greetEl) greetEl.textContent = `Zdravo, ${greetVocative[u.name] || firstName}!`;
   const empNameEl = document.querySelector('.emp-name');
   const empRoleEl = document.querySelector('.emp-role');
   if(empNameEl) empNameEl.textContent = u.name;
