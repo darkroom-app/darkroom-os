@@ -1963,35 +1963,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         </div>
       </div>
 
-      <div class="panel dash-corner">
+      <!-- Manager-only: ko od tima nije popunio kalendar (Moji sati) za protekle
+           radne dane ove nedelje. Skriveno kad nema koga da se prijavi ili kad
+           gledalac nema pristup statistici (isti gate kao Statistika/Tim). -->
+      <div class="panel panel-flex" id="kalendarReminderCard" style="display:none;">
         <div class="panel-head">
-          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M5 21V9l4-3v15M11 21V5l4 3v13M17 21v-9l3 2v7"/></svg>Dubai Corner</div>
-          <div class="panel-sub" id="dinoScoreSub">Skor: 0</div>
+          <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Nisu popunili kalendar</div>
         </div>
-        <div class="corner-tab-row">
-          <button type="button" class="corner-tab-btn active" data-corner-tab="game">Space Invaders</button>
-          <button type="button" class="corner-tab-btn" data-corner-tab="mario">Mario</button>
-          <button type="button" class="corner-tab-btn" data-corner-tab="breathe">Disanje</button>
-        </div>
-        <div class="corner-tab-panel" id="cornerPanelGame">
-          <div class="dino-wrap">
-            <canvas id="invadersCanvas"></canvas>
-            <div class="dino-overlay" id="invadersOverlay">Strelice ⬅➡ + SPACE za pucanje · klikni za start</div>
-          </div>
-        </div>
-        <div class="corner-tab-panel" id="cornerPanelMario" style="display:none;">
-          <div class="dino-wrap">
-            <canvas id="marioCanvas"></canvas>
-            <div class="dino-overlay" id="marioOverlay">Klikni ili pritisni SPACE za start</div>
-          </div>
-        </div>
-        <div class="corner-tab-panel" id="cornerPanelBreathe" style="display:none;">
-          <div class="breathe-wrap">
-            <div class="breathe-circle" id="breatheCircle"></div>
-            <div class="breathe-label" id="breatheLabel">Udahni...</div>
-          </div>
-        </div>
-        <div class="panel-sub" id="cornerStudioRecord" style="padding:0 18px 12px;"></div>
+        <div class="todo-scroll" id="kalendarReminderList"></div>
       </div>
     </div>
 
@@ -2074,15 +2053,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
     </div>
 
-    <!-- Manager-only: ko od tima nije popunio kalendar (Moji sati) za protekle
-         radne dane ove nedelje. Skriveno kad nema koga da se prijavi ili kad
-         gledalac nema pristup statistici (isti gate kao Statistika/Tim). -->
-    <div class="panel" id="kalendarReminderCard" style="display:none; margin-top:18px;">
-      <div class="panel-head">
-        <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Nisu popunili kalendar</div>
-      </div>
-      <div id="kalendarReminderList"></div>
-    </div>
 
     </div>
 
