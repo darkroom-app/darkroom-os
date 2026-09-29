@@ -181,7 +181,7 @@ body{
 }
 
 .topline{ display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; gap:20px; flex:0 0 auto; }
-.greet-row{ display:flex; align-items:baseline; gap:16px; }
+.greet-block{ display:flex; align-items:flex-end; gap:32px; }
 .greet-title{ font-family:var(--font-display); font-weight:700; font-size:23px; letter-spacing:-0.01em; }
 .top-date{ font-family:var(--font-mono); font-size:11px; color:var(--ink-faint); text-align:left; margin-top:2px; }
 .top-pills{ display:flex; gap:8px; }
@@ -1848,18 +1848,18 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 
     <div class="topline">
-      <div>
-        <div class="greet-row">
+      <div class="greet-block">
+        <div>
           <div class="greet-title">Zdravo, Dušan!</div>
-          <div class="dash-weather-line fun-weather" id="funWeather">
-            <div class="fw-icon" id="fwIcon"></div>
-            <div class="fw-info">
-              <div class="fw-clock" id="fwClock">--:--</div>
-              <div class="fw-meta" id="fwMeta">Učitavanje vremena…</div>
-            </div>
-          </div>
+          <div class="top-date">Utorak · 4. avgust 2026.</div>
         </div>
-        <div class="top-date">Utorak · 4. avgust 2026.</div>
+        <div class="dash-weather-line fun-weather" id="funWeather">
+          <div class="fw-info">
+            <div class="fw-clock" id="fwClock">--:--</div>
+            <div class="fw-meta" id="fwMeta">Učitavanje vremena…</div>
+          </div>
+          <div class="fw-icon" id="fwIcon"></div>
+        </div>
       </div>
       <div>
         <div class="top-pills">
