@@ -1302,6 +1302,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .agenda-urgency-label{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.03em; }
 .agenda-empty{ font-size:12px; color:var(--ink-faint); padding:2px 0 0; }
 
+/* ==== PREGLED: "Nisu popunili kalendar" manager kartica ==== */
+.kr-row{ display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--border); }
+.kr-row:last-child{ border-bottom:none; }
+.kr-row-info{ flex:1; min-width:0; }
+.kr-row-name{ font-size:12.5px; font-weight:600; color:var(--ink); }
+.kr-row-days{ font-size:11px; color:var(--coral); margin-top:1px; }
+.kr-remind-btn{ padding:6px 12px; border-radius:8px; border:none; background:var(--card-soft); color:var(--ink-dim); font-family:var(--font-body); font-weight:600; font-size:11px; cursor:pointer; flex-shrink:0; }
+.kr-remind-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); }
+.kr-remind-btn:disabled{ opacity:.5; cursor:default; }
+
 /* ---- generic panel ---- */
 .panel{
   background:var(--card); border:1px solid var(--border); border-radius:var(--r-lg);
@@ -2063,7 +2073,17 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       </div>
 
     </div>
-  
+
+    <!-- Manager-only: ko od tima nije popunio kalendar (Moji sati) za protekle
+         radne dane ove nedelje. Skriveno kad nema koga da se prijavi ili kad
+         gledalac nema pristup statistici (isti gate kao Statistika/Tim). -->
+    <div class="panel" id="kalendarReminderCard" style="display:none; margin-top:18px;">
+      <div class="panel-head">
+        <div class="panel-title"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Nisu popunili kalendar</div>
+      </div>
+      <div id="kalendarReminderList"></div>
+    </div>
+
     </div>
 
     <div class="view-panel" id="view-kalendar">
@@ -12583,6 +12603,71 @@ function applyCurrentUser(){
   renderDashboardCollab();
   renderMyStats();
   applyAccessGating();
+  renderKalendarReminderCard();
+}
+/* Any active team member with a zadatak scheduled on a past weekday this
+   week (Mon..yesterday), no approved leave/holiday covering that day, and
+   no matching time_entries row — i.e. exactly the gap Moji sati already
+   makes visible one person at a time (see renderCalendarMySati()), just
+   rolled up across the whole team for managers. Manager-only per
+   canAccessStats() (same gate as Statistika/Tim). */
+function missingKalendarDays(){
+  const dow = (toJSDate(TODAY).getDay()+6)%7; // Monday=0..Sunday=6
+  const monday = addDays(TODAY, -dow);
+  const pastWeekdays = [];
+  for(let i=0;i<dow;i++){
+    const d = addDays(monday, i);
+    const jsDow = toJSDate(d).getDay();
+    if(jsDow!==0 && jsDow!==6) pastWeekdays.push(d);
+  }
+  const missing = new Map();
+  teamMembers.filter(t=>t.status==='Aktivan').forEach(t=>{
+    const myDays = [];
+    pastWeekdays.forEach(d=>{
+      const isHoliday = events.some(e=>e.kind==='praznik' && daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0);
+      if(isHoliday) return;
+      const onLeave = events.some(e=>e.kind==='odsustvo' && e.person===t.name && e.approvalStatus!=='odbijeno' && daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0);
+      if(onLeave) return;
+      const hasTask = events.some(e=>e.kind==='zadatak' && e.person===t.name && daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0);
+      if(!hasTask) return;
+      const iso = toISO(d);
+      const hasEntry = timeEntries.some(te=>te.employeeId===t.authId && te.date===iso);
+      if(!hasEntry) myDays.push(iso);
+    });
+    if(myDays.length) missing.set(t.name, myDays);
+  });
+  return missing;
+}
+function renderKalendarReminderCard(){
+  const card = document.getElementById('kalendarReminderCard');
+  const list = document.getElementById('kalendarReminderList');
+  if(!card || !list) return;
+  if(!canAccessStats()){ card.style.display = 'none'; return; }
+  const missing = missingKalendarDays();
+  if(!missing.size){ card.style.display = 'none'; return; }
+  card.style.display = '';
+  list.innerHTML = [...missing.entries()].map(([name, dates])=>{
+    const t = teamMembers.find(m=>m.name===name);
+    const { grad, initials, avatar } = t ? avatarFor(t) : { grad:'var(--ink-faint)', initials:clientInitials(name), avatar:null };
+    const avatarStyle = avatar ? `background-image:url('${escapeHtml(avatar)}');background-size:cover;background-position:center;` : `background:${grad};`;
+    return `
+    <div class="kr-row">
+      <span class="pg-avatar" style="width:32px;height:32px;font-size:11px;${avatarStyle}">${avatar ? '' : initials}</span>
+      <div class="kr-row-info">
+        <div class="kr-row-name">${escapeHtml(name)}</div>
+        <div class="kr-row-days">${dates.length} ${dates.length===1?'dan':'dana'} bez unosa sati</div>
+      </div>
+      <button class="kr-remind-btn" data-name="${escapeHtml(name)}" type="button">Podseti</button>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.kr-remind-btn').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const t = teamMembers.find(m=>m.name===btn.dataset.name);
+      if(!t) return;
+      btn.disabled = true; btn.textContent = 'Poslato';
+      await pushNotification(t._id, 'kalendar_podsetnik', 'Podseća te da popuniš kalendar (Moji sati) za protekle dane.', null);
+    });
+  });
 }
 function collaboratorStats(myName){
   const myProjects = new Set(allKadrovi().filter(k=>k.employee===myName).map(k=>k.projectCode));
