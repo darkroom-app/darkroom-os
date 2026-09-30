@@ -56,6 +56,7 @@
   --sage:#6E9B6E;
   --sage-soft:#E1EDDD;
   --ink-solid-bg:#231F18;
+  --zoom:1.1;
 }
 
 /* Dark theme: same tokens, warm-dark palette instead of a cold black — kept
@@ -108,14 +109,19 @@ body{
   font-family:var(--font-body);
   color:var(--ink);
   padding:14px;
-  height:100vh;
+  /* zoom (below) re-inflates any rendered size by the zoom factor, viewport
+     units included — 100vh here would actually render as 110vh and push
+     the shell's bottom row off-screen with no way to scroll to it. Dividing
+     by --zoom first cancels that back out so the rendered result still
+     lands on the real viewport height. */
+  height:calc(100vh / var(--zoom));
   overflow:hidden;
   /* Global size bump per user request — scales every font-size AND every
      padding/gap/border-radius together (unlike bumping font-size alone,
      which would overflow the app's many tightly-sized pills/badges/tags).
      Non-standard but works in every Chromium browser, which is what this
      internal tool runs on; Firefox just ignores it and renders at 100%. */
-  zoom:1.1;
+  zoom:var(--zoom);
 }
 ::-webkit-scrollbar{ width:6px; height:6px; }
 ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:10px; }
@@ -123,7 +129,7 @@ body{
 
 .shell{
   width:100%;
-  height:calc(100vh - 28px);
+  height:calc((100vh - 28px) / var(--zoom));
   background:var(--bg-app);
   border-radius:30px;
   display:grid;
