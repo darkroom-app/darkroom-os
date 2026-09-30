@@ -12,15 +12,16 @@
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 /* Cera Pro — brand typeface (assets/Cera Pro/*.otf), replaces Space Grotesk/
-   Inter as --font-display/--font-body below. No plain non-italic Regular
-   file was provided, so Medium stands in for 400/500 and Bold covers both
-   600/700 (the app only ever uses 500/600/700 for display/body text, never
-   a lighter default weight) — see --font-display/--font-body's fallback
-   stack for what still renders if a .otf fails to load. */
+   Inter as --font-display/--font-body below. No plain non-italic Regular or
+   Semibold file was provided, so Medium stands in for 400/500/600 and only
+   700 gets true Bold — mapping 600 to Bold too (like 700) made every
+   "semibold" heading render as full bold, reading as heavier/chunkier than
+   intended. See --font-display/--font-body's fallback stack for what still
+   renders if a .otf fails to load. */
 @font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
 @font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Medium.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
 @font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
-@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Bold.otf') format('opentype'); font-weight:600; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Medium.otf') format('opentype'); font-weight:600; font-style:normal; font-display:swap; }
 @font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
 @font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Black.otf') format('opentype'); font-weight:900; font-style:normal; font-display:swap; }
 @font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Regular_Italic.otf') format('opentype'); font-weight:400; font-style:italic; font-display:swap; }
