@@ -43,7 +43,7 @@
   --teal-soft:#DCEAE6;
   --coral:#D97757;
   --coral-soft:#F7E3DA;
-  --crimson-accent:#D11A2A;
+  --terracotta-accent:#BE6946;
   --font-display:'Cera Pro', 'Space Grotesk', sans-serif;
   --font-body:'Cera Pro', 'Inter', sans-serif;
   --font-mono:'IBM Plex Mono', monospace;
@@ -172,26 +172,13 @@ body{
 .nav a svg{ width:16px; height:16px; flex-shrink:0; opacity:0.85; }
 .nav a:hover{ background:#F0EADA; color:var(--ink); }
 .nav a.active{ background:var(--ink-solid-bg); color:#FBF8F1; animation:navActiveIn .35s ease-out; }
-/* Experimental preview, light theme only — see how Crimson Accent reads
-   as the active-nav-tab color and the Obaveštenja panel's background. */
-[data-theme="light"] .nav a.active{ background:var(--crimson-accent); }
-/* Overriding the shared ink/border tokens (not individual classes) so every
-   current and future element inside this panel — title, notif text/time,
-   section labels, buttons — reads correctly against the dark background,
-   without having to chase each one down separately. */
-[data-theme="light"] #view-pregled .dash-notif-panel{
-  background:var(--crimson-accent);
-  --ink:#FBF8F1;
-  --ink-dim:#F0D6D6;
-  --ink-faint:#D99999;
-  --gold-deep:#F0C168;
-  --border:rgba(251,248,241,0.22);
-  /* color inherits as an already-resolved value, not a live var() lookup —
-     titles/notif text have no color of their own to re-read --ink from, so
-     without this they'd keep inheriting body's original dark color despite
-     the redefinition above. */
-  color:var(--ink);
-}
+/* Experimental preview, light theme only — see how Terracotta Accent reads
+   as the active-nav-tab color and the Obaveštenja panel's background.
+   Lighter/warmer than the earlier crimson test, so the default dark --ink
+   text (4.1:1 contrast) actually reads better here than forced light text
+   did — no per-token override needed this time. */
+[data-theme="light"] .nav a.active{ background:var(--terracotta-accent); }
+[data-theme="light"] #view-pregled .dash-notif-panel{ background:var(--terracotta-accent); }
 .nav a.active svg{ opacity:1; }
 @keyframes navActiveIn{ from{ clip-path:inset(0 100% 0 0); } to{ clip-path:inset(0 0 0 0); } }
 .nav-gap{ height:16px; }
