@@ -11,6 +11,21 @@
 
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
+/* Cera Pro — brand typeface (assets/Cera Pro/*.otf), replaces Space Grotesk/
+   Inter as --font-display/--font-body below. No plain non-italic Regular
+   file was provided, so Medium stands in for 400/500 and Bold covers both
+   600/700 (the app only ever uses 500/600/700 for display/body text, never
+   a lighter default weight) — see --font-display/--font-body's fallback
+   stack for what still renders if a .otf fails to load. */
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Light.otf') format('opentype'); font-weight:300; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Medium.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Medium.otf') format('opentype'); font-weight:500; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Bold.otf') format('opentype'); font-weight:600; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Bold.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Black.otf') format('opentype'); font-weight:900; font-style:normal; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Regular_Italic.otf') format('opentype'); font-weight:400; font-style:italic; font-display:swap; }
+@font-face{ font-family:'Cera Pro'; src:url('assets/Cera%20Pro/Cera_Pro_Black_Italic.otf') format('opentype'); font-weight:900; font-style:italic; font-display:swap; }
+
 :root{
   --bg-outer:#E9E3D6;
   --bg-app:#F6F2E8;
@@ -28,8 +43,8 @@
   --teal-soft:#DCEAE6;
   --coral:#D97757;
   --coral-soft:#F7E3DA;
-  --font-display:'Space Grotesk', sans-serif;
-  --font-body:'Inter', sans-serif;
+  --font-display:'Cera Pro', 'Space Grotesk', sans-serif;
+  --font-body:'Cera Pro', 'Inter', sans-serif;
   --font-mono:'IBM Plex Mono', monospace;
   --r-lg:20px;
   --r-md:14px;
@@ -1282,7 +1297,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .wd-row.active{ background:var(--gold); }
 .wd-name{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-dim); letter-spacing:0.04em; }
 .wd-row.active .wd-name{ color:#4a3106; }
-.wd-num{ font-family:var(--font-display); font-weight:700; font-size:13.5px; }
+.wd-num{ font-family:var(--font-display); font-weight:700; font-size:15px; }
 .wd-row.active .wd-num{ color:#3a2704; }
 .wd-dot{ position:absolute; top:6px; right:7px; width:4.5px; height:4.5px; border-radius:50%; background:var(--gold); display:none; }
 .wd-row.has-events .wd-dot{ display:block; }
@@ -1955,8 +1970,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="wd-row has-events" data-day="5"><span class="wd-name">SRE</span><span class="wd-num">5</span><span class="wd-dot"></span></div>
             <div class="wd-row" data-day="6"><span class="wd-name">ČET</span><span class="wd-num">6</span><span class="wd-dot"></span></div>
             <div class="wd-row has-events" data-day="7"><span class="wd-name">PET</span><span class="wd-num">7</span><span class="wd-dot"></span></div>
-            <div class="wd-row" data-day="8"><span class="wd-name">SUB</span><span class="wd-num">8</span><span class="wd-dot"></span></div>
-            <div class="wd-row" data-day="9"><span class="wd-name">NED</span><span class="wd-num">9</span><span class="wd-dot"></span></div>
           </div>
           <div class="week-agenda-panel">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:8px;">
@@ -8894,7 +8907,7 @@ function renderWeekWidget(){
   const u = currentUser();
   const monday = mondayOf(TODAY);
   const days = [];
-  for(let i=0;i<7;i++) days.push(addDays(monday, i));
+  for(let i=0;i<5;i++) days.push(addDays(monday, i));
   const myEvents = u ? events.filter(e=>e.person===u.name || e.kind==='praznik') : [];
   const eventsOnDay = (d)=> myEvents.filter(e=> daysBetween(e.start,d)>=0 && daysBetween(d,e.end)>=0 );
   const todayIdx = days.findIndex(d=>sameDate(d,TODAY));
@@ -8908,8 +8921,8 @@ function renderWeekWidget(){
     return `<div class="wd-row${i===startIdx ? ' active' : ''}${hasEvents ? ' has-events' : ''} wd-row-in" style="animation-delay:${i*45}ms;" data-idx="${i}"><span class="wd-name">${dowLabels[i]}</span><span class="wd-num">${d.d}</span><span class="wd-dot"></span></div>`;
   }).join('');
 
-  const weekItemCount = myEvents.filter(e=> daysBetween(e.start,days[6])>=0 && daysBetween(days[0],e.end)>=0 ).length;
-  document.getElementById('weekRangeSub').textContent = `${monday.d}.${monday.m} – ${days[6].d}.${days[6].m} · ${weekItemCount} ${weekItemCount===1 ? 'zadatak' : 'zadatka'}`;
+  const weekItemCount = myEvents.filter(e=> daysBetween(e.start,days[4])>=0 && daysBetween(days[0],e.end)>=0 ).length;
+  document.getElementById('weekRangeSub').textContent = `${monday.d}.${monday.m} – ${days[4].d}.${days[4].m} · ${weekItemCount} ${weekItemCount===1 ? 'zadatak' : 'zadatka'}`;
 
   function agendaItemHtml(e, iso, i){
     const delayAttr = ` style="animation-delay:${i*60}ms;"`;
