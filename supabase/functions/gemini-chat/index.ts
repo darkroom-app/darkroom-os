@@ -82,7 +82,7 @@ const MAX_HISTORY_TURNS = 12;
 
 const SYSTEM_PROMPT = `Ti si DR Asistent — AI asistent unutar internog dashboard-a DARKROOM studija za 3D vizuelizaciju. Korisnici su članovi tima (dizajneri, menadžeri, vlasnik). Kad te neko pita ko si/sa kim priča, predstavi se kao "DR Asistent" — nikad ne pominji bilo koje staro/interno ime aplikacije, samo "DARKROOM". Uvek odgovaraj na srpskom jeziku, kratko i konkretno — ovo je radni alat, ne ćaskanje.
 
-Podaci o studiju su ti VEĆ DATI u nastavku ovog uputstva — polja "projekti" (SVI projekti: kod, naziv, klijent, menadžer, godina, status, broj kadrova, ko radi na njemu), "klijenti" (SVI klijenti: kontakt, broj projekata), "tim" (SVI članovi tima: uloga, nivo pristupa, datum zaposlenja/rođenja, status). Za pitanja koja se mogu odgovoriti iz ovih polja (npr. "koliko projekata vodi X", "koji je kontakt za klijenta Y", "ko radi na projektu Z", "je li svima unet datum rođenja") — ODGOVORI DIREKTNO iz ovih podataka, BEZ poziva ijednog alata. Svaki poziv alata je pun mrežni krug i realno usporava odgovor, pa ih koristi samo kad ti stvarno trebaju: detalje JEDNOG projekta uz istoriju rundi (alat detalji_projekta), kalendar (zadaci/odsustva/praznici) za bilo koji period (alat kalendar_period — kalendar NIJE u gore navedenim podacima), precizno izračunate dane odsustva/bolovanja za jednu osobu i godinu (alat podaci_o_zaposlenom), sadržaj svakodnevnog playbook-a/radnih procedura (alat playbook_pravilnik), ili zvanični statut firme (alat statut_firme — veći, formalniji dokument, koristi ga samo kad pitanje eksplicitno traži nešto iz statuta, ne za svakodnevne procedure). Ništa od ovoga NIJE u gore navedenim podacima. Ne nagađaj, ne izmišljaj brojke/datume/imena/procedure — ako podatak stvarno nije ni u datim poljima ni dostupan preko alata, jasno reci da ga nemaš.
+Podaci o studiju su ti VEĆ DATI u nastavku ovog uputstva — polja "projekti" (SVI projekti: kod, naziv, klijent, menadžer, godina, status, broj kadrova, ko radi na njemu), "klijenti" (SVI klijenti: kontakt, broj projekata), "tim" (SVI članovi tima: uloga, nivo pristupa, datum zaposlenja/rođenja, status). Za pitanja koja se mogu odgovoriti iz ovih polja (npr. "koliko projekata vodi X", "koji je kontakt za klijenta Y", "ko radi na projektu Z", "je li svima unet datum rođenja") — ODGOVORI DIREKTNO iz ovih podataka, BEZ poziva ijednog alata. Svaki poziv alata je pun mrežni krug i realno usporava odgovor, pa ih koristi samo kad ti stvarno trebaju: detalje JEDNOG projekta uz istoriju rundi (alat detalji_projekta), kalendar (zadaci/odsustva/praznici) za bilo koji period (alat kalendar_period — kalendar NIJE u gore navedenim podacima), precizno izračunate dane odsustva/bolovanja za jednu osobu i godinu ILI njene radne/prekovremene sate ovog meseca (alat podaci_o_zaposlenom — kalendar_period ne zna ništa o satima/prekovremenom, samo o zakazanim zadacima/odsustvima), sadržaj svakodnevnog playbook-a/radnih procedura (alat playbook_pravilnik), ili zvanični statut firme (alat statut_firme — veći, formalniji dokument, koristi ga samo kad pitanje eksplicitno traži nešto iz statuta, ne za svakodnevne procedure). Ništa od ovoga NIJE u gore navedenim podacima. Ne nagađaj, ne izmišljaj brojke/datume/imena/procedure — ako podatak stvarno nije ni u datim poljima ni dostupan preko alata, jasno reci da ga nemaš.
 
 BRZINA — ako ti REALNO trebaju dva ili više alata za jedno pitanje, pozovi ih SVE ODJEDNOM u istom potezu (paralelno), ne jedan pa čekaj pa sledeći — model može tražiti više function call-ova u jednom odgovoru.
 
@@ -125,7 +125,7 @@ const TOOL_DECLARATIONS = [
   },
   {
     name: "podaci_o_zaposlenom",
-    description: "Vrati PRECIZNO IZRAČUNATE dane odsustva/bolovanja jedne ili više osoba za zadatu godinu (broj dana, ne samo listu događaja). Osnovni podaci o timu (uloga, pristup, datumi zaposlenja/rođenja) su ti već dati u polju 'tim' — koristi ovaj alat samo kad ti treba taj izračunati broj dana. Za osobu koja ti trenutno piše, taj broj je već u moji_podaci.",
+    description: "Vrati PRECIZNO IZRAČUNATE dane odsustva/bolovanja (za zadatu godinu) i radne/prekovremene sate OVOG MESECA (iz stvarno unetih evidencija sati, ne iz kalendara ni iz obračuna plata — kalendar_period ne zna ništa o satima/prekovremenom, a plate su zaseban, već obrađen broj) jedne ili više osoba. Osnovni podaci o timu (uloga, pristup, datumi zaposlenja/rođenja) su ti već dati u polju 'tim' — koristi ovaj alat kad ti treba taj izračunati broj dana ili sati. Za osobu koja ti trenutno piše, ti brojevi su već u moji_podaci.",
     parameters: {
       type: "object",
       properties: {
@@ -223,7 +223,7 @@ async function toolKalendarPeriod(sb: SupabaseClient, args: any) {
 
 // deno-lint-ignore no-explicit-any
 async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
-  const { data, error } = await sb.from("team_members").select("name,role,access,hire_date,birth_date,slobodni_dani,status");
+  const { data, error } = await sb.from("team_members").select("id,name,role,access,hire_date,birth_date,slobodni_dani,status");
   if (error) return { greska: error.message };
   // deno-lint-ignore no-explicit-any
   let rows = (data ?? []) as any[];
@@ -237,6 +237,16 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
   if (rows.length === 0) return { rezultati: [] };
 
   const godina = args?.godina ? Number(args.godina) : new Date().getUTCFullYear();
+  // calendar_events only knows scheduled zadatak/odsustvo/praznik — it has
+  // no concept of hours or overtime at all, so a question like "does X have
+  // overtime" was silently answered from the wrong table (this one, or the
+  // payroll's already-processed salary_entries.prekovremeno RSD field,
+  // neither of which reflects hours actually logged this month) and always
+  // came back "no" even when real time_entries rows said otherwise — same
+  // employee_id/date-range readout as the client's own monthHours() (see
+  // darkroom-app.html) so both sides of the app agree on the same number.
+  const now = new Date();
+  const mesecKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
   const results = [];
   for (const t of rows) {
     const { data: leaveRows } = await sb.from("calendar_events")
@@ -248,6 +258,14 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
       (leaveRows ?? []).filter((e: any) => e.leave_type === type)
         // deno-lint-ignore no-explicit-any
         .reduce((s: number, e: any) => s + daysBetweenInclusive(e.start_date, e.end_date), 0);
+    const { data: hoursRows } = await sb.from("time_entries")
+      .select("hours,overtime")
+      .eq("employee_id", t.id).like("date", `${mesecKey}-%`);
+    const hoursOf = (overtime: boolean) =>
+      // deno-lint-ignore no-explicit-any
+      (hoursRows ?? []).filter((e: any) => e.overtime === overtime)
+        // deno-lint-ignore no-explicit-any
+        .reduce((s: number, e: any) => s + Number(e.hours), 0);
     results.push({
       ime: t.name,
       uloga: t.role,
@@ -261,6 +279,9 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
       bolovanje_dana: daysOf("bolovanje"),
       placeno_odsustvo_dana: daysOf("placeno"),
       neplaceno_odsustvo_dana: daysOf("neplaceno"),
+      mesec_za_koji_su_sati_racunati: mesecKey,
+      radni_sati_ovog_meseca: hoursOf(false),
+      prekovremeni_sati_ovog_meseca: hoursOf(true),
     });
   }
   return { rezultati: results };
