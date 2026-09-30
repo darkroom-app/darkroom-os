@@ -3624,6 +3624,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 <script>
 
+/* body{zoom:var(--zoom)} scales rendered size — including any px value
+   written into an inline style on a zoomed element — by that same factor.
+   getBoundingClientRect() already returns real/rendered coordinates, so
+   any code that reads a rect and writes the result straight back into
+   .style.top/left/etc (menus, popovers, spawn-at-cursor effects) ends up
+   double-scaled: the position it lands at is APP_ZOOM times too far from
+   origin. Dividing by APP_ZOOM before writing cancels that back out.
+   Search for "APP_ZOOM" for every call site this applies to. */
+const APP_ZOOM = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--zoom')) || 1;
+
 /* ==== SUPABASE (Phase 1 backend — Pulse render-finished notifications) ====
    Replace the two placeholders below once the Supabase project is created
    (Project Settings → API → Project URL / anon public key). Everything that
@@ -4200,7 +4210,7 @@ function renderTeamSwimlane(days, opts){
       const rect = track.getBoundingClientRect();
       const colWidth = rect.width / days.length;
       const col = Math.max(0, Math.min(days.length-1, Math.floor((e.clientX-rect.left)/colWidth)));
-      plusEl.style.left = `${col*colWidth + colWidth/2 - 10}px`;
+      plusEl.style.left = `${(col*colWidth + colWidth/2 - 10) / APP_ZOOM}px`;
       plusEl.style.opacity = '1';
     });
     track.addEventListener('mouseleave', ()=>{ plusEl.style.opacity = '0'; });
@@ -4859,8 +4869,8 @@ function openDateRangePicker(triggerEl, startISO, endISO, onApply){
   drpState.onApply = onApply;
   buildDrpGrid();
   const rect = triggerEl.getBoundingClientRect();
-  drpPopover.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 340)}px`;
-  drpPopover.style.left = `${Math.min(rect.left, window.innerWidth - 290)}px`;
+  drpPopover.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 340) / APP_ZOOM}px`;
+  drpPopover.style.left = `${Math.min(rect.left, window.innerWidth - 290) / APP_ZOOM}px`;
   drpPopover.classList.add('open');
 }
 function closeDateRangePicker(){ drpPopover.classList.remove('open'); }
@@ -5452,8 +5462,8 @@ function spawnHourCoins(originEl){
   const rect = originEl.getBoundingClientRect();
   const wrap = document.createElement('div');
   wrap.className = 'coin-burst';
-  wrap.style.left = (rect.left + rect.width/2) + 'px';
-  wrap.style.top = rect.top + 'px';
+  wrap.style.left = ((rect.left + rect.width/2) / APP_ZOOM) + 'px';
+  wrap.style.top = (rect.top / APP_ZOOM) + 'px';
   wrap.innerHTML = `<div class="coin left"></div><div class="coin right"></div>`;
   document.body.appendChild(wrap);
   setTimeout(()=>wrap.remove(), 1000);
@@ -7978,8 +7988,8 @@ function spawnWinnerConfetti(originEl){
   const rect = originEl.getBoundingClientRect();
   const wrap = document.createElement('div');
   wrap.className = 'confetti-burst';
-  wrap.style.left = (rect.left + rect.width/2) + 'px';
-  wrap.style.top = (rect.top + rect.height/2) + 'px';
+  wrap.style.left = ((rect.left + rect.width/2) / APP_ZOOM) + 'px';
+  wrap.style.top = ((rect.top + rect.height/2) / APP_ZOOM) + 'px';
   const colors = ['var(--gold)','var(--teal)','var(--coral)','var(--plum)','var(--sky)','var(--sage)'];
   const n = 12;
   let html = '';
@@ -13266,19 +13276,19 @@ function enhanceSelect(selectEl){
     const searchInput = menu.querySelector('.xsel-search');
     if(searchInput) requestAnimationFrame(()=>searchInput.focus());
     const btnRect = btn.getBoundingClientRect();
-    menu.style.left = btnRect.left + 'px';
-    menu.style.width = btnRect.width + 'px';
+    menu.style.left = (btnRect.left / APP_ZOOM) + 'px';
+    menu.style.width = (btnRect.width / APP_ZOOM) + 'px';
     const spaceBelow = window.innerHeight - btnRect.bottom;
     const spaceAbove = btnRect.top;
     const menuHeight = Math.min(menu.scrollHeight, 240);
     if(spaceBelow < menuHeight + 8 && spaceAbove > spaceBelow){
-      menu.style.bottom = (window.innerHeight - btnRect.top + 6) + 'px';
+      menu.style.bottom = ((window.innerHeight - btnRect.top + 6) / APP_ZOOM) + 'px';
       menu.style.top = 'auto';
-      menu.style.maxHeight = Math.min(240, spaceAbove - 14) + 'px';
+      menu.style.maxHeight = Math.min(240, (spaceAbove - 14) / APP_ZOOM) + 'px';
     } else {
-      menu.style.top = (btnRect.bottom + 6) + 'px';
+      menu.style.top = ((btnRect.bottom + 6) / APP_ZOOM) + 'px';
       menu.style.bottom = 'auto';
-      menu.style.maxHeight = Math.min(240, spaceBelow - 14) + 'px';
+      menu.style.maxHeight = Math.min(240, (spaceBelow - 14) / APP_ZOOM) + 'px';
     }
   }
   function closeMenu(){ wrap.classList.remove('open'); }
