@@ -1323,6 +1323,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   padding:17px 18px 18px;
   overflow:hidden;
 }
+/* Dashboard windows match the sidebar's tone instead of stark white —
+   .fun-card (Nedeljni cilj/Najviše sarađuješ sa) is a separate class so
+   its corner gradients are untouched by this. */
+#view-pregled .panel{ background:var(--bg-sidebar); }
 .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex:0 0 auto; }
 .panel-title{ display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:600; font-size:13.5px; }
 .panel-title svg{ width:15px; height:15px; color:var(--gold-deep); }
