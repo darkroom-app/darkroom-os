@@ -321,7 +321,15 @@ body{
 /* Custom-dropdown enhancement for native <select> — the real native popup can't be
    reliably rounded cross-browser, so JS (enhanceSelect) hides the select and drives
    this instead, keeping the select itself in sync for all existing code. */
-select.native-select-hidden{ display:none; }
+select.native-select-hidden, input.native-select-hidden{ display:none; }
+/* Same idea, for <input type="date"> — enhanceDateInput() swaps the native
+   OS calendar for the app-styled drp-popover-based one (datePopover). */
+.xdate-btn{ width:100%; display:flex; align-items:center; gap:8px; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; text-align:left; }
+.xdate-btn:hover{ border-color:var(--gold); }
+.xdate-btn.xsel-disabled{ opacity:0.6; cursor:not-allowed; }
+.xdate-btn .xsel-btn-label{ flex:1; }
+.xdate-btn.xdate-empty .xsel-btn-label{ color:var(--ink-faint); }
+.xdate-btn svg{ width:14px; height:14px; color:var(--ink-faint); flex-shrink:0; }
 .xsel-wrap{ position:relative; display:inline-block; }
 .modal-field .xsel-wrap{ display:block; width:100%; }
 .xsel-btn{ width:100%; display:flex; align-items:center; justify-content:space-between; gap:8px; border:1px solid var(--border); background:var(--card-soft); border-radius:10px; padding:9px 12px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; text-align:left; }
@@ -1809,6 +1817,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .drp-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); }
 .drp-range-text{ font-size:11px; color:var(--ink-dim); }
 .drp-apply-btn{ background:var(--gold); color:#3a2704; border:none; border-radius:8px; padding:7px 14px; font-family:var(--font-body); font-weight:600; font-size:11.5px; cursor:pointer; }
+.drp-today-btn{ background:var(--card-soft); color:var(--ink-dim); border:1px solid var(--border); border-radius:8px; padding:7px 14px; font-family:var(--font-body); font-weight:600; font-size:11.5px; cursor:pointer; width:100%; }
+.drp-today-btn:hover{ border-color:var(--gold); color:var(--ink); }
 
 /* urgency + holiday */
 .cb-urgency{ width:9px; height:9px; border-radius:50%; margin-left:auto; flex-shrink:0; }
@@ -3599,6 +3609,27 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   </div>
 </div>
 
+<!-- Single-date picker — same visual language as drp-popover above (date
+     RANGE picker for Kalendar filters), but click-a-day-and-close instead
+     of a two-click range + Potvrdi. Singleton like drpPopover: one shared
+     instance, repositioned/rebound per invocation via openDatePicker(),
+     reused by every enhanceDateInput()-wrapped <input type="date"> in the
+     app instead of each showing the native OS calendar. -->
+<div class="drp-popover" id="datePopover">
+  <div class="drp-header">
+    <button type="button" class="drp-nav-btn" id="datePrev">‹</button>
+    <div class="drp-month-label" id="dateMonthLabel"></div>
+    <button type="button" class="drp-nav-btn" id="dateNext">›</button>
+  </div>
+  <div class="drp-dow-row">
+    <span>Pon</span><span>Uto</span><span>Sre</span><span>Čet</span><span>Pet</span><span>Sub</span><span>Ned</span>
+  </div>
+  <div class="drp-grid" id="dateGrid"></div>
+  <div class="drp-footer">
+    <button type="button" class="drp-today-btn" id="dateToday">Danas</button>
+  </div>
+</div>
+
 <button class="chat-fab" id="chatFab" title="AI asistent">
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
   <span class="fab-dot"></span>
@@ -4885,6 +4916,100 @@ document.getElementById('drpApply').addEventListener('click', (e)=>{
 });
 drpPopover.addEventListener('click', (e)=>e.stopPropagation());
 document.addEventListener('click', ()=>{ closeDateRangePicker(); });
+
+/* Single-date picker (datePopover) — click a day, done, no Potvrdi step.
+   Singleton like drpPopover above, reused by every enhanceDateInput()-
+   wrapped <input type="date"> so none of them fall back to the
+   unstyled native OS calendar. */
+const datePopover = document.getElementById('datePopover');
+let dateState = { cursor:null, selected:null, onPick:null };
+function buildDateGrid(){
+  document.getElementById('dateMonthLabel').textContent = `${calMonthNames[dateState.cursor.m-1]} ${dateState.cursor.y}.`;
+  const cells = generateMonthCells(dateState.cursor.y, dateState.cursor.m);
+  document.getElementById('dateGrid').innerHTML = cells.map(c=>{
+    const iso = toISO(c);
+    const cls = 'drp-cell' + (c.m !== dateState.cursor.m ? ' drp-muted' : '') + (iso===dateState.selected ? ' drp-start drp-end' : '');
+    return `<div class="${cls}" data-iso="${iso}">${c.d}</div>`;
+  }).join('');
+  document.querySelectorAll('#dateGrid .drp-cell').forEach(cell=>{
+    cell.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      if(dateState.onPick) dateState.onPick(cell.dataset.iso);
+      closeDatePicker();
+    });
+  });
+}
+function openDatePicker(triggerEl, valueISO, onPick){
+  dateState.selected = valueISO || null;
+  dateState.cursor = valueISO ? fromISO(valueISO) : {y:TODAY.y, m:TODAY.m};
+  dateState.onPick = onPick;
+  buildDateGrid();
+  const rect = triggerEl.getBoundingClientRect();
+  datePopover.style.top = `${Math.min(rect.bottom + 6, window.innerHeight - 320) / APP_ZOOM}px`;
+  datePopover.style.left = `${Math.min(rect.left, window.innerWidth - 290) / APP_ZOOM}px`;
+  datePopover.classList.add('open');
+}
+function closeDatePicker(){ datePopover.classList.remove('open'); }
+document.getElementById('datePrev').addEventListener('click', (e)=>{ e.stopPropagation(); dateState.cursor = dateState.cursor.m===1 ? {y:dateState.cursor.y-1, m:12} : {y:dateState.cursor.y, m:dateState.cursor.m-1}; buildDateGrid(); });
+document.getElementById('dateNext').addEventListener('click', (e)=>{ e.stopPropagation(); dateState.cursor = dateState.cursor.m===12 ? {y:dateState.cursor.y+1, m:1} : {y:dateState.cursor.y, m:dateState.cursor.m+1}; buildDateGrid(); });
+document.getElementById('dateToday').addEventListener('click', (e)=>{
+  e.stopPropagation();
+  const iso = toISO(TODAY);
+  if(dateState.onPick) dateState.onPick(iso);
+  closeDatePicker();
+});
+datePopover.addEventListener('click', (e)=>e.stopPropagation());
+document.addEventListener('click', ()=>{ closeDatePicker(); });
+
+/* Wraps a native <input type="date"> the same way enhanceSelect() wraps a
+   <select> — hide the native control, drive a styled button + the shared
+   datePopover instead, keep the input's own .value (get/set) in sync so
+   every existing addEventListener('change'/'input')/`.value` read
+   elsewhere in the app keeps working unchanged. */
+function enhanceDateInput(inputEl){
+  if(inputEl.dataset.xdate) return;
+  inputEl.dataset.xdate = '1';
+  inputEl.classList.add('native-select-hidden');
+
+  const wrap = document.createElement('div');
+  wrap.className = 'xsel-wrap';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'xdate-btn';
+  const label = document.createElement('span');
+  label.className = 'xsel-btn-label';
+  btn.appendChild(label);
+  btn.insertAdjacentHTML('beforeend', '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>');
+  wrap.appendChild(btn);
+  inputEl.insertAdjacentElement('afterend', wrap);
+
+  function syncLabel(){
+    const has = !!inputEl.value;
+    label.textContent = has ? formatDateHuman(fromISO(inputEl.value)) : 'Izaberi datum';
+    btn.classList.toggle('xdate-empty', !has);
+    btn.disabled = inputEl.disabled;
+    btn.classList.toggle('xsel-disabled', inputEl.disabled);
+  }
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    if(inputEl.disabled) return;
+    openDatePicker(btn, inputEl.value || null, (iso)=>{
+      inputEl.value = iso;
+      inputEl.dispatchEvent(new Event('change', {bubbles:true}));
+      inputEl.dispatchEvent(new Event('input', {bubbles:true}));
+    });
+  });
+
+  const nativeDesc = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  Object.defineProperty(inputEl, 'value', {
+    get(){ return nativeDesc.get.call(inputEl); },
+    set(v){ nativeDesc.set.call(inputEl, v); syncLabel(); },
+    configurable:true
+  });
+
+  syncLabel();
+}
+document.querySelectorAll('input[type="date"]').forEach(enhanceDateInput);
 
 function updateRangeLabel(labelId, startISO, endISO){
   const el = document.getElementById(labelId);
@@ -9743,6 +9868,8 @@ async function renderExpenseInbox(){
   document.querySelectorAll('#expenseInboxList .expense-inbox-reject').forEach(btn=>{
     btn.addEventListener('click', ()=>rejectExpenseInboxItem(Number(btn.dataset.id)));
   });
+  // Built via innerHTML above, so it missed the page-load bulk enhanceDateInput() pass.
+  document.querySelectorAll('#expenseInboxList .ei-date').forEach(enhanceDateInput);
 }
 async function confirmExpenseInboxItem(id){
   const item = expenseInbox.find(e=>e._id===id);
