@@ -246,7 +246,13 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
   // employee_id/date-range readout as the client's own monthHours() (see
   // darkroom-app.html) so both sides of the app agree on the same number.
   const now = new Date();
-  const mesecKey = `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+  const y = now.getUTCFullYear(), m = now.getUTCMonth() + 1; // 1-12
+  const mesecKey = `${y}-${String(m).padStart(2, "0")}`;
+  const monthStart = `${mesecKey}-01`;
+  // Half-open range (>= start, < next month's start) instead of computing
+  // the real last day of the month (28-31) — always correct with zero
+  // month-length special-casing.
+  const nextMonthStart = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, "0")}-01`;
   const results = [];
   for (const t of rows) {
     const { data: leaveRows } = await sb.from("calendar_events")
@@ -258,9 +264,15 @@ async function toolPodaciOZaposlenom(sb: SupabaseClient, args: any) {
       (leaveRows ?? []).filter((e: any) => e.leave_type === type)
         // deno-lint-ignore no-explicit-any
         .reduce((s: number, e: any) => s + daysBetweenInclusive(e.start_date, e.end_date), 0);
+    // time_entries.date is a native SQL `date` column, not text — .like()
+    // against it either errors or silently matches nothing (LIKE needs a
+    // text-comparable operand), and this loop wasn't checking that query's
+    // error at all, so it quietly came back as "0 hours for everyone" no
+    // matter what was actually logged. Range comparison against real date
+    // values (same as leaveRows above) actually works.
     const { data: hoursRows } = await sb.from("time_entries")
       .select("hours,overtime")
-      .eq("employee_id", t.id).like("date", `${mesecKey}-%`);
+      .eq("employee_id", t.id).gte("date", monthStart).lt("date", nextMonthStart);
     const hoursOf = (overtime: boolean) =>
       // deno-lint-ignore no-explicit-any
       (hoursRows ?? []).filter((e: any) => e.overtime === overtime)
