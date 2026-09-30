@@ -3220,6 +3220,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <option value="Neaktivan">Neaktivan</option>
       </select>
     </div>
+    <div class="modal-field">
+      <label>Datum odlaska</label>
+      <input type="date" id="ntDepartureDate">
+    </div>
     <div class="modal-field" id="ntAccessField">
       <label>Nivo pristupa</label>
       <select id="ntAccess">
@@ -8973,6 +8977,7 @@ function openTeamModal(member){
   document.getElementById('ntPhone').value = member.phone;
   document.getElementById('ntHireDate').value = member.hireDate || '';
   document.getElementById('ntBirthDate').value = member.birthDate || '';
+  document.getElementById('ntDepartureDate').value = member.departureDate || '';
   document.getElementById('ntSlobodniDani').value = member.slobodniDani != null ? member.slobodniDani : 20;
   document.getElementById('ntSlobodniDani').disabled = !isSuperAdmin();
   document.getElementById('ntFitness').checked = !!member.fitnessOptedIn;
@@ -8991,7 +8996,7 @@ document.getElementById('newTeamBtn').addEventListener('click', ()=>{
   document.getElementById('ntTitle').textContent = "Novi član tima";
   document.getElementById('ntSubmit').textContent = "Dodaj člana";
   document.getElementById('ntName').disabled = false;
-  ['ntName','ntRole','ntEmailBusiness','ntEmailPrivate','ntPhone','ntHireDate','ntBirthDate'].forEach(id=>document.getElementById(id).value='');
+  ['ntName','ntRole','ntEmailBusiness','ntEmailPrivate','ntPhone','ntHireDate','ntBirthDate','ntDepartureDate'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('ntSlobodniDani').value = 20;
   document.getElementById('ntSlobodniDani').disabled = false;
   document.getElementById('ntFitness').checked = false;
@@ -9013,6 +9018,7 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
   const phone = document.getElementById('ntPhone').value.trim() || "—";
   const hireDate = document.getElementById('ntHireDate').value;
   const birthDate = document.getElementById('ntBirthDate').value;
+  const departureDate = document.getElementById('ntDepartureDate').value;
   const slobodniDani = parseInt(document.getElementById('ntSlobodniDani').value) || 20;
   const fitnessOptedIn = document.getElementById('ntFitness').checked;
   const status = document.getElementById('ntStatus').value;
@@ -9025,7 +9031,7 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
       if(sb && member.authId){
         const payload = {
           role, email_business:emailBusiness, email_private:emailPrivate, phone,
-          hire_date:hireDate||null, birth_date:birthDate||null,
+          hire_date:hireDate||null, birth_date:birthDate||null, departure_date:departureDate||null,
           status, avatar, fitness_opted_in:fitnessOptedIn
         };
         if(isSuperAdmin()){ payload.access = access; payload.slobodni_dani = slobodniDani; }
@@ -9033,12 +9039,12 @@ document.getElementById('ntSubmit').addEventListener('click', async ()=>{
         if(error){ alert('Čuvanje nije uspelo: ' + error.message); return; }
         Object.assign(member, {
           role:data.role, emailBusiness:data.email_business, emailPrivate:data.email_private,
-          phone:data.phone, hireDate:data.hire_date, birthDate:data.birth_date,
+          phone:data.phone, hireDate:data.hire_date, birthDate:data.birth_date, departureDate:data.departure_date,
           slobodniDani:data.slobodni_dani, status:data.status, avatar:data.avatar, access:data.access,
           fitnessOptedIn:!!data.fitness_opted_in
         });
       } else {
-        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, status, avatar, fitnessOptedIn});
+        Object.assign(member, {role, emailBusiness, emailPrivate, phone, hireDate, birthDate, departureDate, status, avatar, fitnessOptedIn});
         if(isSuperAdmin()){ member.access = access; member.slobodniDani = slobodniDani; }
       }
     }
@@ -9398,16 +9404,18 @@ function suggestedPrekovremeno(emp, year, month){
   const osn = lastKnownOsnovica(emp) || 0;
   if(!empRow || !empRow.authId || !osn) return { hours:0, amount:0 };
   const hours = monthlyOvertimeHours(empRow.authId, year, month);
-  // Zaposlen tokom ovog meseca (a ne pre njega) -> fond počinje od datuma
-  // zaposlenja, ne od 1. u mesecu. Nema polja za datum ODLASKA u timu, pa
-  // taj slučaj (neko ko je otišao tokom meseca) ovde nije automatski
-  // prorata — fond i dalje ide do kraja meseca za njega.
-  let fromDay = 1;
+  // Zaposlen/otišao TOKOM ovog meseca -> fond se svodi samo na dane dok je
+  // osoba stvarno bila u radnom odnosu (vidi primer u fondCasova iznad).
+  let fromDay = 1, toDay = undefined;
   if(empRow.hireDate){
     const hd = fromISO(empRow.hireDate);
     if(hd.y===year && hd.m===month+1) fromDay = hd.d;
   }
-  const fond = fondCasova(year, month, fromDay);
+  if(empRow.departureDate){
+    const dd = fromISO(empRow.departureDate);
+    if(dd.y===year && dd.m===month+1) toDay = dd.d;
+  }
+  const fond = fondCasova(year, month, fromDay, toDay);
   if(!fond) return { hours, amount:0, fond:0 };
   const satnica = Math.round((osn/fond) * 1.3 * 100) / 100;
   return { hours, amount: Math.round(satnica * hours), satnica, fond };
@@ -12776,6 +12784,7 @@ async function loadTeamMembersFromSupabase(){
         access: row.access,
         hireDate: row.hire_date,
         birthDate: row.birth_date,
+        departureDate: row.departure_date,
         slobodniDani: row.slobodni_dani,
         emailBusiness: row.email_business,
         emailPrivate: row.email_private || '',

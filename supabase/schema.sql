@@ -1884,3 +1884,14 @@ create policy "authenticated can insert kadar_price_deductions" on public.kadar_
   for insert to authenticated with check (true);
 create policy "authenticated can delete kadar_price_deductions" on public.kadar_price_deductions
   for delete to authenticated using (true);
+
+
+-- ==== Phase 40: departure date for team members (run this query) ====
+-- Lets a mid-month departure prorate the overtime-pay work-hour fund
+-- (fondCasova() in darkroom-app.html) the same way hire_date already
+-- prorates a mid-month start — before this there was no way to know WHEN
+-- during the month someone left, so that case just wasn't prorated at all.
+-- No RLS change needed — same read/update policies as every other
+-- team_members column already cover this one too.
+
+alter table public.team_members add column if not exists departure_date date;
