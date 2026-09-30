@@ -110,6 +110,12 @@ body{
   padding:14px;
   height:100vh;
   overflow:hidden;
+  /* Global size bump per user request — scales every font-size AND every
+     padding/gap/border-radius together (unlike bumping font-size alone,
+     which would overflow the app's many tightly-sized pills/badges/tags).
+     Non-standard but works in every Chromium browser, which is what this
+     internal tool runs on; Firefox just ignores it and renders at 100%. */
+  zoom:1.1;
 }
 ::-webkit-scrollbar{ width:6px; height:6px; }
 ::-webkit-scrollbar-thumb{ background:var(--border); border-radius:10px; }
