@@ -61,24 +61,24 @@
   --zoom:1.1;
 }
 
-/* Dark theme: same tokens, warm-dark palette instead of a cold black — kept
-   close in hue to the light theme so accent colors (gold/teal/coral/plum/
-   sky/sage) still feel like the same brand. --ink-solid-bg is a separate
+/* Dark theme: same tokens. Neutrals are near-neutral greys sampled from the
+   Claude desktop app's dark UI (previously a warm-brown scale); accent
+   colors (gold/teal/coral/plum/sky/sage) are unchanged. --ink-solid-bg is a separate
    token from --ink on purpose: a handful of components (active nav/tab
    pills) use a hardcoded light text color over "the dark one" of the two
    neutral extremes, which only works if that fill stays dark in both
    themes — unlike --ink itself, which must flip to a light color here
    since it's the default text color everywhere else. */
 [data-theme="dark"]{
-  --bg-outer:#14120E;
-  --bg-app:#1B1914;
-  --bg-sidebar:#201D17;
-  --card:#26231C;
-  --card-soft:#2C2820;
-  --border:#3A362C;
-  --ink:#EDE7D9;
-  --ink-dim:#A79D89;
-  --ink-faint:#6E6656;
+  --bg-outer:#111111;
+  --bg-app:#151515;
+  --bg-sidebar:#1A1A19;
+  --card:#20201F;
+  --card-soft:#262625;
+  --border:#2D2C2D;
+  --ink:#ECEBE8;
+  --ink-dim:#9B9A98;
+  --ink-faint:#646463;
   --gold:#F0B23E;
   --gold-soft:#3D2E12;
   --gold-deep:#F0C168;
@@ -92,7 +92,7 @@
   --sky-soft:#202B33;
   --sage:#89B489;
   --sage-soft:#212D1F;
-  --ink-solid-bg:#413C2F;
+  --ink-solid-bg:#383738;
 }
 /* A few "success" pills use a literal pale-green hex instead of the sage
    tokens above, so the dark palette can't reach them automatically — swap
