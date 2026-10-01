@@ -174,19 +174,21 @@ body{
 .nav a svg{ width:16px; height:16px; flex-shrink:0; opacity:0.85; }
 .nav a:hover{ background:#F0EADA; color:var(--ink); }
 .nav a.active{ background:var(--ink-solid-bg); color:#FBF8F1; animation:navActiveIn .35s ease-out; }
-/* Experimental preview, light theme only — Terracotta Accent as the
-   active-nav-tab color and the Obaveštenja panel's background. Panel text
+/* Light theme: Terracotta Accent as the active-nav-tab color, wine
+   (#350B1A) as the Obaveštenja panel's background. Panel text
    forced light/white per request so it stands out from the background,
    same token-override + color:var(--ink) restart-inheritance trick as the
    earlier crimson version (see that commit for why color: is needed here). */
 [data-theme="light"] .nav a.active{ background:var(--terracotta-accent); }
 [data-theme="light"] #view-pregled .dash-notif-panel{
-  background:var(--terracotta-accent);
+  background:var(--wine-accent);
   --ink:#FFFFFF;
-  --ink-dim:#FBEEE7;
-  --ink-faint:#F0D4C4;
+  --ink-dim:#E2C3CB;
+  --ink-faint:#B08893;
   --gold-deep:#FFFFFF;
-  --border:rgba(255,255,255,0.28);
+  --card:#47152A;
+  --card-soft:#47152A;
+  --border:rgba(255,255,255,0.16);
   color:var(--ink);
 }
 /* Dark-theme counterpart: deep wine panel, text tokens tinted toward the
