@@ -45,7 +45,6 @@
   --coral:#D97757;
   --coral-soft:#F7E3DA;
   --terracotta-accent:#BE6946;
-  --wine-accent:#350B1A;
   --font-display:'Cera Pro', 'Space Grotesk', sans-serif;
   --font-body:'Cera Pro', 'Inter', sans-serif;
   --font-mono:'IBM Plex Mono', monospace;
@@ -174,33 +173,19 @@ body{
 .nav a svg{ width:16px; height:16px; flex-shrink:0; opacity:0.85; }
 .nav a:hover{ background:#F0EADA; color:var(--ink); }
 .nav a.active{ background:var(--ink-solid-bg); color:#FBF8F1; animation:navActiveIn .35s ease-out; }
-/* Light theme: Terracotta Accent as the active-nav-tab color, wine
-   (#350B1A) as the Obaveštenja panel's background. Panel text
+/* Experimental preview, light theme only — Terracotta Accent as the
+   active-nav-tab color and the Obaveštenja panel's background. Panel text
    forced light/white per request so it stands out from the background,
    same token-override + color:var(--ink) restart-inheritance trick as the
    earlier crimson version (see that commit for why color: is needed here). */
 [data-theme="light"] .nav a.active{ background:var(--terracotta-accent); }
 [data-theme="light"] #view-pregled .dash-notif-panel{
-  background:var(--wine-accent);
+  background:var(--terracotta-accent);
   --ink:#FFFFFF;
-  --ink-dim:#E2C3CB;
-  --ink-faint:#B08893;
+  --ink-dim:#FBEEE7;
+  --ink-faint:#F0D4C4;
   --gold-deep:#FFFFFF;
-  --card:#47152A;
-  --card-soft:#47152A;
-  --border:rgba(255,255,255,0.16);
-  color:var(--ink);
-}
-/* Dark-theme counterpart: deep wine panel, text tokens tinted toward the
-   same hue so dim/faint text doesn't read as grey-on-red. */
-[data-theme="dark"] #view-pregled .dash-notif-panel{
-  background:var(--wine-accent);
-  --ink:#F7ECEF;
-  --ink-dim:#D2AEB8;
-  --ink-faint:#9C7380;
-  --card:#47152A;
-  --card-soft:#47152A;
-  --border:rgba(255,255,255,0.12);
+  --border:rgba(255,255,255,0.28);
   color:var(--ink);
 }
 .nav a.active svg{ opacity:1; }
