@@ -1464,10 +1464,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .mystat-stat .ms-val{ font-family:var(--font-display); font-weight:700; font-size:19px; line-height:1.1; }
 .mystat-stat .ms-label{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.01em; margin-top:4px; line-height:1.25; padding:0 2px; }
 .mystat-donut-row{ display:flex; align-items:center; gap:16px; flex:0 0 auto; }
-.mystat-donut.donut-wrap{ width:92px; height:92px; flex-shrink:0; }
-.mystat-donut .donut-hole{ inset:12px; }
-.mystat-donut .donut-hole-val{ font-size:15px; }
-.mystat-donut .donut-hole-label{ font-size:7.5px; }
+.mystat-donut.donut-wrap{ width:104px; height:104px; flex-shrink:0; }
+.mystat-donut .donut-hole{ inset:21px; background:var(--card); }
+.mystat-donut .donut-hole-val{ font-size:21px; font-weight:300; line-height:1; }
+.mystat-donut .donut-hole-label{ font-size:7px; letter-spacing:0.06em; margin-top:3px; }
 .mystat-donut-row .donut-legend{ gap:7px; max-height:112px; overflow-y:auto; }
 .mystat-donut-row .donut-legend-item{ font-size:10.5px; }
 .mystat-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; flex:0 0 auto; }
@@ -9594,19 +9594,20 @@ function finCostComponents(){
 function renderModernDonut(ringId, legendId, items, opts){
   const fmtTooltip = (opts && opts.fmtTooltip) || fmtRSD;
   const fmtLegend = (opts && opts.fmtLegend) || fmtK;
+  const solid = !!(opts && opts.solid);
   const total = items.reduce((s,i)=>s+i.value,0);
-  const R = 74, CX = 100, CY = 100, SW = 22, GAP = 7;
+  const R = solid ? 79 : 74, CX = 100, CY = 100, SW = solid ? 40 : 22, GAP = solid ? 0 : 7;
   const circumference = 2*Math.PI*R;
   let cursor = -90, svgInner = '';
   items.forEach(it=>{
     const pct = total>0 ? (it.value/total)*100 : 0;
     const segDeg = (pct/100)*360;
-    const drawDeg = segDeg>0 ? Math.max(segDeg-GAP, Math.min(segDeg,2)) : 0;
+    const drawDeg = solid ? segDeg : (segDeg>0 ? Math.max(segDeg-GAP, Math.min(segDeg,2)) : 0);
     const arcLen = (drawDeg/360)*circumference;
-    svgInner += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${it.color}" stroke-width="${SW}" stroke-linecap="round"
+    svgInner += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${it.color}" stroke-width="${SW}" stroke-linecap="${solid ? 'butt' : 'round'}"
       stroke-dasharray="${arcLen.toFixed(1)} ${(circumference-arcLen).toFixed(1)}" stroke-dashoffset="${arcLen.toFixed(1)}"
       transform="rotate(${cursor} ${CX} ${CY})" class="modern-donut-seg"><title>${escapeHtml(it.label)}: ${fmtTooltip(it.value)}</title></circle>`;
-    if(pct >= 5){
+    if(!solid && pct >= 5){
       const midRad = (cursor+segDeg/2)*Math.PI/180;
       const bx = (CX+R*Math.cos(midRad)).toFixed(1), by = (CY+R*Math.sin(midRad)).toFixed(1);
       /* Badge radius kept within SW/2 (the ring's own half-width) so the
@@ -12558,6 +12559,7 @@ function renderMyStats(){
   renderModernDonut('mystatDonutRing', 'mystatDonutLegend', items, {
     fmtTooltip: v => `${v} ${v===1 ? 'zadatak' : 'zadataka'}`,
     fmtLegend: v => String(v),
+    solid: true,
   });
   animateCountUp(holeVal, total, {duration:700});
   setTimeout(()=>wrap.classList.add('shown'), 80);
