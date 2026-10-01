@@ -45,6 +45,7 @@
   --coral:#D97757;
   --coral-soft:#F7E3DA;
   --terracotta-accent:#BE6946;
+  --wine-accent:#350B1A;
   --font-display:'Cera Pro', 'Space Grotesk', sans-serif;
   --font-body:'Cera Pro', 'Inter', sans-serif;
   --font-mono:'IBM Plex Mono', monospace;
@@ -186,6 +187,18 @@ body{
   --ink-faint:#F0D4C4;
   --gold-deep:#FFFFFF;
   --border:rgba(255,255,255,0.28);
+  color:var(--ink);
+}
+/* Dark-theme counterpart: deep wine panel, text tokens tinted toward the
+   same hue so dim/faint text doesn't read as grey-on-red. */
+[data-theme="dark"] #view-pregled .dash-notif-panel{
+  background:var(--wine-accent);
+  --ink:#F7ECEF;
+  --ink-dim:#D2AEB8;
+  --ink-faint:#9C7380;
+  --card:#47152A;
+  --card-soft:#47152A;
+  --border:rgba(255,255,255,0.12);
   color:var(--ink);
 }
 .nav a.active svg{ opacity:1; }
