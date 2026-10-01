@@ -1126,6 +1126,12 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .mo-track{ flex:1; display:flex; align-items:flex-end; width:100%; justify-content:center; }
 .mo-bar{ width:100%; max-width:26px; border-radius:7px 7px 3px 3px; background:linear-gradient(180deg, var(--gold), var(--gold-deep)); transition:height 1s cubic-bezier(.34,1.2,.4,1); position:relative; cursor:default; }
 .mo-bar.peak{ background:linear-gradient(180deg, #F3C05C, var(--gold-deep)); box-shadow:0 0 0 2px var(--gold-soft); }
+/* Plate → Unesi platu's "Kretanje osnovice" reuses the mo-bar/mo-col/mo-track/
+   mo-label building blocks from Statistika's month chart above instead of
+   its own bar styling — same gradient/animation, just a shorter chart area
+   (fits a modal field) and its own soft drop-shadow per bar. */
+.sal-trend-chart{ display:flex; align-items:flex-end; gap:6px; height:90px; }
+.sal-trend-chart .mo-bar{ box-shadow:0 6px 10px -4px rgba(138,95,19,0.35); }
 .mo-label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); }
 
 /* donut */
@@ -3106,7 +3112,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
     </div>
     <div class="modal-field" id="salTrendWrap" style="display:none;">
       <label>📈 Kretanje osnovice — otkad je zaposlen/a</label>
-      <div class="line-svg-wrap"><svg id="salTrendSvg" viewBox="0 0 500 90" preserveAspectRatio="none" style="width:100%;height:90px;"></svg></div>
+      <div class="sal-trend-chart" id="salTrendChart"></div>
     </div>
     <div class="modal-actions">
       <button class="modal-delete" id="salDelete" style="display:none;">Obriši</button>
@@ -10919,31 +10925,26 @@ function renderSalTrendMini(emp){
   for(let m=0;m<12;m++){ const e = salaryFor(emp, m); if(e) entries.push({m, osn:e.osnovica}); }
   if(entries.length < 2){ wrap.style.display='none'; return; }
   wrap.style.display='block';
-  const W=500,H=90,padL=8,padR=8,padT=14,padB=18;
-  const vals = entries.map(e=>e.osn);
-  const max = Math.max(...vals), min = Math.min(...vals);
-  const span = Math.max(max-min, 1);
-  const xFor = i => padL + (i/(entries.length-1)) * (W-padL-padR);
-  const yFor = v => padT + (1-(v-min)/span) * (H-padT-padB);
-  const pts = entries.map((e,i)=>`${xFor(i)},${yFor(e.osn)}`).join(' ');
-  let svg = `<polyline points="${pts}" fill="none" stroke="var(--gold-deep)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="sal-trend-path"/>`;
-  entries.forEach((e,i)=>{
+  const max = Math.max(...entries.map(e=>e.osn), 1);
+  const chart = document.getElementById('salTrendChart');
+  // Same mo-bar/mo-col/mo-track/mo-label building blocks as Statistika's
+  // month chart (renderMonthChart) — "peak" here marks a month the osnovica
+  // actually changed from the one before it (was a green dot on the old
+  // line chart), not the single highest bar.
+  chart.innerHTML = entries.map((e,i)=>{
     const changed = i>0 && entries[i-1].osn !== e.osn;
-    const r = changed ? 4.2 : 2.6;
-    const fill = changed ? '#4C8A55' : 'var(--gold-deep)';
-    svg += `<circle cx="${xFor(i)}" cy="${yFor(e.osn)}" r="${r}" fill="${fill}" stroke="var(--card)" stroke-width="1.3"><title>${salMonthAbbr[e.m]}: ${fmtRSD(e.osn)}${changed?' (promena)':''}</title></circle>`;
-    svg += `<text x="${xFor(i)}" y="${H-4}" font-size="7.5" fill="var(--ink-faint)" text-anchor="middle" font-family="var(--font-mono)">${salMonthAbbr[e.m]}</text>`;
-  });
-  document.getElementById('salTrendSvg').innerHTML = svg;
-  requestAnimationFrame(()=>{
-    const path = document.querySelector('#salTrendSvg .sal-trend-path');
-    if(!path) return;
-    const len = path.getTotalLength();
-    path.style.strokeDasharray = len; path.style.strokeDashoffset = len;
-    path.getBoundingClientRect();
-    path.style.transition = 'stroke-dashoffset 1s cubic-bezier(.34,1,.4,1)';
-    requestAnimationFrame(()=>{ path.style.strokeDashoffset = 0; });
-  });
+    const pct = (e.osn/max)*100;
+    return `
+    <div class="mo-col">
+      <div class="mo-track"><div class="mo-bar${changed?' peak':''}" data-h="${pct}" style="height:0%" title="${salMonthAbbr[e.m]}: ${fmtRSD(e.osn)}${changed?' (promena)':''}"></div></div>
+      <div class="mo-label">${salMonthAbbr[e.m]}</div>
+    </div>`;
+  }).join('');
+  setTimeout(()=>{
+    document.querySelectorAll('#salTrendChart .mo-bar').forEach((el,i)=>{
+      setTimeout(()=>{ el.style.height = el.dataset.h + '%'; }, i*70);
+    });
+  }, 150);
 }
 
 const salModalOverlay = document.getElementById('salModalOverlay');
