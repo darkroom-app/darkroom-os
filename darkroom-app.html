@@ -791,20 +791,22 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
 .sal-confirm-bar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; padding-bottom:14px; border-bottom:1px solid var(--border); }
 .sal-confirm-bar-text{ font-size:11.5px; color:var(--ink-dim); }
-.sal-confirm-list{ max-height:260px; overflow-y:auto; margin:14px 0; display:flex; flex-direction:column; gap:2px; }
+.sal-confirm-list{ max-height:54vh; overflow-y:auto; margin:14px 0; display:grid; grid-template-columns:1fr 1fr; gap:2px 20px; align-content:start; }
 .sal-confirm-row{ display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--border); }
-.sal-confirm-row:last-child{ border-bottom:none; }
-.sal-confirm-name{ flex:1; font-size:11.5px; font-weight:600; }
-.sal-confirm-amt{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); }
+.sal-confirm-row:nth-last-child(-n+2){ border-bottom:none; }
+.sal-confirm-name{ flex:1; font-size:11.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sal-confirm-amt{ font-family:var(--font-mono); font-size:11px; color:var(--ink-dim); white-space:nowrap; }
 .sal-confirm-warn{ background:var(--coral-soft); color:var(--coral); border-radius:12px; padding:12px 14px; font-size:11.5px; line-height:1.5; margin-top:12px; }
 .sal-modal-grid{ display:grid; grid-template-columns:1fr 1fr; gap:0 14px; }
-.sal-modal-summary{ display:flex; gap:20px; background:var(--card-soft); border-radius:12px; padding:12px 16px; margin:6px 0 14px; }
+.sal-modal-summary{ display:flex; flex-wrap:wrap; gap:14px 0; background:var(--card-soft); border-radius:12px; padding:14px 16px; margin:6px 0 14px; }
 .sal-checkbox-label{ display:flex; align-items:center; gap:8px; font-family:var(--font-body); font-size:12.5px; color:var(--ink); cursor:pointer; }
 .sal-preko-hint{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-dim); margin-top:4px; }
 .sal-checkbox-label input{ width:16px; height:16px; accent-color:var(--gold-deep); cursor:pointer; }
-.sal-modal-summary-item{ flex:1; }
+.sal-modal-summary-item{ flex:1 1 25%; min-width:110px; padding-right:10px; }
 .sal-modal-summary-val{ font-family:var(--font-display); font-weight:700; font-size:14.5px; }
 .sal-modal-summary-label{ font-family:var(--font-mono); font-size:8px; color:var(--ink-faint); text-transform:uppercase; margin-top:2px; }
+.sal-confirm-breakdown .sal-modal-summary-item{ flex:1 1 25%; }
+.sal-confirm-breakdown .sal-modal-summary-val{ font-size:13px; }
 .sal-badge{ display:inline-flex; align-items:center; gap:3px; font-family:var(--font-mono); font-size:8.5px; padding:2px 7px; border-radius:20px; margin-left:6px; text-transform:none; letter-spacing:0; vertical-align:middle; }
 .sal-badge.up{ background:#DCEEDC; color:#2f6b38; }
 .sal-badge.down{ background:var(--coral-soft); color:var(--coral); }
@@ -3150,7 +3152,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 </div>
 
 <div class="modal-overlay" id="salConfirmModalOverlay">
-  <div class="modal-card" style="width:520px; max-height:82vh;">
+  <div class="modal-card" style="width:860px; max-height:88vh;">
     <div class="modal-title">Potvrda isplate — <span id="salConfirmTitleMonth"></span></div>
     <div id="salConfirmWarning"></div>
     <div class="sal-confirm-list" id="salConfirmList"></div>
@@ -11151,10 +11153,18 @@ function openSalConfirmModal(){
       <span class="sal-confirm-amt">${fmtRSD(salUkupno(e))}</span>
     </div>`;
   }).join('');
-  const total = present.reduce((s,t)=>s+salUkupno(salaryFor(t.key, month)),0);
+  const entries = present.map(t=>salaryFor(t.key, month));
+  const sum = (fn) => entries.reduce((s,e)=>s+fn(e),0);
+  const total = sum(salUkupno);
   document.getElementById('salConfirmSummary').innerHTML = `
     <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(total)}</div><div class="sal-modal-summary-label">Ukupno za isplatu</div></div>
-    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${present.length} / ${activeTeamMembers().length}</div><div class="sal-modal-summary-label">Zaposlenih uneto</div></div>`;
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${present.length} / ${activeTeamMembers().length}</div><div class="sal-modal-summary-label">Zaposlenih uneto</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(sum(salBruto))}</div><div class="sal-modal-summary-label">Bruto</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(sum(salNeto))}</div><div class="sal-modal-summary-label">Neto</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(sum(e=>e.prekovremeno||0))}</div><div class="sal-modal-summary-label">Prekovremeno</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val" style="color:var(--teal-deep,var(--teal));">${fmtRSD(sum(salBenefits))}</div><div class="sal-modal-summary-label">Benefiti</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val">${fmtRSD(sum(e=>e.bonus||0))}</div><div class="sal-modal-summary-label">Bonusi</div></div>
+    <div class="sal-modal-summary-item"><div class="sal-modal-summary-val" style="color:var(--coral);">${fmtRSD(sum(e=>e.dedukcije||0))}</div><div class="sal-modal-summary-label">Dedukcije</div></div>`;
   document.getElementById('salConfirmSubmit').disabled = missing.length>0;
   document.getElementById('salConfirmSubmit').style.opacity = missing.length>0 ? '0.5' : '1';
   document.getElementById('salConfirmSubmit').style.cursor = missing.length>0 ? 'not-allowed' : 'pointer';
