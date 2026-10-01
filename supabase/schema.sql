@@ -1895,3 +1895,14 @@ create policy "authenticated can delete kadar_price_deductions" on public.kadar_
 -- team_members column already cover this one too.
 
 alter table public.team_members add column if not exists departure_date date;
+
+
+-- ==== Phase 41: automatic retry of Dropbox receipts that failed transiently (run this query) ====
+-- dropbox-expense-sync used to try Gemini exactly once per file; a 503
+-- "high demand" left the receipt stuck as 'greska' until someone re-saved it
+-- in Dropbox. Now a transient failure sets next_retry_at and a later cron
+-- run re-downloads and retries the same file on its own; retry_count tracks
+-- how many automatic retries it has had. Edge Function only, no RLS change.
+
+alter table public.expense_inbox add column if not exists retry_count int not null default 0;
+alter table public.expense_inbox add column if not exists next_retry_at timestamptz;

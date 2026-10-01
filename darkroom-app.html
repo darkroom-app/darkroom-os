@@ -9884,7 +9884,9 @@ async function renderExpenseInbox(){
         ${item.fxNote ? `<span class="expense-inbox-fx-note">💱 ${escapeHtml(item.fxNote)}</span>` : ''}
       </div>
       ${isError ? `
-      <div class="expense-inbox-error-hint">Automatska obrada ovog fajla nije uspela. Ponovo sačuvaj/postavi fajl u Dropbox da pokušaš opet, ili ukloni.</div>
+      <div class="expense-inbox-error-hint">${item.nextRetryAt
+        ? `Automatska obrada trenutno nije uspela (privremena greška). Sledeći automatski pokušaj: ${new Date(item.nextRetryAt).toLocaleString('sr-RS', { day:'numeric', month:'numeric', hour:'2-digit', minute:'2-digit' })}.`
+        : 'Automatska obrada ovog fajla nije uspela. Ponovo sačuvaj/postavi fajl u Dropbox da pokušaš opet, ili ukloni.'}</div>
       <div class="expense-inbox-actions">
         <button class="expense-inbox-reject" data-id="${item._id}">Ukloni</button>
       </div>` : `
@@ -13182,6 +13184,7 @@ async function loadExpenseInboxFromSupabase(){
         _id: nextId(), dbId: row.id, dropboxPath: row.dropbox_path, fileName: row.file_name, status: row.status,
         receiptStoragePath: row.receipt_storage_path, amount: row.extracted_amount, date: row.extracted_date,
         description: row.extracted_description, category: row.extracted_category, note: row.ai_note, fxNote: row.fx_note,
+        nextRetryAt: row.next_retry_at || null,
       });
     });
     return true;

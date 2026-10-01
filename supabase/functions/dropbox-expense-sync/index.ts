@@ -92,6 +92,18 @@ const VALID_CATEGORIES = [
   "Povraćaj poreza", "Porezi firma", "Računi", "Kirija", "Hardver", "Sajt", "Saradnici",
 ];
 
+const TRANSIENT_STATUSES = new Set([429, 500, 502, 503, 504]);
+// Inside one run: wait 3s, then 8s, before a 2nd and 3rd attempt.
+const INLINE_RETRY_DELAYS_MS = [3000, 8000];
+// Across runs: a file that still failed transiently gets re-downloaded and
+// retried by a later cron run after each of these delays (minutes), then
+// given up on. Covers roughly 9 hours of a Gemini outage.
+const AUTO_RETRY_DELAYS_MIN = [5, 15, 45, 120, 360];
+const MAX_AUTO_RETRIES_PER_RUN = 5;
+
+class TransientError extends Error {}
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 const supabase = createClient(
   Deno.env.get("SUPABASE_URL")!,
   Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
@@ -171,7 +183,10 @@ async function dbxDownload(token: string, path: string): Promise<Uint8Array> {
     method: "POST",
     headers: { authorization: `Bearer ${token}`, "Dropbox-API-Arg": JSON.stringify({ path }) },
   });
-  if (!resp.ok) throw new Error(`download failed for ${path} (${resp.status}): ${await resp.text()}`);
+  if (!resp.ok) {
+    const msg = `download failed for ${path} (${resp.status}): ${await resp.text()}`;
+    throw TRANSIENT_STATUSES.has(resp.status) ? new TransientError(msg) : new Error(msg);
+  }
   return new Uint8Array(await resp.arrayBuffer());
 }
 
@@ -225,11 +240,24 @@ Ne pretvaraj iznos u RSD sam — to radi kod posle tebe, na osnovu zvaničnog ku
     generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
   };
 
-  const resp = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
-    { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) },
-  );
-  if (!resp.ok) throw new Error(`Gemini extraction failed (${resp.status}): ${await resp.text()}`);
+  // Gemini regularly returns 503 "high demand" / 429 for a few seconds at a
+  // time — retry those in place before giving up on the file for this run.
+  let resp: Response | null = null;
+  for (let attempt = 0; ; attempt++) {
+    resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${GEMINI_API_KEY}`,
+      { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) },
+    );
+    if (resp.ok) break;
+    const transient = TRANSIENT_STATUSES.has(resp.status);
+    if (transient && attempt < INLINE_RETRY_DELAYS_MS.length) {
+      await resp.body?.cancel();
+      await sleep(INLINE_RETRY_DELAYS_MS[attempt]);
+      continue;
+    }
+    const msg = `Gemini extraction failed (${resp.status}): ${await resp.text()}`;
+    throw transient ? new TransientError(msg) : new Error(msg);
+  }
   const data = await resp.json();
   const text = data?.candidates?.[0]?.content?.parts
     ?.filter((p: { thought?: boolean }) => !p.thought)
@@ -287,6 +315,21 @@ Deno.serve(async (req) => {
     superadminNames = (superadmins ?? []).map((r: { name: string }) => r.name);
   } catch { /* notifications are best-effort */ }
 
+  // Earlier transient failures whose scheduled retry time has come. Done
+  // before the new-files pass so a success here makes that pass skip the
+  // file as "already in inbox" instead of processing it twice.
+  const autoRetries: Record<string, unknown>[] = [];
+  const { data: dueRows, error: dueError } = await supabase
+    .from("expense_inbox").select("id, status, retry_count, dropbox_path, file_name")
+    .eq("status", "greska").not("next_retry_at", "is", null).lte("next_retry_at", new Date().toISOString())
+    .order("next_retry_at", { ascending: true }).limit(MAX_AUTO_RETRIES_PER_RUN);
+  if (dueError) {
+    autoRetries.push({ ok: false, error: `due retries read failed: ${dueError.message}` });
+  }
+  for (const row of dueRows ?? []) {
+    autoRetries.push(await processReceipt(token, row.dropbox_path, row.file_name, row, true, superadminNames));
+  }
+
   const rootListing = await dbxListFolder(token, WATCH_ROOT, false);
   const yearFolders: DbxEntry[] = rootListing.entries.filter(
     (e: DbxEntry) => e[".tag"] === "folder" && YEAR_FOLDER_RE.test(e.name),
@@ -316,105 +359,19 @@ Deno.serve(async (req) => {
       const fileResults: Record<string, unknown>[] = [];
 
       for (const file of receiptFiles) {
-        // Kept outside the try so the catch block below can also see it —
-        // a previous failed attempt for this exact path (status 'greska')
-        // is retried by UPDATEing that same row rather than skipped or
+        // A previous failed attempt for this exact path (status 'greska') is
+        // retried by UPDATEing that same row rather than skipped or
         // re-inserted (dropbox_path is unique, so a plain insert would
-        // collide with it).
-        let existing: { id: string; status: string } | null = null;
-        try {
-          const { data } = await supabase
-            .from("expense_inbox").select("id, status").eq("dropbox_path", file.path_lower).maybeSingle();
-          existing = data ?? null;
-          if (existing && existing.status !== "greska") {
-            fileResults.push({ file: file.name, skipped: "already in inbox" });
-            continue;
-          }
-
-          const bytes = await dbxDownload(token, file.path_lower);
-          const mimeType = RECEIPT_EXT_MIME[extOf(file.name)];
-          const extracted = await extractReceiptWithGemini(bytes, mimeType, file.name);
-
-          let finalAmount = extracted.amount;
-          let aiNote = extracted.note;
-          let fxNote: string | null = null;
-          if (extracted.currency && extracted.currency !== "RSD" && extracted.amount != null) {
-            const fx = await fetchNbsMiddleRate(extracted.currency, extracted.date);
-            if (fx) {
-              const converted = Math.round(extracted.amount * fx.rate);
-              fxNote = `Originalno: ${extracted.amount.toLocaleString("sr-RS")} ${extracted.currency}, kurs NBS za ${fx.usedDate}: 1 ${extracted.currency} = ${fx.rate.toFixed(4)} RSD → ${converted.toLocaleString("sr-RS")} RSD.`;
-              finalAmount = converted;
-            } else {
-              finalAmount = null;
-              const fxFailNote = `Iznos je u ${extracted.currency}, kurs NBS za konverziju trenutno nije dostupan.`;
-              aiNote = aiNote ? `${aiNote} ${fxFailNote}` : fxFailNote;
-            }
-          }
-
-          const dateForPath = extracted.date ?? new Date().toISOString().slice(0, 10);
-          const storagePath = `${dateForPath.slice(0, 4)}/${dateForPath.slice(5, 7)}/${crypto.randomUUID()}-${file.name}`;
-          const { error: uploadError } = await supabase.storage
-            .from("expense-receipts").upload(storagePath, bytes, { contentType: mimeType });
-          if (uploadError) throw new Error(`storage upload failed: ${uploadError.message}`);
-
-          const inboxRow = {
-            file_name: file.name,
-            receipt_storage_path: storagePath,
-            extracted_amount: finalAmount,
-            extracted_date: extracted.date,
-            extracted_description: extracted.description,
-            extracted_category: extracted.category,
-            ai_note: aiNote,
-            fx_note: fxNote,
-          };
-          // A retry of a previously-failed file updates that same row back
-          // to na_cekanju (clearing the old error) instead of inserting a
-          // second row for the same dropbox_path.
-          const { error: writeError } = existing
-            ? await supabase.from("expense_inbox").update({ ...inboxRow, status: "na_cekanju" }).eq("id", existing.id)
-            : await supabase.from("expense_inbox").insert({ dropbox_path: file.path_lower, ...inboxRow });
-          if (writeError) throw new Error(`expense_inbox write failed: ${writeError.message}`);
-
-          if (superadminNames.length) {
-            try {
-              const amountText = finalAmount != null ? `${finalAmount.toLocaleString("sr-RS")} RSD` : "iznos nepoznat";
-              const notifText = `Novi račun iz Dropbox-a: ${extracted.description} (${amountText}) čeka potvrdu.`;
-              await supabase.from("notifications").insert(
-                superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
-              );
-            } catch { /* notifications are best-effort, receipt is already safely in the inbox */ }
-          }
-
-          fileResults.push({ file: file.name, ok: true });
-        } catch (e) {
-          const errMsg = String(e);
-          // Previously this was discarded once fileResults got pushed below —
-          // nobody reads a cron job's HTTP response, so a failed file just
-          // vanished with no trace and, since the Dropbox cursor already
-          // advanced past it, was never retried automatically either. Now it
-          // becomes a visible 'greska' row (surfaced in the app's expense
-          // inbox panel) instead — re-saving the file in Dropbox changes its
-          // rev, which the next sync picks up as a retry of this same row.
-          try {
-            const failRow = {
-              file_name: file.name,
-              status: "greska",
-              ai_note: `Automatska obrada nije uspela: ${errMsg}`,
-            };
-            if (existing) {
-              await supabase.from("expense_inbox").update(failRow).eq("id", existing.id);
-            } else {
-              await supabase.from("expense_inbox").insert({ dropbox_path: file.path_lower, ...failRow });
-            }
-            if (superadminNames.length) {
-              const notifText = `Obrada računa iz Dropbox-a nije uspela: ${file.name}. Proveri Finansije → Transakcije.`;
-              await supabase.from("notifications").insert(
-                superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
-              );
-            }
-          } catch { /* best-effort — the error is still visible in this run's own response below */ }
-          fileResults.push({ file: file.name, ok: false, error: errMsg });
+        // collide with it). Re-saving the file counts as a fresh start, so
+        // its automatic-retry budget resets.
+        const { data } = await supabase
+          .from("expense_inbox").select("id, status, retry_count").eq("dropbox_path", file.path_lower).maybeSingle();
+        const existing = data ?? null;
+        if (existing && existing.status !== "greska") {
+          fileResults.push({ file: file.name, skipped: "already in inbox" });
+          continue;
         }
+        fileResults.push(await processReceipt(token, file.path_lower, file.name, existing, false, superadminNames));
       }
 
       results.push({ folder: path, seeded: false, processed: receiptFiles.length, files: fileResults });
@@ -429,5 +386,117 @@ Deno.serve(async (req) => {
     results.push({ ok: false, error: `cursor save failed: ${saveCursorError.message}` });
   }
 
-  return jsonResponse({ ok: true, watchedFolders: yearFolders.map((f) => f.path_display), results }, 200);
+  return jsonResponse({ ok: true, watchedFolders: yearFolders.map((f) => f.path_display), results, autoRetries }, 200);
 });
+
+/* Downloads one Dropbox file, has Gemini read it and writes the result into
+   expense_inbox. Never throws — a failure becomes a 'greska' row. When the
+   failure was transient (Gemini overloaded, Dropbox 5xx), next_retry_at
+   schedules a later cron run to try the same file again on its own. */
+async function processReceipt(
+  token: string,
+  pathLower: string,
+  fileName: string,
+  existing: { id: string; status: string; retry_count?: number | null } | null,
+  isAutoRetry: boolean,
+  superadminNames: string[],
+): Promise<Record<string, unknown>> {
+  const file = { path_lower: pathLower, name: fileName };
+  try {
+    const bytes = await dbxDownload(token, file.path_lower);
+    const mimeType = RECEIPT_EXT_MIME[extOf(file.name)];
+    const extracted = await extractReceiptWithGemini(bytes, mimeType, file.name);
+
+    let finalAmount = extracted.amount;
+    let aiNote = extracted.note;
+    let fxNote: string | null = null;
+    if (extracted.currency && extracted.currency !== "RSD" && extracted.amount != null) {
+      const fx = await fetchNbsMiddleRate(extracted.currency, extracted.date);
+      if (fx) {
+        const converted = Math.round(extracted.amount * fx.rate);
+        fxNote = `Originalno: ${extracted.amount.toLocaleString("sr-RS")} ${extracted.currency}, kurs NBS za ${fx.usedDate}: 1 ${extracted.currency} = ${fx.rate.toFixed(4)} RSD → ${converted.toLocaleString("sr-RS")} RSD.`;
+        finalAmount = converted;
+      } else {
+        finalAmount = null;
+        const fxFailNote = `Iznos je u ${extracted.currency}, kurs NBS za konverziju trenutno nije dostupan.`;
+        aiNote = aiNote ? `${aiNote} ${fxFailNote}` : fxFailNote;
+      }
+    }
+
+    const dateForPath = extracted.date ?? new Date().toISOString().slice(0, 10);
+    const storagePath = `${dateForPath.slice(0, 4)}/${dateForPath.slice(5, 7)}/${crypto.randomUUID()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("expense-receipts").upload(storagePath, bytes, { contentType: mimeType });
+    if (uploadError) throw new Error(`storage upload failed: ${uploadError.message}`);
+
+    const inboxRow = {
+      file_name: file.name,
+      receipt_storage_path: storagePath,
+      extracted_amount: finalAmount,
+      extracted_date: extracted.date,
+      extracted_description: extracted.description,
+      extracted_category: extracted.category,
+      ai_note: aiNote,
+      fx_note: fxNote,
+      retry_count: 0,
+      next_retry_at: null,
+    };
+    // A retry of a previously-failed file updates that same row back to
+    // na_cekanju (clearing the old error) instead of inserting a second row
+    // for the same dropbox_path.
+    const { error: writeError } = existing
+      ? await supabase.from("expense_inbox").update({ ...inboxRow, status: "na_cekanju" }).eq("id", existing.id)
+      : await supabase.from("expense_inbox").insert({ dropbox_path: file.path_lower, ...inboxRow });
+    if (writeError) throw new Error(`expense_inbox write failed: ${writeError.message}`);
+
+    if (superadminNames.length) {
+      try {
+        const amountText = finalAmount != null ? `${finalAmount.toLocaleString("sr-RS")} RSD` : "iznos nepoznat";
+        const notifText = `Novi račun iz Dropbox-a: ${extracted.description} (${amountText}) čeka potvrdu.`;
+        await supabase.from("notifications").insert(
+          superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
+        );
+      } catch { /* notifications are best-effort, receipt is already safely in the inbox */ }
+    }
+
+    return { file: file.name, ok: true, autoRetry: isAutoRetry };
+  } catch (e) {
+    const errMsg = String(e);
+    // The Dropbox cursor has already moved past this file, so the row below
+    // is the only trace of it. Transient failures get a next_retry_at so a
+    // later cron run retries on its own; anything else waits for a human
+    // (re-save the file in Dropbox, or remove the row).
+    const transient = e instanceof TransientError;
+    const attempts = isAutoRetry ? (existing?.retry_count ?? 0) + 1 : 0;
+    const willRetry = transient && attempts < AUTO_RETRY_DELAYS_MIN.length;
+    const nextRetryAt = willRetry
+      ? new Date(Date.now() + AUTO_RETRY_DELAYS_MIN[attempts] * 60_000).toISOString()
+      : null;
+    try {
+      const failRow = {
+        file_name: file.name,
+        status: "greska",
+        ai_note: `Automatska obrada nije uspela: ${errMsg}`,
+        retry_count: attempts,
+        next_retry_at: nextRetryAt,
+      };
+      if (existing) {
+        await supabase.from("expense_inbox").update(failRow).eq("id", existing.id);
+      } else {
+        await supabase.from("expense_inbox").insert({ dropbox_path: file.path_lower, ...failRow });
+      }
+      // Notify only when a human actually needs to step in: a non-transient
+      // failure, or the automatic retries running out. A transient failure
+      // that will be retried on its own stays quiet.
+      if (superadminNames.length && !willRetry) {
+        const notifText = transient
+          ? `Obrada računa iz Dropbox-a nije uspela ni posle ${attempts + 1} automatskih pokušaja: ${file.name}. Proveri Finansije → Transakcije.`
+          : `Obrada računa iz Dropbox-a nije uspela: ${file.name}. Proveri Finansije → Transakcije.`;
+        await supabase.from("notifications").insert(
+          superadminNames.map((name) => ({ recipient_name: name, kind: "expense_pending", text: notifText, project_code: null })),
+        );
+      }
+    } catch { /* best-effort — the error is still visible in this run's own response */ }
+    return { file: file.name, ok: false, error: errMsg, autoRetry: isAutoRetry, nextRetryAt };
+  }
+}
