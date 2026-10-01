@@ -1129,9 +1129,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 /* Plate → Unesi platu's "Kretanje osnovice" reuses the mo-bar/mo-col/mo-track/
    mo-label building blocks from Statistika's month chart above instead of
    its own bar styling — same gradient/animation, just a shorter chart area
-   (fits a modal field) and its own soft drop-shadow per bar. */
-.sal-trend-chart{ display:flex; align-items:flex-end; gap:6px; height:90px; }
-.sal-trend-chart .mo-bar{ box-shadow:0 6px 10px -4px rgba(138,95,19,0.35); }
+   (fits a modal field), narrower bars with more breathing room between them
+   to match the reference look, its own soft drop-shadow per bar, and the
+   changed-month highlight is a genuinely different hue (coral) instead of
+   mo-bar.peak's lighter-gold-plus-glow-ring treatment. */
+.sal-trend-chart{ display:flex; align-items:flex-end; gap:14px; height:90px; }
+.sal-trend-chart .mo-bar{ max-width:16px; box-shadow:0 6px 10px -4px rgba(138,95,19,0.35); }
+.sal-trend-chart .mo-bar.peak{ background:linear-gradient(180deg, var(--coral), var(--coral-deep, #A85338)); box-shadow:0 6px 10px -4px rgba(168,83,56,0.4); }
 .mo-label{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); }
 
 /* donut */
