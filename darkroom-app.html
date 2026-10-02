@@ -702,6 +702,20 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled .inflow-summary{ margin-bottom:8px; }
   #finTabPregled #rankTabs .dash-proj-tab{ padding:5px 9px; font-size:11px; }
 }
+/* Segmented bars (segBarHtml) */
+.seg-bar{ display:flex; gap:4px; height:8px; --seg-color:var(--gold); --seg-glow:rgba(193,159,84,0.5); --seg-alt:#5FA968; --seg-alt-glow:rgba(95,169,104,0.5); }
+.seg-bar .seg{ flex:1; min-width:0; border-radius:99px; background:var(--border); transition:background .3s ease, box-shadow .3s ease; }
+.seg-bar.go .seg.t{ background:var(--seg-color); box-shadow:0 0 7px var(--seg-glow); }
+.seg-bar.go .seg.t.alt{ background:var(--seg-alt); box-shadow:0 0 7px var(--seg-alt-glow); }
+.seg-bar.in{ --seg-color:#5FA968; --seg-glow:rgba(95,169,104,0.5); }
+.seg-bar.out{ --seg-color:var(--coral); --seg-glow:rgba(217,119,87,0.45); }
+.seg-bar.runway.ok{ --seg-color:#5FA968; --seg-glow:rgba(95,169,104,0.5); }
+.seg-bar.runway.mid{ --seg-color:var(--gold); }
+.seg-bar.runway.low{ --seg-color:var(--coral); --seg-glow:rgba(217,119,87,0.45); }
+.lb-info .seg-bar{ height:7px; }
+.pv-track .seg-bar{ height:6px; gap:3px; }
+.pv-track{ height:auto; background:none; overflow:visible; }
+@media (prefers-reduced-motion: reduce){ .seg-bar .seg{ transition:none !important; } }
 /* Najvredniji projekti / Prihod po klijentu (merged panel) */
 .rank-head{ flex-wrap:wrap; gap:8px; }
 .rank-head .cal-view-toggle{ display:inline-flex; }
@@ -715,7 +729,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .inflow-row{ display:grid; grid-template-columns:150px minmax(0,1fr) 118px; align-items:center; gap:12px; }
 .inflow-row .lb-value{ min-width:0; font-variant-numeric:tabular-nums; }
 .inflow-label{ font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.lb-fill.inflow-fill{ background:linear-gradient(90deg, #3d7046, #4C8A55); }
 .inflow-partial{ font-family:var(--font-mono); font-size:8.5px; font-weight:400; color:var(--gold); margin-left:4px; text-transform:uppercase; letter-spacing:0.04em; }
 .inflow-row.future{ opacity:0.4; }
 .inflow-item{ border-radius:9px; border:1px solid transparent; padding:3px 6px; margin:0 -6px; transition:background .12s ease, border-color .12s ease; }
@@ -745,8 +758,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .pv-code{ font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--gold-deep); margin-right:7px; }
 .pv-meta{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pv-track{ height:5px; border-radius:4px; background:var(--border); margin-top:6px; overflow:hidden; }
-.pv-fill{ height:100%; border-radius:4px; background:var(--gold); position:relative; overflow:hidden; transition:width .8s cubic-bezier(.34,1.1,.4,1); }
-.pv-fill-paid{ position:absolute; left:0; top:0; bottom:0; background:#4C8A55; }
 .pv-right{ text-align:right; flex-shrink:0; }
 .pv-value{ font-family:var(--font-display); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .pv-noprice{ font-family:var(--font-mono); font-size:10px; font-weight:400; color:var(--ink-faint); }
@@ -1304,10 +1315,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-runway-val{ font-family:var(--font-display); font-weight:700; font-size:20px; line-height:1; }
 .fin-runway-val small{ font-size:11px; font-weight:600; color:var(--ink-dim); }
 .fin-runway-val.ok{ color:#4C8A55; } .fin-runway-val.mid{ color:var(--gold); } .fin-runway-val.low{ color:var(--coral); }
-.fin-runway-track{ position:relative; height:7px; border-radius:5px; background:var(--border); overflow:hidden; }
-.fin-runway-fill{ height:100%; border-radius:5px; transition:width 1s cubic-bezier(.34,1.1,.4,1); }
-.fin-runway-fill.ok{ background:#4C8A55; } .fin-runway-fill.mid{ background:var(--gold); } .fin-runway-fill.low{ background:var(--coral); }
-.fin-runway-tick{ position:absolute; top:0; bottom:0; width:2px; background:var(--card-soft); }
 .fin-runway-scale{ position:relative; height:12px; margin-top:4px; font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); }
 .fin-runway-scale span{ position:absolute; top:0; }
 .fin-runway-scale span[style*="25%"], .fin-runway-scale span[style*="50%"]{ transform:translateX(-50%); }
@@ -9753,6 +9760,23 @@ function receivablesTotal(){
    summing both would double it. "Plate" is deliberately not one of
    TX_CATEGORIES' manual-entry options, so this can never exclude a real
    hand-entered transaction, only the auto-synced payroll rows. */
+/* Segmented bar: a row of rounded pills, the first ⌈pct⌉ of them lit in the
+   bar's color with a soft glow, the rest dim — Finansije's bar charts all
+   use it. altPct lights the first part in the alternate color instead (e.g.
+   paid vs unpaid). Pills light up left to right once animateSegBars() runs. */
+function segBarHtml(pct, cls, segs, altPct){
+  const n = segs || 10;
+  const on = pct > 0 ? Math.max(1, Math.round(Math.min(100, pct) / 100 * n)) : 0;
+  const alt = altPct > 0 ? Math.min(on, Math.max(1, Math.round(Math.min(100, altPct) / 100 * n))) : 0;
+  let html = '';
+  for(let i=0;i<n;i++) html += `<span class="seg${i<on ? ' t' : ''}${i<alt ? ' alt' : ''}" style="transition-delay:${i*45}ms;"></span>`;
+  return `<div class="seg-bar${cls ? ' '+cls : ''}">${html}</div>`;
+}
+function animateSegBars(root, delay){
+  const bars = root.querySelectorAll('.seg-bar');
+  bars.forEach(b=>b.getBoundingClientRect());
+  setTimeout(()=> bars.forEach((b,i)=> setTimeout(()=> b.classList.add('go'), Math.min(i,12)*60)), delay==null ? 120 : delay);
+}
 /* "Pokriva troškove": koliko meseci trenutno stanje pokriva po prosečnom
    mesečnom trošku poslednja 3 završena meseca (plate + odliv). Traka ide do
    12 meseci; < 3 crveno, 3–6 žuto, 6+ zeleno. */
@@ -9777,10 +9801,7 @@ function finRunwayHtml(balance){
         <span class="fin-runway-label">Pokriva troškove</span>
         <span class="fin-runway-val ${level}">${shown} <small>${runway >= 12 ? 'meseci' : 'meseca'}</small></span>
       </div>
-      <div class="fin-runway-track">
-        <div class="fin-runway-fill ${level}" style="width:0%;" data-w="${fillPct.toFixed(1)}%"></div>
-        <span class="fin-runway-tick" style="left:25%;"></span><span class="fin-runway-tick" style="left:50%;"></span>
-      </div>
+      ${segBarHtml(fillPct, 'runway '+level, 12)}
       <div class="fin-runway-scale"><span style="left:0;">0</span><span style="left:25%;">3</span><span style="left:50%;">6</span><span style="right:0;">12 mes.</span></div>
       <div class="fin-runway-sub">Prosečan mesečni trošak (${span}): <b>${fmtRSD(avgCost)}</b></div>
     </div>`;
@@ -9813,8 +9834,7 @@ function renderFinHero(){
     ${outTrend!=null ? `<div class="fin-hero-trend ${outTrend>=0?'up':'down'}">Trošak ovog meseca ${outTrend>=0?'▲':'▼'} <b>${Math.abs(outTrend).toFixed(0)}%</b> vs prošli mesec</div>` : ''}
     ${finRunwayHtml(balance)}`;
   animateCountUp(document.querySelector('#finHeroMain .fcu'), balance, {suffix:' RSD'});
-  const runwayFill = document.querySelector('#finHeroMain .fin-runway-fill');
-  if(runwayFill){ runwayFill.getBoundingClientRect(); runwayFill.style.width = runwayFill.dataset.w; }
+  animateSegBars(document.getElementById('finHeroMain'), 200);
 
   document.getElementById('finHeroSide').innerHTML = `
     <div class="fin-hero-mini">
@@ -10193,15 +10213,11 @@ function renderTopValueProjects(){
       <div class="lb-rank">#${i+1}</div>
       <div class="lb-info">
         <div class="lb-name">${escapeHtml(p.code)} — ${escapeHtml(p.name)}</div>
-        <div class="lb-track"><div class="lb-fill" data-w="${(p.value/max)*100}" style="width:0%"></div></div>
+        ${segBarHtml((p.value/max)*100)}
       </div>
       <div class="lb-value">${fmtRSD(p.value)}</div>
     </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema projekata sa cenom za ovaj filter.</div>';
-  setTimeout(()=>{
-    document.querySelectorAll('#topValueProjectsList .lb-fill').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
-    });
-  }, 150);
+  animateSegBars(document.getElementById('topValueProjectsList'));
 }
 
 /* Vrednost projekta: vrednost svakog projekta (zbir cena kadrova + dodatnih
@@ -10260,7 +10276,7 @@ function renderProjectValueDonut(){
       <div class="pv-info">
         <div class="pv-name"><span class="pv-code">${escapeHtml(r.p.code)}</span>${escapeHtml(r.p.name)}</div>
         <div class="pv-meta">${escapeHtml(r.p.client||'')}${r.p.startDate ? ' · '+(formatIsoDateHuman(r.p.startDate)||r.p.startDate) : ''}</div>
-        <div class="pv-track"><div class="pv-fill" data-w="${(r.value/max*100).toFixed(1)}" style="width:0%;"><div class="pv-fill-paid" style="width:${paidPct}%;"></div></div></div>
+        <div class="pv-track">${segBarHtml(r.value/max*100, 'pv', 10, r.value/max*paidPct)}</div>
       </div>
       <div class="pv-right">
         <div class="pv-value">${r.value>0 ? fmtRSD(r.value) : '<span class="pv-noprice">Bez cene</span>'}</div>
@@ -10268,10 +10284,7 @@ function renderProjectValueDonut(){
       </div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema projekata sa cenom za izabrane filtere.</div>';
-  // Same staggered fill-in as the leaderboard bars.
-  setTimeout(()=>{
-    listEl.querySelectorAll('.pv-fill').forEach((el,i)=>{ setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, Math.min(i,12)*60); });
-  }, 120);
+  animateSegBars(listEl);
   listEl.querySelectorAll('.pv-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       const proj = allProjects.find(x=>x.code===row.dataset.code);
@@ -10378,14 +10391,12 @@ function renderInflowBoard(){
     <div class="inflow-item">
       <div class="inflow-row${r.future ? ' future' : ''}">
         <div class="inflow-label">${escapeHtml(r.label)}${r.hint ? ` <span class="cal-filter-hint">${r.hint}</span>` : ''}${r.partial ? ' <span class="inflow-partial">u toku</span>' : ''}</div>
-        <div class="lb-track"><div class="lb-fill inflow-fill" data-w="${r.future ? 0 : (r.value/max)*100}" style="width:0%"></div></div>
+        ${segBarHtml(r.future ? 0 : (r.value/max)*100, 'in')}
         <div class="lb-value">${r.future ? '—' : fmtRSD(r.value)}</div>
       </div>
       ${detailHtml(r)}
     </div>`).join('');
-  setTimeout(()=>{
-    listEl.querySelectorAll('.lb-fill').forEach((el,i)=>{ setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*50); });
-  }, 120);
+  animateSegBars(listEl);
 }
 document.querySelectorAll('#inflowModes .dash-proj-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{ inflowMode = btn.dataset.mode; renderInflowBoard(); });
@@ -10422,16 +10433,12 @@ function renderClientRevenueBoard(){
       <div class="lb-avatar" style="background:${grad}">${clientInitials(name)}</div>
       <div class="lb-info">
         <div class="lb-name">${escapeHtml(name)}</div>
-        <div class="lb-track"><div class="lb-fill" data-w="${(val/max)*100}" style="width:0%"></div></div>
+        ${segBarHtml((val/max)*100)}
       </div>
       <div class="lb-value">${fmtRSD(val)}</div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka o cenovniku.</div>';
-  setTimeout(()=>{
-    document.querySelectorAll('#finClientLeaderboard .lb-fill').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
-    });
-  }, 150);
+  animateSegBars(document.getElementById('finClientLeaderboard'));
 }
 
 function renderTopExpenses(){
@@ -10443,15 +10450,11 @@ function renderTopExpenses(){
       <div class="lb-rank">#${i+1}</div>
       <div class="lb-info">
         <div class="lb-name">${escapeHtml(t.desc)}</div>
-        <div class="lb-track"><div class="lb-fill" data-w="${(t.amount/max)*100}" style="width:0%; background:linear-gradient(90deg, var(--coral), #a8543a);"></div></div>
+        ${segBarHtml((t.amount/max)*100, 'out')}
       </div>
       <div class="lb-value">${fmtK(t.amount)} RSD</div>
     </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema odliva ovog meseca.</div>';
-  setTimeout(()=>{
-    document.querySelectorAll('#topExpensesList .lb-fill').forEach((el,i)=>{
-      setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
-    });
-  }, 150);
+  animateSegBars(document.getElementById('topExpensesList'));
 }
 
 /* Projekcija: trosak se izvodi iz stvarnih poslednja 3 zavrsena meseca
