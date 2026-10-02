@@ -634,6 +634,31 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 #finDonutWrap .donut-hole-val{ font-size:14px; font-weight:400; font-variant-numeric:tabular-nums; }
 #finDonutWrap .donut-hole-label{ max-width:86%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cal-filter-item.sep{ border-top:1px solid var(--border); }
+/* Vrednost projekta */
+#projValuePanel{ display:flex; flex-direction:column; }
+.pv-toolbar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+.pv-search{ flex:1 1 130px; width:auto; min-width:120px; padding:8px 12px; }
+.pv-toolbar .cal-filter-btn{ padding:8px 11px; gap:6px; font-size:12px; }
+.pv-summary{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-bottom:12px; }
+.pv-stat{ background:var(--card-soft); border-radius:12px; padding:10px 12px; min-width:0; }
+.pv-stat-val{ font-family:var(--font-display); font-weight:700; font-size:14px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-variant-numeric:tabular-nums; }
+.pv-stat-val.in{ color:#4C8A55; } .pv-stat-val.out{ color:var(--coral); }
+.pv-stat-label{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-top:3px; }
+.pv-list{ flex:1; min-height:0; max-height:340px; overflow-y:auto; padding-right:3px; }
+.pv-row{ display:flex; align-items:center; gap:14px; padding:9px 8px; border-radius:10px; border:1px solid transparent; cursor:pointer; opacity:0; animation:legendItemIn .35s ease both; transition:background .12s ease, border-color .12s ease; }
+.pv-row:hover{ background:var(--card-soft); border-color:var(--gold); }
+.pv-row + .pv-row{ margin-top:2px; }
+.pv-info{ flex:1; min-width:0; }
+.pv-name{ font-size:12px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pv-code{ font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--gold-deep); margin-right:7px; }
+.pv-meta{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pv-track{ height:5px; border-radius:4px; background:var(--border); margin-top:6px; overflow:hidden; }
+.pv-fill{ height:100%; border-radius:4px; background:var(--gold); position:relative; overflow:hidden; }
+.pv-fill-paid{ position:absolute; left:0; top:0; bottom:0; background:#4C8A55; }
+.pv-right{ text-align:right; flex-shrink:0; }
+.pv-value{ font-family:var(--font-display); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.pv-noprice{ font-family:var(--font-mono); font-size:10px; font-weight:400; color:var(--ink-faint); }
+.pv-paid{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:4px; display:flex; align-items:center; justify-content:flex-end; gap:6px; white-space:nowrap; }
 .cal-filter-hint{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-left:4px; }
 .modern-donut-svg{ display:block; overflow:visible; }
 .modern-donut-seg{ transition:none; }
@@ -2774,16 +2799,22 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
         </div>
         <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
-          <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="folder"></i>Vrednost projekata po statusu</div></div>
-            <div class="fin-mini-stat"><span class="fin-mini-stat-val" id="finActiveProjCount">0</span><span class="fin-mini-stat-label">aktivnih projekata</span></div>
-            <div class="donut-row">
-              <div class="donut-wrap modern solid" id="statusDonutWrap">
-                <div class="modern-donut-ring" id="statusDonutRing"></div>
-                <div class="donut-hole"><div class="donut-hole-val" id="statusDonutTotal">0</div><div class="donut-hole-label">RSD</div></div>
-              </div>
-              <div class="donut-legend" id="statusDonutLegend"></div>
+          <div class="stat-panel" id="projValuePanel">
+            <div class="stat-panel-head fin-cost-head">
+              <div><div class="stat-panel-title"><i class="ui-ico" data-ico="folder"></i>Vrednost projekta</div><div class="stat-panel-sub" id="pvPeriodSub"></div></div>
             </div>
+            <div class="pv-toolbar">
+              <div class="client-search pv-search">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+                <input type="text" id="pvSearchInput" placeholder="Pretraži projekat ili šifru...">
+              </div>
+              <div class="cal-filter" id="filterPvYear"><div class="cal-filter-btn"><span id="filterPvYearLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterPvYearMenu"></div></div>
+              <div class="cal-filter" id="filterPvPeriod"><div class="cal-filter-btn"><span id="filterPvPeriodLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterPvPeriodMenu"></div></div>
+              <div class="cal-filter" id="filterPvClient"><div class="cal-filter-btn"><span id="filterPvClientLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterPvClientMenu"></div></div>
+              <div class="cal-filter" id="filterPvStatus"><div class="cal-filter-btn"><span id="filterPvStatusLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterPvStatusMenu"></div></div>
+            </div>
+            <div class="pv-summary" id="pvSummary"></div>
+            <div class="pv-list" id="pvList"></div>
           </div>
           <div class="stat-panel">
             <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="layers"></i>Najvredniji aktivni projekti</div></div>
@@ -9867,27 +9898,48 @@ function wireCalFilter(rootId, onPick){
     item.onclick = ()=>{ root.classList.remove('open'); onPick(item.dataset.val); };
   });
 }
-function buildFinCostFilters(){
-  const year = finCostPeriod.year || TODAY.y;
-  document.getElementById('filterFinCostYearLabel').textContent = `${year}.`;
-  document.getElementById('filterFinCostYearMenu').innerHTML = finFlowAvailableYears().map(y=>
-    `<div class="cal-filter-item" data-val="${y}">${y}.</div>`).join('');
+/* Shared year + period filter builder (Struktura troška, Vrednost projekta).
+   year: 'all' | number; period: 'year' | 'q0'..'q3' | 'm0'..'m11'. With
+   'all' years the period is fixed to the whole range ("Ceo period"). */
+function buildYearPeriodFilters(prefix, state, years, onChange){
+  const year = state.year;
+  document.getElementById(prefix+'YearLabel').textContent = year==='all' ? 'Sve godine' : `${year}.`;
+  document.getElementById(prefix+'YearMenu').innerHTML = `<div class="cal-filter-item" data-val="all">Sve godine</div>` +
+    years.map((y,i)=>`<div class="cal-filter-item${i===0 ? ' sep' : ''}" data-val="${y}">${y}.</div>`).join('');
   // Tekuća godina: samo kvartali/meseci koji su već počeli.
-  const lastM = year===TODAY.y ? TODAY.m-1 : 11;
   const periods = ['year'];
-  for(let q=0;q<4;q++) if(q*3 <= lastM) periods.push('q'+q);
-  for(let m=0;m<=lastM;m++) periods.push('m'+m);
-  if(!periods.includes(finCostPeriod.period)) finCostPeriod.period = 'year';
-  document.getElementById('filterFinCostPeriodLabel').textContent = finCostPeriodShort(finCostPeriod.period);
-  document.getElementById('filterFinCostPeriodMenu').innerHTML = periods.map(p=>
-    `<div class="cal-filter-item${p==='q0'||p==='m0' ? ' sep' : ''}" data-val="${p}">${finCostPeriodShort(p)}${p[0]==='q' ? ` <span class="cal-filter-hint">${finQuarterSpan(+p.slice(1))}</span>` : ''}</div>`).join('');
-  wireCalFilter('filterFinCostYear', v=>{ finCostPeriod.year = parseInt(v,10); renderFinDonut(); });
-  wireCalFilter('filterFinCostPeriod', v=>{ finCostPeriod.period = v; renderFinDonut(); });
-  document.getElementById('finCostPeriodSub').textContent = finCostPeriodText(year, finCostPeriod.period);
+  if(year!=='all'){
+    const lastM = year===TODAY.y ? TODAY.m-1 : 11;
+    for(let q=0;q<4;q++) if(q*3 <= lastM) periods.push('q'+q);
+    for(let m=0;m<=lastM;m++) periods.push('m'+m);
+  }
+  if(!periods.includes(state.period)) state.period = 'year';
+  const short = p => (year==='all' && p==='year') ? 'Ceo period' : finCostPeriodShort(p);
+  document.getElementById(prefix+'PeriodLabel').textContent = short(state.period);
+  document.getElementById(prefix+'PeriodMenu').innerHTML = periods.map(p=>
+    `<div class="cal-filter-item${p==='q0'||p==='m0' ? ' sep' : ''}" data-val="${p}">${short(p)}${p[0]==='q' ? ` <span class="cal-filter-hint">${finQuarterSpan(+p.slice(1))}</span>` : ''}</div>`).join('');
+  wireCalFilter(prefix+'Year', v=>{ state.year = v==='all' ? 'all' : parseInt(v,10); onChange(); });
+  wireCalFilter(prefix+'Period', v=>{ state.period = v; onChange(); });
+}
+function yearPeriodText(year, period, firstYear){
+  if(year==='all') return `Ukupno za ceo period (${firstYear}–${TODAY.y})`;
+  return finCostPeriodText(year, period);
+}
+// Does an ISO date fall in the selected year/period?
+function inYearPeriod(iso, year, period){
+  if(year==='all') return true;
+  if(!iso) return false;
+  return txYear(iso)===year && finCostMonths(period).includes(txMonth(iso));
+}
+function buildFinCostFilters(){
+  if(finCostPeriod.year==null) finCostPeriod.year = TODAY.y;
+  const years = finFlowAvailableYears();
+  buildYearPeriodFilters('filterFinCost', finCostPeriod, years, renderFinDonut);
+  document.getElementById('finCostPeriodSub').textContent = yearPeriodText(finCostPeriod.year, finCostPeriod.period, years[years.length-1]);
 }
 function finCostComponents(year, months){
   const comps = { osnovica:0, bonus:0, prekovremeno:0, porez:0, benefiti:0 };
-  salaryEntries.filter(e=>e.year===year && months.includes(e.month)).forEach(e=>{
+  salaryEntries.filter(e=>year==='all' || (e.year===year && months.includes(e.month))).forEach(e=>{
     comps.osnovica += e.osnovica;
     comps.bonus += e.bonus;
     comps.prekovremeno += e.prekovremeno;
@@ -9896,7 +9948,7 @@ function finCostComponents(year, months){
   });
   const items = Object.keys(comps).filter(k=>comps[k]>0).map(k=>({ label:salCatLabels[k], value:comps[k], color:salCatColors[k] }));
   const txCats = {};
-  allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && t.date && txYear(t.date)===year && months.includes(txMonth(t.date))).forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
+  allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && t.date && (year==='all' || (txYear(t.date)===year && months.includes(txMonth(t.date))))).forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
   Object.keys(txCats).forEach(c=>{
     items.push({ label:c, value:txCats[c], color: categoryColorVar[c] || 'var(--ink-faint)' });
   });
@@ -9969,8 +10021,7 @@ function renderModernDonut(ringId, legendId, items, opts){
 }
 function renderFinDonut(){
   buildFinCostFilters();
-  const year = finCostPeriod.year || TODAY.y;
-  const items = finCostComponents(year, finCostMonths(finCostPeriod.period));
+  const items = finCostComponents(finCostPeriod.year, finCostMonths(finCostPeriod.period));
   const valEl = document.getElementById('finDonutTotal');
   const labelEl = document.querySelector('#finDonutWrap .donut-hole-label');
   const fmtNum = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
@@ -10018,19 +10069,78 @@ function renderTopValueProjects(){
   }, 150);
 }
 
-function renderProjectValueDonut(){
-  const colorMap = { "U toku":"var(--gold)", "Revizija":"var(--coral)", "Na čekanju":"var(--ink-faint)", "Završeno":"#4C8A55" };
-  const sums = {};
-  allProjects.forEach(p=>{ sums[p.status] = (sums[p.status]||0) + projectValueByCode(p.code); });
-  const items = Object.keys(sums).filter(c=>sums[c]>0)
-    .map(c=>({ label:c, value:sums[c], color:colorMap[c]||'var(--ink-faint)' }))
-    .sort((a,b)=>b.value-a.value);
-  const total = renderModernDonut('statusDonutRing', 'statusDonutLegend', items, { solid:true });
-  animateCountUp(document.getElementById('statusDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
-  setTimeout(()=>{ document.getElementById('statusDonutWrap').classList.add('shown'); }, 100);
-  const activeCount = allProjects.filter(p=>p.status==='U toku' || p.status==='Revizija').length;
-  animateCountUp(document.getElementById('finActiveProjCount'), activeCount, {duration:700});
+/* Vrednost projekta: vrednost svakog projekta (zbir cena kadrova + dodatnih
+   stavki, projectPricedItems) sa filterima po periodu (datum početka
+   projekta), klijentu, statusu i pretragom. Projekti bez unete cene se
+   prikazuju samo kad ih tražiš po imenu/šifri. */
+const pvFilters = { year:'all', period:'year', client:'all', status:'all', q:'' };
+function projectValueYears(){
+  return [...new Set(allProjects.map(p=>p.startDate ? txYear(p.startDate) : p.year).filter(Boolean))].sort((a,b)=>b-a);
 }
+function buildPvFilters(){
+  const years = projectValueYears();
+  buildYearPeriodFilters('filterPv', pvFilters, years, renderProjectValueDonut);
+  const clients = uniqueSorted(allProjects.map(p=>p.client).filter(Boolean));
+  document.getElementById('filterPvClientLabel').textContent = pvFilters.client==='all' ? 'Svi klijenti' : pvFilters.client;
+  document.getElementById('filterPvClientMenu').innerHTML = `<div class="cal-filter-item" data-val="all">Svi klijenti</div>` +
+    clients.map(c=>`<div class="cal-filter-item" data-val="${escapeHtml(c)}">${escapeHtml(c)}</div>`).join('');
+  wireCalFilter('filterPvClient', v=>{ pvFilters.client = v; renderProjectValueDonut(); });
+  const statuses = ['U toku','Revizija','Na čekanju','Završeno'].filter(st=>allProjects.some(p=>p.status===st));
+  document.getElementById('filterPvStatusLabel').textContent = pvFilters.status==='all' ? 'Svi statusi' : pvFilters.status;
+  document.getElementById('filterPvStatusMenu').innerHTML = `<div class="cal-filter-item" data-val="all">Svi statusi</div>` +
+    statuses.map(st=>`<div class="cal-filter-item" data-val="${st}">${st}</div>`).join('');
+  wireCalFilter('filterPvStatus', v=>{ pvFilters.status = v; renderProjectValueDonut(); });
+  document.getElementById('pvPeriodSub').textContent = yearPeriodText(pvFilters.year, pvFilters.period, years[years.length-1]) + ' · po datumu početka projekta';
+}
+function renderProjectValueDonut(){
+  buildPvFilters();
+  const needle = pvFilters.q.trim().toLowerCase();
+  const rows = allProjects
+    .filter(p=> inYearPeriod(p.startDate || (p.year ? `${p.year}-01-01` : ''), pvFilters.year, pvFilters.period))
+    .filter(p=> pvFilters.client==='all' || p.client===pvFilters.client)
+    .filter(p=> pvFilters.status==='all' || p.status===pvFilters.status)
+    .filter(p=> !needle || p.name.toLowerCase().includes(needle) || p.code.toLowerCase().includes(needle))
+    .map(p=>{
+      const items = projectPricedItems(p);
+      const value = items.reduce((s,r)=>s+r.price,0);
+      const paid = items.filter(r=>r.status==='Plaćeno').reduce((s,r)=>s+r.price,0);
+      return { p, value, paid };
+    })
+    .filter(r=> needle || r.value>0)
+    .sort((a,b)=> b.value-a.value);
+  const total = rows.reduce((s,r)=>s+r.value,0);
+  const paid = rows.reduce((s,r)=>s+r.paid,0);
+  const valued = rows.filter(r=>r.value>0).length;
+  document.getElementById('pvSummary').innerHTML = `
+    <div class="pv-stat"><div class="pv-stat-val">${fmtRSD(total)}</div><div class="pv-stat-label">Ukupna vrednost</div></div>
+    <div class="pv-stat"><div class="pv-stat-val">${valued}</div><div class="pv-stat-label">${valued===1 ? 'Projekat' : 'Projekata'} sa cenom</div></div>
+    <div class="pv-stat"><div class="pv-stat-val in">${fmtRSD(paid)}</div><div class="pv-stat-label">Naplaćeno</div></div>
+    <div class="pv-stat"><div class="pv-stat-val out">${fmtRSD(total-paid)}</div><div class="pv-stat-label">Nenaplaćeno</div></div>`;
+  const max = Math.max(...rows.map(r=>r.value), 1);
+  const listEl = document.getElementById('pvList');
+  listEl.innerHTML = rows.length ? rows.map((r,i)=>{
+    const paidPct = r.value>0 ? Math.round(r.paid/r.value*100) : 0;
+    return `
+    <div class="pv-row" data-code="${escapeHtml(r.p.code)}" style="animation-delay:${Math.min(i,10)*35}ms;">
+      <div class="pv-info">
+        <div class="pv-name"><span class="pv-code">${escapeHtml(r.p.code)}</span>${escapeHtml(r.p.name)}</div>
+        <div class="pv-meta">${escapeHtml(r.p.client||'')}${r.p.startDate ? ' · '+(formatIsoDateHuman(r.p.startDate)||r.p.startDate) : ''}</div>
+        <div class="pv-track"><div class="pv-fill" style="width:${(r.value/max*100).toFixed(1)}%;"><div class="pv-fill-paid" style="width:${paidPct}%;"></div></div></div>
+      </div>
+      <div class="pv-right">
+        <div class="pv-value">${r.value>0 ? fmtRSD(r.value) : '<span class="pv-noprice">Bez cene</span>'}</div>
+        <div class="pv-paid">${r.value>0 ? `naplaćeno ${paidPct}%` : ''} <span class="tag ${statusTag[r.p.status]||'tag-hold'}">${escapeHtml(r.p.status)}</span></div>
+      </div>
+    </div>`;
+  }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema projekata sa cenom za izabrane filtere.</div>';
+  listEl.querySelectorAll('.pv-row').forEach(row=>{
+    row.addEventListener('click', ()=>{
+      const proj = allProjects.find(x=>x.code===row.dataset.code);
+      if(proj){ setActiveNav('projekti'); openProjectDetail(proj); }
+    });
+  });
+}
+document.getElementById('pvSearchInput').addEventListener('input', e=>{ pvFilters.q = e.target.value; renderProjectValueDonut(); });
 
 function clientRevenueReal(){
   const sums = {};
