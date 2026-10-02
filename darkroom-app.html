@@ -648,7 +648,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled.active{ display:flex; flex-direction:column; gap:14px; }
   #finTabPregled > .stat-grid-2{ margin:0; gap:14px; grid-template-rows:minmax(0,1fr); }
   #finTabPregled > .stat-grid-2:nth-child(1){ flex:0 0 auto; grid-template-columns:1.1fr 1.25fr; }
-  #finTabPregled > .stat-grid-2:nth-child(2), #finTabPregled > .stat-grid-2:nth-child(3){ flex:1 1 0; min-height:240px; }
+  /* Row 2 only as tall as its content; row 3 (Vrednost projekta) gets the rest. */
+  #finTabPregled > .stat-grid-2:nth-child(2){ flex:0 0 auto; grid-template-rows:auto; }
+  #finTabPregled > .stat-grid-2:nth-child(3){ flex:1 1 0; min-height:260px; }
   #finTabPregled .stat-panel{ margin:0; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:13px 16px !important; }
   #finTabPregled .stat-panel-head{ margin-bottom:9px; flex-shrink:0; }
   /* Row 1 — Trenutno stanje: balance + chips left, runway right, mini stats under */
@@ -669,7 +671,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled .fin-proj-step-sub{ margin-top:6px; padding-top:6px; }
   #finTabPregled .sal-progress-row{ margin-bottom:5px; }
   /* Row 2 — Priliv vs odliv: lower plot (read by renderFinFlowChart) */
-  #finTabPregled #finFlowChart{ --flow-h:110; }
+  #finTabPregled #finFlowChart{ --flow-h:92; }
   #finTabPregled .fin-flow-legend{ margin-bottom:2px; }
   #finTabPregled .fin-highlight-badge-row{ height:28px; }
   /* Row 2 — Struktura troška + tabs */
@@ -680,7 +682,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled .fin-cost-row .donut-legend-item{ padding:1px 6px; font-size:11px; }
   #finTabPregled .fin-cost-row .donut-legend-right{ white-space:nowrap; flex-shrink:0; }
   #finTabPregled > .stat-grid-2:nth-child(2){ grid-template-columns:1fr 1fr; }
-  #finTabPregled .fin-cost-row{ flex:1; min-height:0; align-items:stretch; gap:22px; }
+  #finTabPregled .fin-cost-row{ flex:1 0 auto; min-height:0; align-items:stretch; gap:22px; }
   #finTabPregled #finDonutWrap{ width:140px; height:140px; align-self:center; }
   #finTabPregled .fin-cost-row .donut-legend{ min-height:0; overflow-y:auto; justify-content:flex-start; padding-right:3px; }
   #finTabPregled #costTabTop, #finTabPregled #costTabRecent{ flex:1; min-height:0; overflow-y:auto; }
