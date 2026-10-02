@@ -634,6 +634,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 #finDonutWrap .donut-hole-val{ font-size:14px; font-weight:400; font-variant-numeric:tabular-nums; }
 #finDonutWrap .donut-hole-label{ max-width:86%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cal-filter-item.sep{ border-top:1px solid var(--border); }
+/* Najvredniji projekti / Prihod po klijentu (merged panel) */
+.rank-head{ flex-wrap:wrap; gap:8px; }
+.rank-head .cal-view-toggle{ display:inline-flex; }
+.rank-head .dash-proj-tab{ display:inline-flex; align-items:center; }
+#rankPanel .lb-list{ max-height:470px; overflow-y:auto; padding-right:3px; }
 /* Vrednost projekta */
 #projValuePanel{ display:flex; flex-direction:column; }
 .pv-toolbar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
@@ -2816,24 +2821,31 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="pv-summary" id="pvSummary"></div>
             <div class="pv-list" id="pvList"></div>
           </div>
-          <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="layers"></i>Najvredniji aktivni projekti</div></div>
+          <div class="stat-panel" id="rankPanel">
+            <div class="stat-panel-head rank-head">
+              <div class="cal-view-toggle" id="rankTabs">
+                <button class="dash-proj-tab active" data-rank="projects"><i class="ui-ico sm" data-ico="layers"></i>Najvredniji projekti</button>
+                <button class="dash-proj-tab" data-rank="clients"><i class="ui-ico sm" data-ico="award"></i>Prihod po klijentu</button>
+              </div>
+              <div class="cal-view-toggle" id="rankStatusFilter">
+                <button class="dash-proj-tab active" data-st="all">Svi</button>
+                <button class="dash-proj-tab" data-st="active">Aktivni</button>
+                <button class="dash-proj-tab" data-st="done">Završeni</button>
+              </div>
+            </div>
             <div class="lb-list" id="topValueProjectsList"></div>
+            <div class="lb-list" id="finClientLeaderboard" style="display:none;"></div>
           </div>
         </div>
-        <div class="stat-grid-2" style="grid-template-columns:1fr 1fr;">
-          <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="award"></i>Prihod po klijentu</div></div>
-            <div class="lb-list" id="finClientLeaderboard"></div>
-          </div>
+        <div class="stat-grid-2" style="grid-template-columns:1fr 1.7fr;">
           <div class="stat-panel">
             <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="trendDown"></i>Top 5 troškova ovog meseca</div></div>
             <div class="lb-list" id="topExpensesList"></div>
           </div>
-        </div>
-        <div class="stat-panel">
-          <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="clock"></i>Poslednje transakcije</div></div>
-          <div class="recent-tx-list" id="recentTxList"></div>
+          <div class="stat-panel">
+            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="clock"></i>Poslednje transakcije</div></div>
+            <div class="recent-tx-list" id="recentTxList"></div>
+          </div>
         </div>
       </div>
 
@@ -10042,13 +10054,14 @@ function projectValueByCode(code){
   return p ? projectPricedItems(p).reduce((s,r)=>s+r.price, 0) : 0;
 }
 
+let rankStatus = 'all'; // 'all' | 'active' (U toku/Revizija) | 'done' (Završeno)
 function topValueProjects(){
   return allProjects
-    .filter(p=>p.status==='U toku' || p.status==='Revizija')
-    .map(p=>({ code:p.code, name:p.name, value: projectValueByCode(p.code) }))
+    .filter(p=> rankStatus==='all' || (rankStatus==='active' ? (p.status==='U toku' || p.status==='Revizija') : p.status==='Završeno'))
+    .map(p=>({ code:p.code, name:p.name, client:p.client, status:p.status, value: projectValueByCode(p.code) }))
     .filter(p=>p.value>0)
     .sort((a,b)=>b.value-a.value)
-    .slice(0,5);
+    .slice(0,10);
 }
 function renderTopValueProjects(){
   const data = topValueProjects();
@@ -10060,8 +10073,8 @@ function renderTopValueProjects(){
         <div class="lb-name">${escapeHtml(p.code)} — ${escapeHtml(p.name)}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(p.value/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${fmtK(p.value)} RSD</div>
-    </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema određenih cena za aktivne projekte.</div>';
+      <div class="lb-value">${fmtRSD(p.value)}</div>
+    </div>`).join('') : '<div class="empty-state" style="padding:20px 0;">Nema projekata sa cenom za ovaj filter.</div>';
   setTimeout(()=>{
     document.querySelectorAll('#topValueProjectsList .lb-fill').forEach((el,i)=>{
       setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*80);
@@ -10142,14 +10155,33 @@ function renderProjectValueDonut(){
 }
 document.getElementById('pvSearchInput').addEventListener('input', e=>{ pvFilters.q = e.target.value; renderProjectValueDonut(); });
 
-function clientRevenueReal(){
+function clientRevenueReal(limit = 6){
   const sums = {};
   allProjects.forEach(p=>{ sums[p.client] = (sums[p.client]||0) + projectValueByCode(p.code); });
-  return Object.entries(sums).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  return Object.entries(sums).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]).slice(0,limit);
 }
 
+// Tabs inside the merged panel: which list shows, and the status filter
+// (only meaningful for "Najvredniji projekti", hidden on the client tab).
+document.querySelectorAll('#rankTabs .dash-proj-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.dataset.rank;
+    document.querySelectorAll('#rankTabs .dash-proj-tab').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('topValueProjectsList').style.display = tab==='projects' ? '' : 'none';
+    document.getElementById('finClientLeaderboard').style.display = tab==='clients' ? '' : 'none';
+    document.getElementById('rankStatusFilter').style.visibility = tab==='projects' ? '' : 'hidden';
+    if(tab==='projects') renderTopValueProjects(); else renderClientRevenueBoard();
+  });
+});
+document.querySelectorAll('#rankStatusFilter .dash-proj-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    rankStatus = btn.dataset.st;
+    document.querySelectorAll('#rankStatusFilter .dash-proj-tab').forEach(b=>b.classList.toggle('active', b===btn));
+    renderTopValueProjects();
+  });
+});
 function renderClientRevenueBoard(){
-  const data = clientRevenueReal();
+  const data = clientRevenueReal(10);
   const max = Math.max(...data.map(([,v])=>v), 1);
   document.getElementById('finClientLeaderboard').innerHTML = data.length ? data.map(([name,val],i)=>{
     const grad = clientAvatarColors[i % clientAvatarColors.length];
@@ -10160,7 +10192,7 @@ function renderClientRevenueBoard(){
         <div class="lb-name">${escapeHtml(name)}</div>
         <div class="lb-track"><div class="lb-fill" data-w="${(val/max)*100}" style="width:0%"></div></div>
       </div>
-      <div class="lb-value">${fmtK(val)} RSD</div>
+      <div class="lb-value">${fmtRSD(val)}</div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema podataka o cenovniku.</div>';
   setTimeout(()=>{
