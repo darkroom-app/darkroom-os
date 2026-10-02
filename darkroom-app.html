@@ -617,6 +617,24 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .donut-wrap.solid .donut-hole{ inset:20.5%; background:var(--card); }
 .donut-wrap.solid .donut-hole-val{ font-size:20px; font-weight:300; line-height:1; }
 .donut-wrap.solid .donut-hole-label{ font-size:7px; letter-spacing:0.06em; margin-top:3px; }
+/* Hover link between ring segment and legend row (renderModernDonut). */
+.modern-donut-seg{ cursor:pointer; }
+.modern-donut-ring.hovering .modern-donut-seg:not(.active){ opacity:.25; }
+.donut-legend-item{ padding:3px 7px; border-radius:8px; border:1px solid transparent; transition:background .12s ease, border-color .12s ease; }
+.donut-legend-item.active{ border-color:var(--gold); background:var(--card-soft); }
+/* Struktura troška: period filters, full RSD figures, compact legend. */
+.fin-cost-head{ align-items:flex-start; gap:12px; }
+.fin-cost-head .stat-panel-sub{ margin-top:4px; }
+.fin-cost-filters{ display:flex; gap:8px; flex-shrink:0; }
+.fin-cost-row{ justify-content:center; gap:28px; }
+.fin-cost-row .donut-legend{ flex:0 1 360px; min-width:0; gap:3px; }
+.fin-cost-row .donut-legend-left{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.fin-cost-row .donut-legend-right b{ font-variant-numeric:tabular-nums; }
+#finDonutWrap{ width:176px; height:176px; }
+#finDonutWrap .donut-hole-val{ font-size:14px; font-weight:400; font-variant-numeric:tabular-nums; }
+#finDonutWrap .donut-hole-label{ max-width:86%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cal-filter-item.sep{ border-top:1px solid var(--border); }
+.cal-filter-hint{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-left:4px; }
 .modern-donut-svg{ display:block; overflow:visible; }
 .modern-donut-seg{ transition:none; }
 .modern-donut-badge{ opacity:0; }
@@ -2739,8 +2757,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="fin-trend-chart" id="finFlowChart"></div>
           </div>
           <div class="stat-panel" style="padding:14px 18px 16px;">
-            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="pie"></i>Struktura troška</div></div>
-            <div class="donut-row">
+            <div class="stat-panel-head fin-cost-head">
+              <div><div class="stat-panel-title"><i class="ui-ico" data-ico="pie"></i>Struktura troška</div><div class="stat-panel-sub" id="finCostPeriodSub"></div></div>
+              <div class="fin-cost-filters">
+                <div class="cal-filter" id="filterFinCostYear"><div class="cal-filter-btn"><span id="filterFinCostYearLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterFinCostYearMenu"></div></div>
+                <div class="cal-filter" id="filterFinCostPeriod"><div class="cal-filter-btn"><span id="filterFinCostPeriodLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterFinCostPeriodMenu"></div></div>
+              </div>
+            </div>
+            <div class="donut-row fin-cost-row">
               <div class="donut-wrap modern solid" id="finDonutWrap">
                 <div class="modern-donut-ring" id="finDonutRing"></div>
                 <div class="donut-hole"><div class="donut-hole-val" id="finDonutTotal">0</div><div class="donut-hole-label">RSD</div></div>
@@ -9811,9 +9835,59 @@ function renderFinFlowChart(){
    kategoriju ("Plate" kao jedna gomila), plate se rastavljaju na svoje
    stvarne komponente (osnovica/bonus/prekovremeno/porez/benefiti) i spajaju
    sa realnim Odliv transakcijama po kategoriji — donut tako ima smisla. */
-function finCostComponents(){
+/* Period je zajednički i za plate i za odliv transakcije — ranije su plate
+   bile samo za tekuću godinu, a transakcije za SVE godine, pa je ukupno
+   mešalo dva različita perioda. */
+const finCostPeriod = { year:null, period:'year' }; // period: 'year' | 'q0'..'q3' | 'm0'..'m11'
+function finCostMonths(period){
+  if(period==='year') return [0,1,2,3,4,5,6,7,8,9,10,11];
+  if(period[0]==='q'){ const q = +period.slice(1); return [q*3, q*3+1, q*3+2]; }
+  return [+period.slice(1)];
+}
+const finQuarterSpan = q => `${monthNamesFull[q*3].slice(0,3).toLowerCase()}–${monthNamesFull[q*3+2].slice(0,3).toLowerCase()}`;
+function finCostPeriodText(year, period){
+  if(period==='year') return year===TODAY.y ? `Ukupno za ${year}. godinu, do danas` : `Ukupno za ${year}. godinu`;
+  if(period[0]==='q'){ const q = +period.slice(1); return `Q${q+1} ${year}. (${finQuarterSpan(q)})`; }
+  return `${monthNamesFull[+period.slice(1)]} ${year}.`;
+}
+function finCostPeriodShort(period){
+  if(period==='year') return 'Cela godina';
+  if(period[0]==='q') return `Q${+period.slice(1)+1}`;
+  return monthNamesFull[+period.slice(1)];
+}
+function wireCalFilter(rootId, onPick){
+  const root = document.getElementById(rootId);
+  root.querySelector('.cal-filter-btn').onclick = (ev)=>{
+    ev.stopPropagation();
+    const wasOpen = root.classList.contains('open');
+    document.querySelectorAll('.cal-filter').forEach(x=>x.classList.remove('open'));
+    if(!wasOpen) root.classList.add('open');
+  };
+  root.querySelectorAll('.cal-filter-item').forEach(item=>{
+    item.onclick = ()=>{ root.classList.remove('open'); onPick(item.dataset.val); };
+  });
+}
+function buildFinCostFilters(){
+  const year = finCostPeriod.year || TODAY.y;
+  document.getElementById('filterFinCostYearLabel').textContent = `${year}.`;
+  document.getElementById('filterFinCostYearMenu').innerHTML = finFlowAvailableYears().map(y=>
+    `<div class="cal-filter-item" data-val="${y}">${y}.</div>`).join('');
+  // Tekuća godina: samo kvartali/meseci koji su već počeli.
+  const lastM = year===TODAY.y ? TODAY.m-1 : 11;
+  const periods = ['year'];
+  for(let q=0;q<4;q++) if(q*3 <= lastM) periods.push('q'+q);
+  for(let m=0;m<=lastM;m++) periods.push('m'+m);
+  if(!periods.includes(finCostPeriod.period)) finCostPeriod.period = 'year';
+  document.getElementById('filterFinCostPeriodLabel').textContent = finCostPeriodShort(finCostPeriod.period);
+  document.getElementById('filterFinCostPeriodMenu').innerHTML = periods.map(p=>
+    `<div class="cal-filter-item${p==='q0'||p==='m0' ? ' sep' : ''}" data-val="${p}">${finCostPeriodShort(p)}${p[0]==='q' ? ` <span class="cal-filter-hint">${finQuarterSpan(+p.slice(1))}</span>` : ''}</div>`).join('');
+  wireCalFilter('filterFinCostYear', v=>{ finCostPeriod.year = parseInt(v,10); renderFinDonut(); });
+  wireCalFilter('filterFinCostPeriod', v=>{ finCostPeriod.period = v; renderFinDonut(); });
+  document.getElementById('finCostPeriodSub').textContent = finCostPeriodText(year, finCostPeriod.period);
+}
+function finCostComponents(year, months){
   const comps = { osnovica:0, bonus:0, prekovremeno:0, porez:0, benefiti:0 };
-  salaryEntries.filter(e=>e.year===TODAY.y).forEach(e=>{
+  salaryEntries.filter(e=>e.year===year && months.includes(e.month)).forEach(e=>{
     comps.osnovica += e.osnovica;
     comps.bonus += e.bonus;
     comps.prekovremeno += e.prekovremeno;
@@ -9822,7 +9896,7 @@ function finCostComponents(){
   });
   const items = Object.keys(comps).filter(k=>comps[k]>0).map(k=>({ label:salCatLabels[k], value:comps[k], color:salCatColors[k] }));
   const txCats = {};
-  allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate').forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
+  allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate' && t.date && txYear(t.date)===year && months.includes(txMonth(t.date))).forEach(t=>{ txCats[t.category] = (txCats[t.category]||0) + t.amount; });
   Object.keys(txCats).forEach(c=>{
     items.push({ label:c, value:txCats[c], color: categoryColorVar[c] || 'var(--ink-faint)' });
   });
@@ -9840,14 +9914,14 @@ function renderModernDonut(ringId, legendId, items, opts){
   const R = solid ? 79 : 74, CX = 100, CY = 100, SW = solid ? 40 : 22, GAP = solid ? 0 : 7;
   const circumference = 2*Math.PI*R;
   let cursor = -90, svgInner = '';
-  items.forEach(it=>{
+  items.forEach((it, idx)=>{
     const pct = total>0 ? (it.value/total)*100 : 0;
     const segDeg = (pct/100)*360;
     const drawDeg = solid ? segDeg : (segDeg>0 ? Math.max(segDeg-GAP, Math.min(segDeg,2)) : 0);
     const arcLen = (drawDeg/360)*circumference;
     svgInner += `<circle cx="${CX}" cy="${CY}" r="${R}" fill="none" stroke="${it.color}" stroke-width="${SW}" stroke-linecap="${solid ? 'butt' : 'round'}"
       stroke-dasharray="${arcLen.toFixed(1)} ${(circumference-arcLen).toFixed(1)}" stroke-dashoffset="${arcLen.toFixed(1)}"
-      transform="rotate(${cursor} ${CX} ${CY})" class="modern-donut-seg"><title>${escapeHtml(it.label)}: ${fmtTooltip(it.value)}</title></circle>`;
+      transform="rotate(${cursor} ${CX} ${CY})" class="modern-donut-seg" data-idx="${idx}"><title>${escapeHtml(it.label)}: ${fmtTooltip(it.value)}</title></circle>`;
     if(!solid && pct >= 5){
       const midRad = (cursor+segDeg/2)*Math.PI/180;
       const bx = (CX+R*Math.cos(midRad)).toFixed(1), by = (CY+R*Math.sin(midRad)).toFixed(1);
@@ -9864,25 +9938,51 @@ function renderModernDonut(ringId, legendId, items, opts){
   // Staggered bottom-to-top, same idea as the Aktivni Projekti cards: the
   // last (bottom-most) legend row lands first, each row above it follows.
   document.getElementById(legendId).innerHTML = items.map((i,idx)=>`
-    <div class="donut-legend-item legend-in" style="animation-delay:${(items.length-1-idx)*70}ms;">
+    <div class="donut-legend-item legend-in" data-idx="${idx}" style="animation-delay:${(items.length-1-idx)*70}ms;">
       <span class="donut-legend-left"><span class="donut-dot" style="background:${i.color}"></span>${escapeHtml(i.label)}</span>
       <span class="donut-legend-right"><b>${fmtLegend(i.value)}</b><span class="donut-legend-pct">${(total>0 ? (i.value/total)*100 : 0).toFixed(1)}%</span></span>
     </div>`).join('');
   requestAnimationFrame(()=>{
     ring.querySelectorAll('.modern-donut-seg').forEach((seg,i)=>{
-      seg.style.transition = `stroke-dashoffset .9s cubic-bezier(.34,1,.4,1) ${i*0.1}s`;
+      seg.style.transition = `stroke-dashoffset .9s cubic-bezier(.34,1,.4,1) ${i*0.1}s, opacity .15s ease`;
       requestAnimationFrame(()=>{ seg.style.strokeDashoffset = 0; });
     });
     ring.querySelectorAll('.modern-donut-badge').forEach((b,i)=>{
       setTimeout(()=>{ b.classList.add('shown'); }, 700+i*80);
     });
   });
+  // Hover a ring segment or a legend row → frame that row, dim the other
+  // segments, and let the caller react (e.g. show it in the donut's center).
+  const segEls = [...ring.querySelectorAll('.modern-donut-seg')];
+  const rowEls = [...document.getElementById(legendId).querySelectorAll('.donut-legend-item')];
+  const setActive = (idx)=>{
+    ring.classList.toggle('hovering', idx!=null);
+    segEls.forEach((el,i)=>el.classList.toggle('active', i===idx));
+    rowEls.forEach((el,i)=>el.classList.toggle('active', i===idx));
+    if(opts && opts.onHover) opts.onHover(idx!=null ? items[idx] : null);
+  };
+  [...segEls, ...rowEls].forEach(el=>{
+    el.addEventListener('mouseenter', ()=> setActive(Number(el.dataset.idx)));
+    el.addEventListener('mouseleave', ()=> setActive(null));
+  });
   return total;
 }
 function renderFinDonut(){
-  const items = finCostComponents();
-  const total = renderModernDonut('finDonutRing', 'finDonutLegend', items, { solid:true });
-  animateCountUp(document.getElementById('finDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
+  buildFinCostFilters();
+  const year = finCostPeriod.year || TODAY.y;
+  const items = finCostComponents(year, finCostMonths(finCostPeriod.period));
+  const valEl = document.getElementById('finDonutTotal');
+  const labelEl = document.querySelector('#finDonutWrap .donut-hole-label');
+  const fmtNum = n => Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  let total = 0;
+  const showCenter = it=>{
+    valEl.textContent = fmtNum(it ? it.value : total);
+    labelEl.textContent = it ? it.label : 'RSD ukupno';
+  };
+  total = renderModernDonut('finDonutRing', 'finDonutLegend', items, { solid:true, fmtLegend:fmtRSD, onHover:showCenter });
+  if(!items.length) document.getElementById('finDonutLegend').innerHTML = '<div class="stat-panel-sub">Nema troškova za izabrani period.</div>';
+  labelEl.textContent = 'RSD ukupno';
+  animateCountUp(valEl, Math.round(total), {duration:900});
   setTimeout(()=>{ document.getElementById('finDonutWrap').classList.add('shown'); }, 100);
 }
 
