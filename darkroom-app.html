@@ -718,6 +718,14 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .lb-fill.inflow-fill{ background:linear-gradient(90deg, #3d7046, #4C8A55); }
 .inflow-partial{ font-family:var(--font-mono); font-size:8.5px; font-weight:400; color:var(--gold); margin-left:4px; text-transform:uppercase; letter-spacing:0.04em; }
 .inflow-row.future{ opacity:0.4; }
+.inflow-item{ border-radius:9px; border:1px solid transparent; padding:3px 6px; margin:0 -6px; transition:background .12s ease, border-color .12s ease; }
+.inflow-item:hover{ background:var(--card-soft); border-color:var(--gold); }
+.inflow-detail{ display:none; margin:6px 0 4px 150px; padding-left:12px; border-left:2px solid #4C8A55; }
+.inflow-item:hover .inflow-detail{ display:block; }
+.inflow-src{ display:flex; justify-content:space-between; gap:12px; font-size:11px; padding:2px 0; }
+.inflow-src span{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-dim); }
+.inflow-src b{ font-family:var(--font-mono); font-size:10.5px; font-weight:600; color:var(--ink); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.inflow-src.other span{ font-style:italic; color:var(--ink-faint); }
 /* Vrednost projekta */
 #projValuePanel{ display:flex; flex-direction:column; }
 .pv-toolbar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
@@ -10310,25 +10318,48 @@ function renderInflowBoard(){
   document.querySelectorAll('#inflowModes .dash-proj-tab').forEach(b=>b.classList.toggle('active', b.dataset.mode===inflowMode));
 
   const inflow = allTransactions.filter(t=>t.type==='Priliv' && t.date);
-  const sumWhere = fn => inflow.filter(fn).reduce((s,t)=>s+t.amount,0);
   let rows;
   if(inflowMode==='year'){
-    rows = years.slice().sort((a,b)=>a-b).map(y=>({ label:`${y}.`, value:sumWhere(t=>txYear(t.date)===y), future:false, partial:y===TODAY.y }));
+    rows = years.slice().sort((a,b)=>a-b).map(y=>({ label:`${y}.`, match:t=>txYear(t.date)===y, future:false, partial:y===TODAY.y }));
   } else if(inflowMode==='quarter'){
     rows = [0,1,2,3].map(q=>({
       label:`Q${q+1}`, hint:finQuarterSpan(q),
-      value:sumWhere(t=>txYear(t.date)===inflowYear && Math.floor(txMonth(t.date)/3)===q),
+      match:t=>txYear(t.date)===inflowYear && Math.floor(txMonth(t.date)/3)===q,
       future: inflowYear===TODAY.y && q*3 > TODAY.m-1,
       partial: inflowYear===TODAY.y && Math.floor((TODAY.m-1)/3)===q,
     }));
   } else {
     rows = monthNamesFull.map((name,m)=>({
       label:name,
-      value:sumWhere(t=>txYear(t.date)===inflowYear && txMonth(t.date)===m),
+      match:t=>txYear(t.date)===inflowYear && txMonth(t.date)===m,
       future: inflowYear===TODAY.y && m > TODAY.m-1,
       partial: inflowYear===TODAY.y && m === TODAY.m-1,
     }));
   }
+  // Where each period's inflow came from: Priliv rows are linked to a kadar
+  // or an extra charge, both of which belong to a project. Unlinked ones
+  // (e.g. tax refunds) are grouped under their category instead.
+  const projByKadar = new Map(), projByDbId = new Map();
+  allProjects.forEach(p=>{ if(p.dbId) projByDbId.set(p.dbId, p); p.kadrovi.forEach(k=>{ if(k.dbId) projByKadar.set(k.dbId, p); }); });
+  const projByCharge = new Map(extraCharges.map(c=>[c.dbId, projByDbId.get(c.projectDbId)]));
+  const INFLOW_DETAIL_MAX = 8;
+  rows.forEach(r=>{
+    const txs = inflow.filter(r.match);
+    r.value = txs.reduce((s,t)=>s+t.amount,0);
+    const groups = new Map();
+    txs.forEach(t=>{
+      const p = (t.kadarDbId && projByKadar.get(t.kadarDbId)) || (t.extraChargeDbId && projByCharge.get(t.extraChargeDbId)) || null;
+      const key = p ? 'p:'+p.code : 'c:'+(t.category||'Ostalo');
+      if(!groups.has(key)) groups.set(key, { name: p ? p.name : (t.category||'Ostalo'), isProject:!!p, value:0 });
+      groups.get(key).value += t.amount;
+    });
+    r.sources = [...groups.values()].sort((a,b)=>b.value-a.value);
+  });
+  const detailHtml = r=>{
+    if(r.future || !r.sources.length) return '';
+    const shown = r.sources.slice(0, INFLOW_DETAIL_MAX), rest = r.sources.slice(INFLOW_DETAIL_MAX);
+    return `<div class="inflow-detail">${shown.map(g=>`<div class="inflow-src${g.isProject ? '' : ' other'}"><span>${escapeHtml(g.name)}</span><b>${fmtRSD(g.value)}</b></div>`).join('')}${rest.length ? `<div class="inflow-src other"><span>i još ${rest.length} ${rest.length===1 ? 'izvor' : 'izvora'}</span><b>${fmtRSD(rest.reduce((s,g)=>s+g.value,0))}</b></div>` : ''}</div>`;
+  };
   const counted = rows.filter(r=>!r.future);
   const total = counted.reduce((s,r)=>s+r.value,0);
   // Average only over finished periods — the running month/quarter/year would drag it down.
@@ -10344,10 +10375,13 @@ function renderInflowBoard(){
   const max = Math.max(...counted.map(r=>r.value), 1);
   const listEl = document.getElementById('inflowList');
   listEl.innerHTML = rows.map(r=>`
-    <div class="inflow-row${r.future ? ' future' : ''}">
-      <div class="inflow-label">${escapeHtml(r.label)}${r.hint ? ` <span class="cal-filter-hint">${r.hint}</span>` : ''}${r.partial ? ' <span class="inflow-partial">u toku</span>' : ''}</div>
-      <div class="lb-track"><div class="lb-fill inflow-fill" data-w="${r.future ? 0 : (r.value/max)*100}" style="width:0%"></div></div>
-      <div class="lb-value">${r.future ? '—' : fmtRSD(r.value)}</div>
+    <div class="inflow-item">
+      <div class="inflow-row${r.future ? ' future' : ''}">
+        <div class="inflow-label">${escapeHtml(r.label)}${r.hint ? ` <span class="cal-filter-hint">${r.hint}</span>` : ''}${r.partial ? ' <span class="inflow-partial">u toku</span>' : ''}</div>
+        <div class="lb-track"><div class="lb-fill inflow-fill" data-w="${r.future ? 0 : (r.value/max)*100}" style="width:0%"></div></div>
+        <div class="lb-value">${r.future ? '—' : fmtRSD(r.value)}</div>
+      </div>
+      ${detailHtml(r)}
     </div>`).join('');
   setTimeout(()=>{
     listEl.querySelectorAll('.lb-fill').forEach((el,i)=>{ setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*50); });
