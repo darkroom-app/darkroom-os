@@ -261,27 +261,26 @@ body{
 .proj-client-summary-label{ display:block; font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px; }
 .proj-client-summary-item b{ font-family:var(--font-display); font-weight:700; font-size:16px; }
 .projects-grid-page{ display:grid; grid-template-columns:repeat(4,1fr); gap:16px; }
-.pg-card{ background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden; cursor:pointer; transition:transform .15s ease, box-shadow .15s ease; position:relative; }
-.pg-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(70,55,20,0.28); }
-.pg-thumb{ height:0; padding-bottom:62%; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
-.pg-thumb .m{ position:absolute; bottom:0; left:0; right:0; height:70%; }
-.pg-thumb .m .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a68f5c,#8a7443); border-top:1px solid #c2ab78; }
-.pg-thumb .vfc{ position:absolute; width:9px; height:9px; border-color:rgba(58,39,4,0.5); z-index:2; }
-.pg-thumb .vfc.tl{ top:7px; left:7px; border-top:1.3px solid; border-left:1.3px solid; }
-.pg-thumb .vfc.br{ bottom:7px; right:7px; border-bottom:1.3px solid; border-right:1.3px solid; }
-.pg-body{ padding:12px 13px 13px; }
-.pg-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:3px; }
+/* Full-bleed card like Portfolio: the project image fills the card, all text
+   sits over a bottom scrim. */
+.pg-card{ position:relative; aspect-ratio:4/3.4; border-radius:16px; overflow:hidden; cursor:pointer; background:var(--card-soft); transition:transform .15s ease, box-shadow .15s ease; }
+.pg-card:hover{ transform:translateY(-3px); box-shadow:0 14px 26px -14px rgba(20,16,8,0.45); }
+.pg-card:hover .loaded > .cover-img{ transform:scale(1.03); }
+.pg-thumb{ position:absolute; inset:0; overflow:hidden; background:var(--card-soft); }
+.pg-thumb::after{ content:""; position:absolute; inset:0; background:linear-gradient(0deg, rgba(14,11,6,0.9) 0%, rgba(14,11,6,0.55) 42%, transparent 70%); pointer-events:none; }
+.pg-body{ position:absolute; left:0; right:0; bottom:0; z-index:2; padding:12px 13px 13px; color:#fff; }
+.pg-top{ display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:2px; }
 .pg-name{ font-family:var(--font-display); font-weight:600; font-size:13px; line-height:1.25; }
-.pg-code{ font-family:var(--font-mono); font-size:11.5px; font-weight:700; color:var(--gold-deep); margin-bottom:9px; }
-.pg-client{ font-size:11px; color:var(--ink-dim); margin-bottom:10px; }
+.pg-code{ font-family:var(--font-mono); font-size:11.5px; font-weight:700; color:var(--gold); margin-bottom:6px; }
+.pg-client{ font-size:11px; color:rgba(255,255,255,0.78); margin-bottom:7px; }
 .pg-foot{ display:flex; align-items:center; justify-content:space-between; }
-.pg-stats-row{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-dim); margin-bottom:6px; line-height:1.5; }
+.pg-stats-row{ font-family:var(--font-mono); font-size:9.5px; color:rgba(255,255,255,0.7); margin-bottom:8px; line-height:1.5; }
 .pg-edit-btn{ position:absolute; top:10px; right:10px; width:26px; height:26px; border-radius:50%; background:rgba(255,255,255,0.85); display:flex; align-items:center; justify-content:center; color:var(--ink-dim); z-index:2; }
 .pg-edit-btn:hover{ background:#fff; color:var(--ink); }
 .pg-edit-btn svg{ width:13px; height:13px; }
 .pg-artist{ display:flex; align-items:center; gap:6px; }
 .pg-avatar{ width:19px; height:19px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:var(--font-display); font-weight:700; font-size:7.5px; color:#fff; flex-shrink:0; }
-.pg-artist span{ font-size:10.5px; color:var(--ink-dim); }
+.pg-artist span{ font-size:10.5px; color:rgba(255,255,255,0.85); }
 .pg-year{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); }
 
 .tag-hold{ background:var(--card-soft); color:var(--ink-faint); border:1px solid var(--border); }
@@ -1440,15 +1439,26 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .proj-card:hover{ transform:translateY(-2px); border-color:var(--gold-soft); }
 @keyframes projCardIn{ from{ opacity:0; transform:translateY(18px); } to{ opacity:1; transform:translateY(0); } }
 .proj-grid.no-entrance .proj-card{ animation:none; opacity:1; }
-.proj-thumb{ height:72px; position:relative; overflow:hidden; background:linear-gradient(155deg, #EFE7D2, #E2D6B8); }
-.proj-thumb .m{ position:absolute; bottom:0; left:0; right:0; height:70%; }
-.proj-thumb .m .b{ position:absolute; bottom:0; background:linear-gradient(180deg,#a68f5c,#8a7443); border-top:1px solid #c2ab78; }
-.proj-thumb .vfc{ position:absolute; width:8px; height:8px; border-color:rgba(58,39,4,0.55); z-index:2; }
-.proj-thumb .vfc.tl{ top:6px; left:6px; border-top:1.2px solid; border-left:1.2px solid; }
-.proj-thumb .vfc.br{ bottom:6px; right:6px; border-bottom:1.2px solid; border-right:1.2px solid; }
+.proj-thumb{ height:72px; position:relative; overflow:hidden; background:var(--card-soft); }
 .proj-body{ padding:10px 11px 12px; }
 .proj-name{ font-family:var(--font-display); font-weight:600; font-size:12px; line-height:1.2; }
 .proj-code{ font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); margin:2px 0 7px; }
+/* Grid mode (not list mode): full-bleed card like Portfolio — image fills the
+   card, text sits over a bottom scrim. */
+.proj-grid:not(.list-mode) .proj-card{ position:relative; aspect-ratio:16/11; border:none; background:var(--card-soft); }
+.proj-grid:not(.list-mode) .proj-card:hover{ box-shadow:0 12px 22px -12px rgba(20,16,8,0.45); }
+.proj-grid:not(.list-mode) .proj-thumb{ position:absolute; inset:0; height:auto; }
+.proj-grid:not(.list-mode) .proj-thumb::after{ content:""; position:absolute; inset:0; background:linear-gradient(0deg, rgba(14,11,6,0.88) 0%, rgba(14,11,6,0.4) 45%, transparent 72%); pointer-events:none; }
+.proj-grid:not(.list-mode) .proj-body{ position:absolute; left:0; right:0; bottom:0; z-index:2; color:#fff; }
+.proj-grid:not(.list-mode) .proj-name{ white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.proj-grid:not(.list-mode) .proj-code{ color:rgba(255,255,255,0.7); }
+.proj-grid:not(.list-mode) .task-name{ color:rgba(255,255,255,0.9); }
+.proj-card:hover .loaded > .cover-img{ transform:scale(1.03); }
+
+/* Shared lazy cover image: fades/sharpens in once loaded (see wireCoverImgs). */
+.cover-img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; opacity:0; transform:scale(1.06); filter:blur(6px); transition:opacity .6s ease, transform .9s cubic-bezier(.22,.75,.3,1), filter .6s ease; }
+.loaded > .cover-img{ opacity:1; transform:scale(1); filter:none; }
+@media (prefers-reduced-motion: reduce){ .cover-img{ transition:none; transform:none; filter:none; } }
 .task-row{ display:flex; align-items:center; justify-content:space-between; gap:6px; }
 .task-row + .task-row{ margin-top:4px; }
 .task-name{ font-size:10px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -3780,6 +3790,18 @@ function massing(seed){
 function thumbStyle(seed, w){
   return `background-image:url('assets/project-default-thumb.jpg'); background-size:cover; background-position:center;`;
 }
+function coverImgHtml(src){
+  return `<img class="cover-img" src="${escapeHtml(src || 'assets/project-default-thumb.jpg')}" alt="" loading="lazy" decoding="async">`;
+}
+// Marks each .cover-img's parent .loaded once the image arrives, which
+// triggers its fade/sharpen-in (also on error, so a broken URL isn't stuck blurred).
+function wireCoverImgs(root){
+  root.querySelectorAll('.cover-img').forEach(img=>{
+    const done = ()=> img.parentElement.classList.add('loaded');
+    if(img.complete && img.naturalWidth) done();
+    else { img.addEventListener('load', done, { once:true }); img.addEventListener('error', done, { once:true }); }
+  });
+}
 
 let dashProjTab = 'vodim'; // only relevant for admin/superadmin — see renderDashboardProjects()
 let dashProjSearch = '';
@@ -3845,10 +3867,9 @@ function renderDashboardProjects(){
   const rowDelay = (i) => Math.min(totalRows - 1 - Math.floor(i/cols), cappedRows-1) * 60;
   projGridEl.innerHTML = list.map((p,i)=>{
     const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
-    const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed, 180);
     return `
     <div class="proj-card" data-id="${p._id}" style="cursor:pointer; animation-delay:${rowDelay(i)}ms;">
-      <div class="proj-thumb" style="${thumbStyleAttr}"><div class="vfc tl"></div><div class="vfc br"></div></div>
+      <div class="proj-thumb">${coverImgHtml(p.thumbnail)}</div>
       <div class="proj-body">
         <div class="proj-name">${escapeHtml(p.name)}</div>
         <div class="proj-code">${escapeHtml(p.code)}</div>
@@ -3856,6 +3877,7 @@ function renderDashboardProjects(){
       </div>
     </div>`;
   }).join('');
+  wireCoverImgs(projGridEl);
 
   document.querySelectorAll('#projGrid .proj-card').forEach(card=>{
     card.addEventListener('click', ()=>{
@@ -6252,11 +6274,10 @@ function renderProjectsPage(){
 
   document.getElementById('projectsGrid').innerHTML = list.map((p,i)=>{
     const s = projectStats(p);
-    const thumbStyleAttr = p.thumbnail ? `background-image:url('${escapeHtml(p.thumbnail)}');background-size:cover;background-position:center;` : thumbStyle(p.seed,320);
     return `
     <div class="pg-card${waveClass}" style="${waveDelay(i)}" data-id="${p._id}">
       ${projectEditBtn(p)}
-      <div class="pg-thumb" style="${thumbStyleAttr}"><div class="vfc tl"></div><div class="vfc br"></div></div>
+      <div class="pg-thumb">${coverImgHtml(p.thumbnail)}</div>
       <div class="pg-body">
         <div class="pg-top"><div class="pg-name">${escapeHtml(p.name)}</div></div>
         <div class="pg-code">${escapeHtml(p.code)}</div>
@@ -6272,6 +6293,7 @@ function renderProjectsPage(){
       </div>
     </div>`;
   }).join('');
+  wireCoverImgs(document.getElementById('projectsGrid'));
 
   document.getElementById('projectsList').innerHTML = list.map((p,i)=>{
     const s = projectStats(p);
