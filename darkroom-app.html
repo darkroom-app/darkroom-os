@@ -722,7 +722,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .pv-code{ font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--gold-deep); margin-right:7px; }
 .pv-meta{ font-family:var(--font-mono); font-size:9px; color:var(--ink-faint); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .pv-track{ height:5px; border-radius:4px; background:var(--border); margin-top:6px; overflow:hidden; }
-.pv-fill{ height:100%; border-radius:4px; background:var(--gold); position:relative; overflow:hidden; }
+.pv-fill{ height:100%; border-radius:4px; background:var(--gold); position:relative; overflow:hidden; transition:width .8s cubic-bezier(.34,1.1,.4,1); }
 .pv-fill-paid{ position:absolute; left:0; top:0; bottom:0; background:#4C8A55; }
 .pv-right{ text-align:right; flex-shrink:0; }
 .pv-value{ font-family:var(--font-display); font-weight:700; font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap; }
@@ -10224,7 +10224,7 @@ function renderProjectValueDonut(){
       <div class="pv-info">
         <div class="pv-name"><span class="pv-code">${escapeHtml(r.p.code)}</span>${escapeHtml(r.p.name)}</div>
         <div class="pv-meta">${escapeHtml(r.p.client||'')}${r.p.startDate ? ' · '+(formatIsoDateHuman(r.p.startDate)||r.p.startDate) : ''}</div>
-        <div class="pv-track"><div class="pv-fill" style="width:${(r.value/max*100).toFixed(1)}%;"><div class="pv-fill-paid" style="width:${paidPct}%;"></div></div></div>
+        <div class="pv-track"><div class="pv-fill" data-w="${(r.value/max*100).toFixed(1)}" style="width:0%;"><div class="pv-fill-paid" style="width:${paidPct}%;"></div></div></div>
       </div>
       <div class="pv-right">
         <div class="pv-value">${r.value>0 ? fmtRSD(r.value) : '<span class="pv-noprice">Bez cene</span>'}</div>
@@ -10232,6 +10232,10 @@ function renderProjectValueDonut(){
       </div>
     </div>`;
   }).join('') : '<div class="empty-state" style="padding:20px 0;">Nema projekata sa cenom za izabrane filtere.</div>';
+  // Same staggered fill-in as the leaderboard bars.
+  setTimeout(()=>{
+    listEl.querySelectorAll('.pv-fill').forEach((el,i)=>{ setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, Math.min(i,12)*60); });
+  }, 120);
   listEl.querySelectorAll('.pv-row').forEach(row=>{
     row.addEventListener('click', ()=>{
       const proj = allProjects.find(x=>x.code===row.dataset.code);
@@ -10384,7 +10388,13 @@ function renderFinProjection(){
   });
   document.getElementById('finProjPendingText').innerHTML =
     `Trenutno fakturisano/na čekanju naplate: <b>${fmtRSD(d.pending)}</b> — pokriva ${d.pendingPct.toFixed(0)}% cilja za sledeći mesec.`;
-  document.getElementById('finProjPendingFill').style.width = d.pendingPct + '%';
+  // Reset to 0 first so the fill animates on every render, not only when the value changes.
+  const pendingFill = document.getElementById('finProjPendingFill');
+  pendingFill.style.transition = 'none';
+  pendingFill.style.width = '0%';
+  pendingFill.getBoundingClientRect();
+  pendingFill.style.transition = '';
+  pendingFill.style.width = d.pendingPct + '%';
 }
 document.getElementById('finMarginInput').addEventListener('change', (e)=>{
   const v = parseFloat(e.target.value);
@@ -11403,7 +11413,7 @@ function renderSalProgress(){
     <div class="sal-progress-label">${confirmed ? '✓ Odobreno' : (complete ? 'Spremno za potvrdu' : '')}</div>`;
   setTimeout(()=>{
     const fill = document.querySelector('#salProgressRow .sal-progress-fill');
-    if(fill) fill.style.width = fill.dataset.w + '%';
+    if(fill){ fill.getBoundingClientRect(); fill.style.width = fill.dataset.w + '%'; }
   }, 150);
   const confirmBtn = document.getElementById('salConfirmAllBtn');
   const confirmText = document.getElementById('salConfirmBarText');
@@ -12045,10 +12055,25 @@ function initFinansije(){
       btn.classList.add('active');
       const map = { pregled:'finTabPregled', transakcije:'finTabTransakcije', projekti:'finTabProjekti', plate:'finTabPlate' };
       document.getElementById(map[btn.dataset.fintab]).classList.add('active');
+      // Bars on a tab were rendered while it was hidden — redraw so they fill in.
+      if(btn.dataset.fintab==='pregled') replayFinPregled();
+      if(btn.dataset.fintab==='plate') replayFinPlate();
     });
   });
 }
 
+/* Revisiting Finansije: re-render the panels whose bars / lines / count-ups
+   are JS-driven so they animate in again (CSS-only animations like the donut
+   spin already replay on their own). Filter state is kept. */
+function replayFinPregled(){
+  renderFinHero(); renderFinProjection(); renderFinFlowChart(); renderFinDonut();
+  renderProjectValueDonut(); renderTopValueProjects(); renderClientRevenueBoard(); renderTopExpenses();
+}
+function replayFinPlate(){ renderSalBreakdown(); renderSalPayrun(); renderSalChart(); renderSalProgress(); }
+function replayFinansije(){
+  const tab = document.querySelector('#view-finansije .fin-tab-btn.active')?.dataset.fintab;
+  if(tab==='plate') replayFinPlate(); else if(tab==='pregled') replayFinPregled();
+}
 function showView(name){
   if(name==='statistika' && !canAccessStats()) name = 'pregled';
   if(name==='finansije' && !canAccessFinance()) name = 'pregled';
@@ -12065,7 +12090,7 @@ function showView(name){
   document.getElementById('view-finansije').classList.toggle('active', name==='finansije');
   document.getElementById('view-profil').classList.toggle('active', name==='profil');
   if(name==='statistika'){ if(!statistikaInited){ statistikaInited = true; initStatistika(); } else { renderStatistikaData(); } }
-  if(name==='finansije' && !finansijeInited){ finansijeInited = true; initFinansije(); }
+  if(name==='finansije'){ if(!finansijeInited){ finansijeInited = true; initFinansije(); } else replayFinansije(); }
   if(name==='playbook' && !playbookInited){ playbookInited = true; initPlaybook(); }
   if(name==='skripte' && !skripteInited){ skripteInited = true; initSkripte(); }
   // Pregled's panel content isn't rebuilt on revisit (unlike the lazy-inited
