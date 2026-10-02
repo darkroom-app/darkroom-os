@@ -639,45 +639,52 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 #finDonutWrap .donut-hole-val{ font-size:14px; font-weight:400; font-variant-numeric:tabular-nums; }
 #finDonutWrap .donut-hole-label{ max-width:86%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cal-filter-item.sep{ border-top:1px solid var(--border); }
-/* Finansije → Pregled on wide screens: the six panels as a 3×2 grid that
-   fills the viewport instead of three tall rows. Row wrappers are flattened
-   with display:contents; long lists scroll inside their own panel. Narrower
-   screens keep the stacked layout (and page scroll) below. */
+/* Finansije → Pregled on wide screens: the three rows of two panels fill
+   the viewport instead of scrolling — row 1 sizes to its content, rows 2
+   and 3 share the rest. Long lists scroll inside their own panel. Narrower
+   screens keep the regular stacked layout (and page scroll). */
 @media (min-width:1500px){
-  #finTabPregled.active{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); grid-template-rows:repeat(2, minmax(340px, 1fr)); gap:14px; }
-  #finTabPregled > .stat-grid-2{ display:contents; }
-  #finTabPregled .stat-panel{ margin:0; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:14px 16px !important; }
-  #finTabPregled .stat-panel-head{ margin-bottom:10px; flex-shrink:0; }
-  /* Trenutno stanje */
-  #finTabPregled .fin-hero-val{ font-size:30px; margin-bottom:10px; }
+  #finTabPregled.active{ display:flex; flex-direction:column; gap:14px; }
+  #finTabPregled > .stat-grid-2{ margin:0; gap:14px; grid-template-rows:minmax(0,1fr); }
+  #finTabPregled > .stat-grid-2:nth-child(1){ flex:0 0 auto; grid-template-columns:1.1fr 1.25fr; }
+  #finTabPregled > .stat-grid-2:nth-child(2), #finTabPregled > .stat-grid-2:nth-child(3){ flex:1 1 0; min-height:240px; }
+  #finTabPregled .stat-panel{ margin:0; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:13px 16px !important; }
+  #finTabPregled .stat-panel-head{ margin-bottom:9px; flex-shrink:0; }
+  /* Row 1 — Trenutno stanje: balance + chips left, runway right, mini stats under */
   #finTabPregled .fin-hero-grid{ gap:10px; }
+  #finTabPregled #finHeroMain{ display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); column-gap:16px; align-items:start; }
+  #finTabPregled .fin-hero-flow{ gap:5px; flex-wrap:nowrap; }
+  #finTabPregled .fin-hero-chip{ padding:5px 8px; font-size:10.5px; }
+  #finTabPregled .fin-hero-op{ font-size:12px; }
+  #finTabPregled #finHeroMain > *:not(.fin-runway){ grid-column:1; }
+  #finTabPregled #finHeroMain > .fin-runway{ grid-column:2; grid-row:1 / span 4; margin-top:0; padding:10px 12px 9px; }
+  #finTabPregled .fin-hero-val{ font-size:30px; margin-bottom:10px; }
   #finTabPregled .fin-hero-side{ padding-top:10px; }
-  #finTabPregled .fin-runway{ margin-top:10px; padding:10px 12px 9px; }
-  /* Projekcija */
-  #finTabPregled .fin-proj-flow{ gap:8px; margin-bottom:8px; }
+  /* Row 1 — Projekcija: four steps in one row */
+  #finTabPregled .fin-top-row .fin-proj-flow{ grid-template-columns:repeat(4, minmax(0,1fr)); gap:8px; margin-bottom:8px; }
   #finTabPregled .fin-proj-step{ padding:10px 12px; border-radius:13px; }
   #finTabPregled .fin-proj-step .kpi-icon{ width:24px; height:24px; margin-bottom:6px; }
-  #finTabPregled .fin-proj-step .kpi-val{ font-size:17px; }
+  #finTabPregled .fin-proj-step .kpi-val{ font-size:16px; }
   #finTabPregled .fin-proj-step-sub{ margin-top:6px; padding-top:6px; }
-  #finTabPregled .sal-progress-row{ margin-bottom:6px; }
-  /* Priliv vs odliv */
-  #finTabPregled .fin-highlight-badge{ gap:8px; font-size:9.5px; padding:5px 10px; }
-  /* Struktura troška + tabs */
+  #finTabPregled .sal-progress-row{ margin-bottom:5px; }
+  /* Row 2 — Priliv vs odliv: lower plot (read by renderFinFlowChart) */
+  #finTabPregled #finFlowChart{ --flow-h:110; }
+  #finTabPregled .fin-flow-legend{ margin-bottom:2px; }
+  #finTabPregled .fin-highlight-badge-row{ height:28px; }
+  /* Row 2 — Struktura troška + tabs */
   #finTabPregled .fin-cost-head{ flex-wrap:wrap; }
-  #finTabPregled .fin-cost-row{ flex:1; min-height:0; align-items:stretch; gap:18px; }
-  #finTabPregled #finDonutWrap{ width:150px; height:150px; align-self:center; }
+  #finTabPregled .fin-cost-row{ flex:1; min-height:0; align-items:stretch; gap:22px; }
+  #finTabPregled #finDonutWrap{ width:140px; height:140px; align-self:center; }
   #finTabPregled .fin-cost-row .donut-legend{ min-height:0; overflow-y:auto; justify-content:flex-start; padding-right:3px; }
   #finTabPregled #costTabTop, #finTabPregled #costTabRecent{ flex:1; min-height:0; overflow-y:auto; }
-  #finTabPregled #costTabRecent .tx-head, #finTabPregled #costTabRecent .tx-row{ grid-template-columns:0.9fr 1fr 1.5fr 0.8fr 1.3fr; gap:8px; padding:8px 6px; }
-  #finTabPregled #costTabRecent .tx-head > :nth-child(2), #finTabPregled #costTabRecent .tx-row > :nth-child(2){ display:none; }
-  /* Vrednost projekta */
-  #finTabPregled .pv-toolbar{ margin-bottom:10px; }
-  #finTabPregled .pv-summary{ grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
-  #finTabPregled .pv-stat{ padding:7px 10px; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
-  #finTabPregled .pv-stat-val{ font-size:13px; order:2; }
-  #finTabPregled .pv-stat-label{ margin-top:0; }
+  #finTabPregled #costTabRecent .tx-head, #finTabPregled #costTabRecent .tx-row{ padding:8px 10px; }
+  /* Row 3 — Vrednost projekta */
+  #finTabPregled .pv-toolbar{ margin-bottom:8px; }
+  #finTabPregled .pv-summary{ gap:6px; margin-bottom:6px; }
+  #finTabPregled .pv-stat{ padding:6px 10px; }
+  #finTabPregled .pv-stat-val{ font-size:13px; }
   #finTabPregled .pv-list{ max-height:none; flex:1; min-height:0; }
-  /* Najvredniji projekti / Prihod po klijentu */
+  /* Row 3 — Najvredniji projekti / Prihod po klijentu */
   #finTabPregled #rankPanel .lb-list{ max-height:none; flex:1; min-height:0; gap:10px; }
 }
 /* Najvredniji projekti / Prihod po klijentu (merged panel) */
@@ -9823,7 +9830,9 @@ function renderFinFlowChart(){
   const wrap = document.getElementById('finFlowChart');
   wrap.classList.remove('shown');
   const n = 12;
-  const W = 640, H = 150, padT = 20, padB = 10;
+  // Plot height comes from --flow-h (the compact Pregled layout lowers it).
+  const H = parseFloat(getComputedStyle(wrap).getPropertyValue('--flow-h')) || 150;
+  const W = 640, padT = 20, padB = 10;
   const max = Math.max(...dataIn, ...dataOut, 1);
   const xFor = i => (i/(n-1)) * W;
   const yFor = v => padT + (1-(v/max)) * (H-padT-padB);
