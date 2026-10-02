@@ -1110,6 +1110,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .stat-tabs{ display:flex; gap:4px; background:var(--card); border:1px solid var(--border); border-radius:12px; padding:4px; margin-bottom:16px; width:fit-content; flex-shrink:0; }
 .stat-tab-btn{ padding:9px 18px; border-radius:9px; border:none; background:transparent; font-family:var(--font-body); font-weight:600; font-size:12.5px; color:var(--ink-dim); cursor:pointer; transition:background .15s ease, color .15s ease; }
 .stat-tab-btn.active{ background:var(--ink-solid-bg); color:#FBF8F1; }
+.stat-tab-btn svg{ width:15px; height:15px; flex-shrink:0; margin-right:7px; vertical-align:-3px; opacity:0.85; }
+.stat-tab-btn.active svg{ opacity:1; }
 .stat-tab-panel{ display:none; flex:1; min-height:0; overflow-y:auto; padding-right:2px; }
 .stat-tab-panel.active{ display:block; }
 
@@ -2639,10 +2641,10 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
       </div>
 
       <div class="stat-tabs">
-        <button class="fin-tab-btn stat-tab-btn active" data-fintab="pregled">📊 Pregled</button>
-        <button class="fin-tab-btn stat-tab-btn" data-fintab="transakcije">💳 Transakcije</button>
-        <button class="fin-tab-btn stat-tab-btn" data-fintab="projekti">🎬 Projekti</button>
-        <button class="fin-tab-btn stat-tab-btn" data-fintab="plate">👥 Plate</button>
+        <button class="fin-tab-btn stat-tab-btn active" data-fintab="pregled"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 20h18"/><path d="M6.5 16v-5"/><path d="M11.5 16V6"/><path d="M16.5 16V9.5"/></svg>Pregled</button>
+        <button class="fin-tab-btn stat-tab-btn" data-fintab="transakcije"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 20V4"/><path d="M3 8l4-4 4 4"/><path d="M17 4v16"/><path d="M13 16l4 4 4-4"/></svg>Transakcije</button>
+        <button class="fin-tab-btn stat-tab-btn" data-fintab="projekti"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7 12 2l9 5-9 5-9-5Z"/><path d="M3 12l9 5 9-5"/><path d="M3 17l9 5 9-5"/></svg>Projekti</button>
+        <button class="fin-tab-btn stat-tab-btn" data-fintab="plate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 10v4"/><path d="M18 10v4"/></svg>Plate</button>
       </div>
 
       <!-- TAB 1: PREGLED -->
