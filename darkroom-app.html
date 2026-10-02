@@ -712,6 +712,33 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled .inflow-summary{ margin-bottom:8px; }
   #finTabPregled #rankTabs .dash-proj-tab{ padding:5px 9px; font-size:11px; }
 }
+/* Custom number steppers (enhanceNumberInput) */
+.xnum-wrap{ position:relative; }
+.xnum-wrap input{ width:100%; padding-right:34px !important; -moz-appearance:textfield; appearance:textfield; }
+.xnum-wrap input::-webkit-inner-spin-button, .xnum-wrap input::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
+.xnum-steppers{ position:absolute; right:5px; top:50%; transform:translateY(-50%); display:flex; flex-direction:column; gap:2px; }
+.xnum-btn{ width:22px; height:14px; border:none; border-radius:5px; background:var(--card); color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; transition:background .12s ease, color .12s ease; }
+.xnum-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); }
+.xnum-btn svg{ width:11px; height:11px; }
+/* Prekovremeni po projektima (salary modal + Kalendar overview) */
+.sal-ot-projects{ background:var(--card-soft); border-radius:12px; padding:10px 12px; margin:-4px 0 14px; }
+.sal-ot-title{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; display:flex; justify-content:space-between; }
+.sal-ot-title b{ color:var(--gold); font-size:11px; letter-spacing:0; }
+.ot-proj-row{ display:flex; align-items:baseline; gap:10px; padding:4px 0; border-top:1px solid var(--border); font-size:11.5px; }
+.ot-proj-row:first-of-type{ border-top:none; }
+.ot-proj-code{ font-family:var(--font-mono); font-size:10px; font-weight:700; color:var(--gold-deep); flex-shrink:0; min-width:44px; }
+.ot-proj-name{ flex:1; min-width:0; font-weight:600; }
+.ot-proj-kadrovi{ display:block; font-weight:400; font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); margin-top:1px; }
+.ot-proj-row b{ font-family:var(--font-mono); font-size:11px; color:var(--ink); white-space:nowrap; }
+.ot-overview{ padding:4px 2px 10px; }
+.ot-summary{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; margin-bottom:14px; }
+.ot-people{ display:grid; grid-template-columns:repeat(auto-fill, minmax(320px, 1fr)); gap:12px; }
+.ot-person{ background:var(--card); border:1px solid var(--border); border-radius:16px; padding:12px 14px; opacity:0; animation:legendItemIn .35s ease both; }
+.ot-person-head{ display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+.ot-person-name{ flex:1; font-weight:600; font-size:12.5px; }
+.ot-person-total{ font-family:var(--font-display); font-weight:700; font-size:16px; color:var(--gold); }
+.ot-days{ display:flex; flex-wrap:wrap; gap:5px; margin-top:8px; }
+.ot-day{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-dim); background:var(--card-soft); border-radius:6px; padding:3px 7px; }
 /* Segmented bars (segBarHtml) */
 .seg-bar{ display:flex; gap:4px; height:8px; --seg-color:var(--gold); --seg-glow:rgba(193,159,84,0.5); --seg-alt:#5FA968; --seg-alt-glow:rgba(95,169,104,0.5); }
 .seg-bar .seg{ flex:1; min-width:0; border-radius:99px; background:var(--border); transition:background .3s ease, box-shadow .3s ease; }
@@ -2371,6 +2398,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <button class="cvt-btn active" data-viewmode="week">Nedelja</button>
           <button class="cvt-btn" data-viewmode="month">Mesec</button>
           <button class="cvt-btn" data-viewmode="sati">Moji sati</button>
+          <button class="cvt-btn" data-viewmode="ot" style="display:none;">Prekovremeni</button>
         </div>
         <div class="cal-zoom-toggle" id="calZoomToggle">
           <button id="calZoomOut" title="Odzumiraj na ceo mesec">−</button>
@@ -3346,6 +3374,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
         <input type="number" id="salDedukcijeInput" placeholder="0">
       </div>
     </div>
+    <div class="sal-ot-projects" id="salOtProjects" style="display:none;"></div>
     <div class="sal-modal-grid">
       <div class="modal-field">
         <label>Zdravstveno osiguranje (RSD)</label>
@@ -4887,12 +4916,90 @@ function renderCalStats(){
   document.getElementById('csSati').innerHTML = `${monthHours(false).toFixed(1)} <span>h</span>`;
   document.getElementById('csPrekovremeno').innerHTML = `${monthHours(true).toFixed(1)} <span>h</span>`;
 }
+const fmtHrs = h => String(+h.toFixed(1)).replace('.', ',') + 'h';
+// Overtime time_entries grouped by project (and kadar inside it). Used by the
+// salary modal and the Kalendar → Prekovremeni overview.
+function overtimeByProject(entries){
+  const map = new Map();
+  entries.forEach(e=>{
+    const hit = e.kadarDbId ? findKadarByDbId(e.kadarDbId) : null;
+    const key = hit ? hit.project.code : '—';
+    if(!map.has(key)) map.set(key, { code: hit ? hit.project.code : '', name: hit ? hit.project.name : 'Bez projekta', hours:0, kadrovi:new Map() });
+    const g = map.get(key);
+    g.hours += e.hours;
+    if(hit) g.kadrovi.set(hit.kadar.name, (g.kadrovi.get(hit.kadar.name)||0) + e.hours);
+  });
+  return [...map.values()].sort((a,b)=>b.hours-a.hours);
+}
+function overtimeProjectRowsHtml(groups){
+  return groups.map(g=>`
+    <div class="ot-proj-row">
+      <span class="ot-proj-code">${escapeHtml(g.code)}</span>
+      <span class="ot-proj-name">${escapeHtml(g.name)}${g.kadrovi.size ? `<span class="ot-proj-kadrovi">${[...g.kadrovi].map(([k,h])=>`${escapeHtml(k)} · ${fmtHrs(h)}`).join(', ')}</span>` : ''}</span>
+      <b>${fmtHrs(g.hours)}</b>
+    </div>`).join('');
+}
+const canSeeTeamOvertime = ()=> ['admin','superadmin'].includes(currentAccess());
+
+/* Kalendar → Prekovremeni (admin/superadmin): who logged overtime in the
+   calendar's current month, per person → per project (kadrovi) and per day. */
+function renderCalendarOvertime(){
+  const prefix = `${calCursor.y}-${String(calCursor.m).padStart(2,'0')}`;
+  const entries = timeEntries.filter(e=>e.overtime && e.date && e.date.startsWith(prefix));
+  const monthLabel = `${calMonthNames[calCursor.m-1]} ${calCursor.y}.`;
+  if(!entries.length){
+    calWeeks.innerHTML = `<div class="day-view-empty">Niko nije logovao prekovremene sate za ${escapeHtml(monthLabel)}</div>`;
+    return;
+  }
+  const byPerson = new Map();
+  entries.forEach(e=>{
+    const name = e.employee || teamMembers.find(t=>t.authId===e.employeeId)?.name || 'Nepoznato';
+    if(!byPerson.has(name)) byPerson.set(name, []);
+    byPerson.get(name).push(e);
+  });
+  const people = [...byPerson.entries()].map(([name, list])=>({ name, list, total:list.reduce((s,e)=>s+e.hours,0) }))
+    .sort((a,b)=>b.total-a.total);
+  const grand = people.reduce((s,p)=>s+p.total,0);
+  calWeeks.innerHTML = `
+    <div class="ot-overview">
+      <div class="ot-summary">
+        <div class="pv-stat"><div class="pv-stat-val">${fmtHrs(grand)}</div><div class="pv-stat-label">Prekovremeno · ${escapeHtml(monthLabel)}</div></div>
+        <div class="pv-stat"><div class="pv-stat-val">${people.length}</div><div class="pv-stat-label">${people.length===1 ? 'Osoba' : 'Osoba'} sa prekovremenim</div></div>
+        <div class="pv-stat"><div class="pv-stat-val">${escapeHtml(people[0].name)}</div><div class="pv-stat-label">Najviše · ${fmtHrs(people[0].total)}</div></div>
+      </div>
+      <div class="ot-people">
+        ${people.map((p,i)=>{
+          const av = avatarBgInner(p.name);
+          const days = new Map();
+          p.list.forEach(e=> days.set(e.date, (days.get(e.date)||0) + e.hours));
+          const dayChips = [...days].sort((a,b)=>a[0].localeCompare(b[0])).map(([iso,h])=>{
+            const d = fromISO(iso);
+            return `<span class="ot-day">${d.d}.${d.m}. · ${fmtHrs(h)}</span>`;
+          }).join('');
+          return `
+          <div class="ot-person" style="animation-delay:${Math.min(i,10)*50}ms;">
+            <div class="ot-person-head">
+              <span class="sal-emp-avatar" style="${av.bg}">${av.inner}</span>
+              <span class="ot-person-name">${escapeHtml(p.name)}</span>
+              <span class="ot-person-total">${fmtHrs(p.total)}</span>
+            </div>
+            <div class="ot-proj-list">${overtimeProjectRowsHtml(overtimeByProject(p.list))}</div>
+            <div class="ot-days">${dayChips}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
 function renderCalendar(){
   calWeeks.innerHTML = '';
+  const otBtn = document.querySelector('.cvt-btn[data-viewmode="ot"]');
+  if(otBtn) otBtn.style.display = canSeeTeamOvertime() ? '' : 'none';
+  if(calViewMode === 'ot' && !canSeeTeamOvertime()) calViewMode = 'week';
   document.getElementById('calWeekdayHeader').style.display = 'none';
   if(calViewMode === 'week') renderCalendarWeek();
   else if(calViewMode === 'day') renderCalendarDay();
   else if(calViewMode === 'sati') renderCalendarMySati();
+  else if(calViewMode === 'ot') renderCalendarOvertime();
   else renderCalendarMonth();
   renderCalStats();
 }
@@ -6139,7 +6246,7 @@ function setCalViewMode(mode){
   // it's clear +/- only ever move between those two, not past them.
   document.getElementById('calZoomOut').disabled = mode==='month';
   document.getElementById('calZoomIn').disabled = mode!=='month';
-  document.getElementById('calZoomToggle').style.display = (mode==='day' || mode==='sati') ? 'none' : '';
+  document.getElementById('calZoomToggle').style.display = (mode==='day' || mode==='sati' || mode==='ot') ? 'none' : '';
   renderCalendar();
 }
 document.querySelectorAll('.cvt-btn').forEach(btn=>{
@@ -6149,7 +6256,7 @@ document.getElementById('calZoomOut').addEventListener('click', ()=> setCalViewM
 document.getElementById('calZoomIn').addEventListener('click', ()=> setCalViewMode('week'));
 let calZoomWheelLock = false;
 calWeeks.addEventListener('wheel', (e)=>{
-  if(!e.ctrlKey || calViewMode==='day' || calViewMode==='sati') return;
+  if(!e.ctrlKey || calViewMode==='day' || calViewMode==='sati' || calViewMode==='ot') return;
   // Ctrl+scroll would otherwise zoom the whole browser page — hijack it here
   // instead to move between the 3-week Nedelja view and Mesec, same two
   // states the +/- buttons toggle. { passive:false } is required for
@@ -12066,6 +12173,17 @@ function autoCalcSalPorez(){
 });
 
 let activeSalEmp = null, activeSalMonth = null, activeSalYear = null;
+// Which projects this person logged overtime on that month (Kalendar hours).
+function renderSalOvertimeProjects(emp, year, month){
+  const el = document.getElementById('salOtProjects');
+  const empRow = teamMembers.find(t=>t.name===emp);
+  const prefix = `${year}-${String(month+1).padStart(2,'0')}`;
+  const entries = empRow && empRow.authId ? timeEntries.filter(e=>e.employeeId===empRow.authId && e.overtime && e.date && e.date.startsWith(prefix)) : [];
+  if(!entries.length){ el.innerHTML = ''; el.style.display = 'none'; return; }
+  const total = entries.reduce((s,e)=>s+e.hours,0);
+  el.style.display = '';
+  el.innerHTML = `<div class="sal-ot-title">Prekovremeni sati po projektima <b>${fmtHrs(total)}</b></div>${overtimeProjectRowsHtml(overtimeByProject(entries))}`;
+}
 function openSalModal(emp, month){
   activeSalEmp = emp; activeSalMonth = month; activeSalYear = salBreakdownYear;
   const existing = salaryFor(emp, month);
@@ -12085,6 +12203,7 @@ function openSalModal(emp, month){
   hintEl.textContent = otSuggestion.hours > 0
     ? `Iz Kalendara: ${otSuggestion.hours.toFixed(1)}h prekovremenog rada ovog meseca → predlog ${fmtRSD(otSuggestion.amount)} (osnovica/${otSuggestion.fond}h fond časova × 1.3)`
     : '';
+  renderSalOvertimeProjects(emp, salBreakdownYear, month);
   document.getElementById('salDedukcijeInput').value = existing ? existing.dedukcije : 0;
   document.getElementById('salPorezInput').value = existing ? existing.porez : calcPorezIDoprinosi(lastOsn||0, emp);
   document.getElementById('salZdravstvenoInput').value = existing ? (existing.zdravstveno ?? ZDRAVSTVENO_DEFAULT) : ZDRAVSTVENO_DEFAULT;
@@ -13897,8 +14016,19 @@ function recomputeKadarRoundStats(kadar){
 async function loadTimeEntriesFromSupabase(){
   if(!sb) return false;
   try {
-    const { data, error } = await sb.from('time_entries').select('*').order('date', { ascending:false });
-    if(error || !data) return false;
+    // PostgREST caps a single select() at 1000 rows and time_entries grows by
+    // a few hundred a month — page through it like loadTransactionsFromSupabase
+    // (secondary order on id keeps page boundaries stable within a date).
+    const pageSize = 1000;
+    const data = [];
+    for(let from = 0; ; from += pageSize){
+      const { data: page, error } = await sb.from('time_entries').select('*')
+        .order('date', { ascending:false }).order('id', { ascending:true }).range(from, from + pageSize - 1);
+      if(error) return false;
+      if(!page || !page.length) break;
+      data.push(...page);
+      if(page.length < pageSize) break;
+    }
     const teamNameById = {}; teamMembers.forEach(t=>{ if(t.authId) teamNameById[t.authId]=t.name; });
     timeEntries.length = 0;
     data.forEach(row=>{
@@ -14341,6 +14471,38 @@ function enhanceSelect(selectEl){
   syncLabel();
 }
 document.querySelectorAll('select').forEach(enhanceSelect);
+
+/* Number inputs: the browser's own spinner arrows replaced with up/down
+   chevrons in the app's style. data-step sets the increment (default 1). */
+function enhanceNumberInput(input){
+  if(input.dataset.xnum) return;
+  input.dataset.xnum = '1';
+  const wrap = document.createElement('div');
+  wrap.className = 'xnum-wrap';
+  input.parentNode.insertBefore(wrap, input);
+  wrap.appendChild(input);
+  const steppers = document.createElement('div');
+  steppers.className = 'xnum-steppers';
+  steppers.innerHTML = `<button type="button" class="xnum-btn" data-dir="1" tabindex="-1" aria-label="Povećaj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button><button type="button" class="xnum-btn" data-dir="-1" tabindex="-1" aria-label="Smanji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`;
+  wrap.appendChild(steppers);
+  steppers.querySelectorAll('.xnum-btn').forEach(b=>{
+    b.addEventListener('click', ()=>{
+      if(input.disabled) return;
+      const step = parseFloat(input.dataset.step || input.step) || 1;
+      const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
+      const next = Math.max(min, (parseFloat(input.value) || 0) + step * Number(b.dataset.dir));
+      input.value = String(Math.round(next * 100) / 100);
+      input.dispatchEvent(new Event('input', { bubbles:true }));
+      input.dispatchEvent(new Event('change', { bubbles:true }));
+    });
+  });
+}
+['salOsnovicaInput','salBonusInput','salPrekoInput','salDedukcijeInput','salZdravstvenoInput','salPorezInput'].forEach(id=>{
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.dataset.step = '1000';
+  enhanceNumberInput(el);
+});
 </script>
 
 <script>
