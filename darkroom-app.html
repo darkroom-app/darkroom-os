@@ -720,6 +720,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .xnum-btn{ width:22px; height:14px; border:none; border-radius:5px; background:var(--card); color:var(--ink-faint); display:flex; align-items:center; justify-content:center; cursor:pointer; padding:0; transition:background .12s ease, color .12s ease; }
 .xnum-btn:hover{ background:var(--gold-soft); color:var(--gold-deep); }
 .xnum-btn svg{ width:11px; height:11px; }
+.xnum-wrap:has(input:disabled) .xnum-steppers{ display:none; }
+.xnum-wrap.compact input{ padding-right:14px !important; }
+.xnum-wrap.compact .xnum-steppers{ right:2px; gap:1px; opacity:0; transition:opacity .12s ease; }
+.xnum-wrap.compact:hover .xnum-steppers, .xnum-wrap.compact:focus-within .xnum-steppers{ opacity:1; }
+.xnum-wrap.compact .xnum-btn{ width:12px; height:9px; border-radius:3px; }
+.xnum-wrap.compact .xnum-btn svg{ width:8px; height:8px; }
+#finMarginInput{ width:56px !important; }
 /* Prekovremeni po projektima (salary modal + Kalendar overview) */
 .sal-ot-projects{ background:var(--card-soft); border-radius:12px; padding:10px 12px; margin:-4px 0 14px; }
 .sal-ot-title{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; display:flex; justify-content:space-between; }
@@ -14472,13 +14479,18 @@ function enhanceSelect(selectEl){
 }
 document.querySelectorAll('select').forEach(enhanceSelect);
 
-/* Number inputs: the browser's own spinner arrows replaced with up/down
-   chevrons in the app's style. data-step sets the increment (default 1). */
+/* Number inputs app-wide: the browser's own spinner arrows replaced with
+   up/down chevrons in the app's style. Step: data-step, else the input's own
+   step, else 1 — RSD amount fields get 1.000. Small hour fields use a compact
+   variant whose chevrons only show on hover/focus. */
+const XNUM_COMPACT = '.msati-reg, .msati-ot, .ev-hours-reg, .ev-hours-ot, #finMarginInput, #ntSlobodniDani';
+const XNUM_RSD = '#txAmountInput, #kadarAmountInput, #kadarDeductionAmountInput, #kadarChargeAmountInput, #extraChargeAmountInput, #shAmountInput, .ei-amount, #salOsnovicaInput, #salBonusInput, #salPrekoInput, #salDedukcijeInput, #salZdravstvenoInput, #salPorezInput';
 function enhanceNumberInput(input){
   if(input.dataset.xnum) return;
   input.dataset.xnum = '1';
+  if(!input.dataset.step && input.matches(XNUM_RSD)) input.dataset.step = '1000';
   const wrap = document.createElement('div');
-  wrap.className = 'xnum-wrap';
+  wrap.className = 'xnum-wrap' + (input.matches(XNUM_COMPACT) ? ' compact' : '');
   input.parentNode.insertBefore(wrap, input);
   wrap.appendChild(input);
   const steppers = document.createElement('div');
@@ -14486,23 +14498,31 @@ function enhanceNumberInput(input){
   steppers.innerHTML = `<button type="button" class="xnum-btn" data-dir="1" tabindex="-1" aria-label="Povećaj"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg></button><button type="button" class="xnum-btn" data-dir="-1" tabindex="-1" aria-label="Smanji"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>`;
   wrap.appendChild(steppers);
   steppers.querySelectorAll('.xnum-btn').forEach(b=>{
+    // Keep focus in the input: some hour fields save on blur.
+    b.addEventListener('mousedown', ev=> ev.preventDefault());
     b.addEventListener('click', ()=>{
       if(input.disabled) return;
       const step = parseFloat(input.dataset.step || input.step) || 1;
       const min = input.min !== '' ? parseFloat(input.min) : -Infinity;
-      const next = Math.max(min, (parseFloat(input.value) || 0) + step * Number(b.dataset.dir));
+      const max = input.max !== '' ? parseFloat(input.max) : Infinity;
+      const next = Math.min(max, Math.max(min, (parseFloat(input.value) || 0) + step * Number(b.dataset.dir)));
       input.value = String(Math.round(next * 100) / 100);
       input.dispatchEvent(new Event('input', { bubbles:true }));
       input.dispatchEvent(new Event('change', { bubbles:true }));
     });
   });
 }
-['salOsnovicaInput','salBonusInput','salPrekoInput','salDedukcijeInput','salZdravstvenoInput','salPorezInput'].forEach(id=>{
-  const el = document.getElementById(id);
-  if(!el) return;
-  el.dataset.step = '1000';
-  enhanceNumberInput(el);
-});
+document.querySelectorAll('input[type="number"]').forEach(enhanceNumberInput);
+// Number fields rendered later (Kalendar hours, Radna nedelja, Dropbox inbox…).
+new MutationObserver(muts=>{
+  for(const m of muts){
+    m.addedNodes.forEach(n=>{
+      if(n.nodeType !== 1) return;
+      if(n.matches && n.matches('input[type="number"]')) enhanceNumberInput(n);
+      else if(n.querySelectorAll) n.querySelectorAll('input[type="number"]').forEach(enhanceNumberInput);
+    });
+  }
+}).observe(document.body, { childList:true, subtree:true });
 </script>
 
 <script>
