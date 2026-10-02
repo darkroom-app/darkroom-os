@@ -612,6 +612,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
    .donut-wrap/.donut-hole structure, only the ring rendering changes. */
 .donut-wrap.modern{ width:148px; height:148px; }
 .modern-donut-ring{ width:100%; height:100%; }
+/* Solid ring (renderModernDonut opts.solid) — same look as Moja statistika:
+   the hole edge sits exactly on the ring's inner radius (59/200 of the size). */
+.donut-wrap.solid .donut-hole{ inset:20.5%; background:var(--card); }
+.donut-wrap.solid .donut-hole-val{ font-size:20px; font-weight:300; line-height:1; }
+.donut-wrap.solid .donut-hole-label{ font-size:7px; letter-spacing:0.06em; margin-top:3px; }
 .modern-donut-svg{ display:block; overflow:visible; }
 .modern-donut-seg{ transition:none; }
 .modern-donut-badge{ opacity:0; }
@@ -2708,9 +2713,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="pie"></i>Struktura troška</div></div>
             <div class="donut-row">
-              <div class="donut-wrap modern" id="finDonutWrap">
+              <div class="donut-wrap modern solid" id="finDonutWrap">
                 <div class="modern-donut-ring" id="finDonutRing"></div>
-                <div class="donut-hole"><div class="donut-hole-val" id="finDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
+                <div class="donut-hole"><div class="donut-hole-val" id="finDonutTotal">0</div><div class="donut-hole-label">RSD</div></div>
               </div>
               <div class="donut-legend" id="finDonutLegend"></div>
             </div>
@@ -2721,9 +2726,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="folder"></i>Vrednost projekata po statusu</div></div>
             <div class="fin-mini-stat"><span class="fin-mini-stat-val" id="finActiveProjCount">0</span><span class="fin-mini-stat-label">aktivnih projekata</span></div>
             <div class="donut-row">
-              <div class="donut-wrap modern" id="statusDonutWrap">
+              <div class="donut-wrap modern solid" id="statusDonutWrap">
                 <div class="modern-donut-ring" id="statusDonutRing"></div>
-                <div class="donut-hole"><div class="donut-hole-val" id="statusDonutTotal" style="font-size:13px;">0</div><div class="donut-hole-label">RSD</div></div>
+                <div class="donut-hole"><div class="donut-hole-val" id="statusDonutTotal">0</div><div class="donut-hole-label">RSD</div></div>
               </div>
               <div class="donut-legend" id="statusDonutLegend"></div>
             </div>
@@ -9812,7 +9817,7 @@ function renderModernDonut(ringId, legendId, items, opts){
 }
 function renderFinDonut(){
   const items = finCostComponents();
-  const total = renderModernDonut('finDonutRing', 'finDonutLegend', items);
+  const total = renderModernDonut('finDonutRing', 'finDonutLegend', items, { solid:true });
   animateCountUp(document.getElementById('finDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('finDonutWrap').classList.add('shown'); }, 100);
 }
@@ -9856,7 +9861,7 @@ function renderProjectValueDonut(){
   const items = Object.keys(sums).filter(c=>sums[c]>0)
     .map(c=>({ label:c, value:sums[c], color:colorMap[c]||'var(--ink-faint)' }))
     .sort((a,b)=>b.value-a.value);
-  const total = renderModernDonut('statusDonutRing', 'statusDonutLegend', items);
+  const total = renderModernDonut('statusDonutRing', 'statusDonutLegend', items, { solid:true });
   animateCountUp(document.getElementById('statusDonutTotal'), Math.round(total/1000), {suffix:'k', duration:900});
   setTimeout(()=>{ document.getElementById('statusDonutWrap').classList.add('shown'); }, 100);
   const activeCount = allProjects.filter(p=>p.status==='U toku' || p.status==='Revizija').length;
