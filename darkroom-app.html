@@ -626,6 +626,11 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-cost-head{ align-items:flex-start; gap:12px; }
 .fin-cost-head .stat-panel-sub{ margin-top:4px; }
 .fin-cost-filters{ display:flex; gap:8px; flex-shrink:0; }
+.cost-head-left{ display:flex; flex-direction:column; gap:7px; min-width:0; }
+.cost-head-left .cal-view-toggle{ display:inline-flex; align-self:flex-start; }
+.cost-head-left .dash-proj-tab{ display:inline-flex; align-items:center; white-space:nowrap; }
+.cost-head-left #finCostPeriodSub{ margin-top:0; }
+.cost-tab-sub{ margin-bottom:10px; }
 .fin-cost-row{ justify-content:center; gap:28px; }
 .fin-cost-row .donut-legend{ flex:0 1 360px; min-width:0; gap:3px; }
 .fin-cost-row .donut-legend-left{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -2788,18 +2793,33 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           </div>
           <div class="stat-panel" style="padding:14px 18px 16px;">
             <div class="stat-panel-head fin-cost-head">
-              <div><div class="stat-panel-title"><i class="ui-ico" data-ico="pie"></i>Struktura troška</div><div class="stat-panel-sub" id="finCostPeriodSub"></div></div>
-              <div class="fin-cost-filters">
+              <div class="cost-head-left">
+                <div class="cal-view-toggle" id="costTabs">
+                  <button class="dash-proj-tab active" data-ct="struct"><i class="ui-ico sm" data-ico="pie"></i>Struktura troška</button>
+                  <button class="dash-proj-tab" data-ct="top"><i class="ui-ico sm" data-ico="trendDown"></i>Top 5 troškova</button>
+                  <button class="dash-proj-tab" data-ct="recent"><i class="ui-ico sm" data-ico="clock"></i>Poslednje transakcije</button>
+                </div>
+                <div class="stat-panel-sub" id="finCostPeriodSub"></div>
+              </div>
+              <div class="fin-cost-filters" id="finCostFilters">
                 <div class="cal-filter" id="filterFinCostYear"><div class="cal-filter-btn"><span id="filterFinCostYearLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterFinCostYearMenu"></div></div>
                 <div class="cal-filter" id="filterFinCostPeriod"><div class="cal-filter-btn"><span id="filterFinCostPeriodLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterFinCostPeriodMenu"></div></div>
               </div>
             </div>
-            <div class="donut-row fin-cost-row">
+            <div class="donut-row fin-cost-row" id="costTabStruct">
               <div class="donut-wrap modern solid" id="finDonutWrap">
                 <div class="modern-donut-ring" id="finDonutRing"></div>
                 <div class="donut-hole"><div class="donut-hole-val" id="finDonutTotal">0</div><div class="donut-hole-label">RSD</div></div>
               </div>
               <div class="donut-legend" id="finDonutLegend"></div>
+            </div>
+            <div id="costTabTop" style="display:none;">
+              <div class="stat-panel-sub cost-tab-sub">Najveći troškovi ovog meseca</div>
+              <div class="lb-list" id="topExpensesList"></div>
+            </div>
+            <div id="costTabRecent" style="display:none;">
+              <div class="stat-panel-sub cost-tab-sub">Poslednje unete transakcije (priliv i odliv)</div>
+              <div class="recent-tx-list" id="recentTxList"></div>
             </div>
           </div>
         </div>
@@ -2835,16 +2855,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             </div>
             <div class="lb-list" id="topValueProjectsList"></div>
             <div class="lb-list" id="finClientLeaderboard" style="display:none;"></div>
-          </div>
-        </div>
-        <div class="stat-grid-2" style="grid-template-columns:1fr 1.7fr;">
-          <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="trendDown"></i>Top 5 troškova ovog meseca</div></div>
-            <div class="lb-list" id="topExpensesList"></div>
-          </div>
-          <div class="stat-panel">
-            <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="clock"></i>Poslednje transakcije</div></div>
-            <div class="recent-tx-list" id="recentTxList"></div>
           </div>
         </div>
       </div>
@@ -10178,6 +10188,21 @@ document.querySelectorAll('#rankStatusFilter .dash-proj-tab').forEach(btn=>{
     rankStatus = btn.dataset.st;
     document.querySelectorAll('#rankStatusFilter .dash-proj-tab').forEach(b=>b.classList.toggle('active', b===btn));
     renderTopValueProjects();
+  });
+});
+// Struktura troška panel tabs: donut / Top 5 troškova / Poslednje transakcije.
+// Year/period filters and the period subtitle only apply to the donut.
+document.querySelectorAll('#costTabs .dash-proj-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const tab = btn.dataset.ct;
+    document.querySelectorAll('#costTabs .dash-proj-tab').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('costTabStruct').style.display = tab==='struct' ? '' : 'none';
+    document.getElementById('costTabTop').style.display = tab==='top' ? '' : 'none';
+    document.getElementById('costTabRecent').style.display = tab==='recent' ? '' : 'none';
+    document.getElementById('finCostFilters').style.visibility = tab==='struct' ? '' : 'hidden';
+    document.getElementById('finCostPeriodSub').style.display = tab==='struct' ? '' : 'none';
+    if(tab==='top') renderTopExpenses();
+    if(tab==='recent') renderRecentTx();
   });
 });
 function renderClientRevenueBoard(){
