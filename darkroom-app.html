@@ -631,8 +631,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .cost-head-left .dash-proj-tab{ display:inline-flex; align-items:center; white-space:nowrap; }
 .cost-head-left #finCostPeriodSub{ margin-top:0; }
 .cost-tab-sub{ margin-bottom:10px; }
-.fin-cost-row{ justify-content:center; gap:28px; }
-.fin-cost-row .donut-legend{ flex:0 1 360px; min-width:0; gap:3px; }
+/* Donut on the left, legend in two columns filling the rest. */
+.fin-cost-row{ justify-content:flex-start; gap:22px; }
+.fin-cost-row .donut-legend{ flex:1 1 0; min-width:0; display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); grid-auto-flow:column; grid-template-rows:repeat(var(--legend-rows, 7), auto); column-gap:14px; row-gap:2px; align-content:center; }
 .fin-cost-row .donut-legend-left{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .fin-cost-row .donut-legend-right b{ font-variant-numeric:tabular-nums; }
 #finDonutWrap{ width:176px; height:176px; }
@@ -672,7 +673,13 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled .fin-flow-legend{ margin-bottom:2px; }
   #finTabPregled .fin-highlight-badge-row{ height:28px; }
   /* Row 2 — Struktura troška + tabs */
-  #finTabPregled .fin-cost-head{ flex-wrap:wrap; }
+  #finTabPregled .fin-cost-head{ flex-wrap:nowrap; align-items:flex-start; }
+  #finTabPregled #costTabs .ui-ico{ display:none; }
+  #finTabPregled #costTabs .dash-proj-tab{ padding:5px 9px; font-size:11px; }
+  #finTabPregled #finCostFilters .cal-filter-btn{ padding:6px 10px; gap:6px; font-size:11.5px; }
+  #finTabPregled .fin-cost-row .donut-legend-item{ padding:1px 6px; font-size:11px; }
+  #finTabPregled .fin-cost-row .donut-legend-right{ white-space:nowrap; flex-shrink:0; }
+  #finTabPregled > .stat-grid-2:nth-child(2){ grid-template-columns:1fr 1fr; }
   #finTabPregled .fin-cost-row{ flex:1; min-height:0; align-items:stretch; gap:22px; }
   #finTabPregled #finDonutWrap{ width:140px; height:140px; align-self:center; }
   #finTabPregled .fin-cost-row .donut-legend{ min-height:0; overflow-y:auto; justify-content:flex-start; padding-right:3px; }
@@ -10117,6 +10124,7 @@ function renderFinDonut(){
     labelEl.textContent = it ? it.label : 'RSD ukupno';
   };
   total = renderModernDonut('finDonutRing', 'finDonutLegend', items, { solid:true, fmtLegend:fmtRSD, onHover:showCenter });
+  document.getElementById('finDonutLegend').style.setProperty('--legend-rows', Math.max(1, Math.ceil(items.length/2)));
   if(!items.length) document.getElementById('finDonutLegend').innerHTML = '<div class="stat-panel-sub">Nema troškova za izabrani period.</div>';
   labelEl.textContent = 'RSD ukupno';
   animateCountUp(valEl, Math.round(total), {duration:900});
