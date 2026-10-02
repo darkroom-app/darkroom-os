@@ -1163,6 +1163,21 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fin-top-row .fin-hero-grid{ flex:1; display:flex; flex-direction:column; justify-content:space-between; align-items:stretch; gap:16px; }
 .fin-top-row .fin-hero-side{ flex-direction:row; gap:32px; border-left:none; padding-left:0; border-top:1px solid var(--border); padding-top:14px; }
 .fin-top-row .fin-proj-flow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fin-runway{ margin-top:16px; background:var(--card-soft); border-radius:14px; padding:12px 14px 11px; }
+.fin-runway-head{ display:flex; align-items:baseline; justify-content:space-between; margin-bottom:9px; }
+.fin-runway-label{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); text-transform:uppercase; letter-spacing:0.05em; }
+.fin-runway-val{ font-family:var(--font-display); font-weight:700; font-size:20px; line-height:1; }
+.fin-runway-val small{ font-size:11px; font-weight:600; color:var(--ink-dim); }
+.fin-runway-val.ok{ color:#4C8A55; } .fin-runway-val.mid{ color:var(--gold); } .fin-runway-val.low{ color:var(--coral); }
+.fin-runway-track{ position:relative; height:7px; border-radius:5px; background:var(--border); overflow:hidden; }
+.fin-runway-fill{ height:100%; border-radius:5px; transition:width 1s cubic-bezier(.34,1.1,.4,1); }
+.fin-runway-fill.ok{ background:#4C8A55; } .fin-runway-fill.mid{ background:var(--gold); } .fin-runway-fill.low{ background:var(--coral); }
+.fin-runway-tick{ position:absolute; top:0; bottom:0; width:2px; background:var(--card-soft); }
+.fin-runway-scale{ position:relative; height:12px; margin-top:4px; font-family:var(--font-mono); font-size:8.5px; color:var(--ink-faint); }
+.fin-runway-scale span{ position:absolute; top:0; }
+.fin-runway-scale span[style*="25%"], .fin-runway-scale span[style*="50%"]{ transform:translateX(-50%); }
+.fin-runway-sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); margin-top:6px; }
+.fin-runway-sub b{ color:var(--ink-dim); font-weight:600; }
 .fin-top-row .fin-proj-arrow{ display:none; }
 .fin-top-row .fin-proj-step.capstone{ margin-left:0; }
 .stat-panel-sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); }
@@ -9566,6 +9581,38 @@ function receivablesTotal(){
    summing both would double it. "Plate" is deliberately not one of
    TX_CATEGORIES' manual-entry options, so this can never exclude a real
    hand-entered transaction, only the auto-synced payroll rows. */
+/* "Pokriva troškove": koliko meseci trenutno stanje pokriva po prosečnom
+   mesečnom trošku poslednja 3 završena meseca (plate + odliv). Traka ide do
+   12 meseci; < 3 crveno, 3–6 žuto, 6+ zeleno. */
+function finRunwayHtml(balance){
+  const months = [];
+  for(let i=1;i<=3;i++){
+    let m = TODAY.m - 1 - i, y = TODAY.y;
+    if(m < 0){ m += 12; y -= 1; }
+    months.push({ m, y, cost: finMonthCost(m, y) });
+  }
+  const used = months.filter(x=>x.cost>0);
+  if(!used.length) return '';
+  const avgCost = used.reduce((s,x)=>s+x.cost,0) / used.length;
+  const runway = Math.max(0, balance) / avgCost;
+  const level = runway < 3 ? 'low' : (runway < 6 ? 'mid' : 'ok');
+  const shown = runway >= 12 ? '12+' : runway.toFixed(1).replace('.', ',');
+  const fillPct = Math.min(100, runway/12*100);
+  const span = `${monthAbbrRS[used[used.length-1].m]}–${monthAbbrRS[used[0].m]}`;
+  return `
+    <div class="fin-runway">
+      <div class="fin-runway-head">
+        <span class="fin-runway-label">Pokriva troškove</span>
+        <span class="fin-runway-val ${level}">${shown} <small>${runway >= 12 ? 'meseci' : 'meseca'}</small></span>
+      </div>
+      <div class="fin-runway-track">
+        <div class="fin-runway-fill ${level}" style="width:0%;" data-w="${fillPct.toFixed(1)}%"></div>
+        <span class="fin-runway-tick" style="left:25%;"></span><span class="fin-runway-tick" style="left:50%;"></span>
+      </div>
+      <div class="fin-runway-scale"><span style="left:0;">0</span><span style="left:25%;">3</span><span style="left:50%;">6</span><span style="right:0;">12 mes.</span></div>
+      <div class="fin-runway-sub">Prosečan mesečni trošak (${span}): <b>${fmtRSD(avgCost)}</b></div>
+    </div>`;
+}
 function renderFinHero(){
   const totalIn = allTransactions.filter(t=>t.type==='Priliv').reduce((s,t)=>s+t.amount,0);
   const totalOutTx = allTransactions.filter(t=>t.type==='Odliv' && t.category!=='Plate').reduce((s,t)=>s+t.amount,0);
@@ -9591,8 +9638,11 @@ function renderFinHero(){
       <span class="fin-hero-op">=</span>
       <span class="fin-hero-chip ${net>=0?'in':'out'}">Neto <b>${fmtK(net)}</b></span>
     </div>
-    ${outTrend!=null ? `<div class="fin-hero-trend ${outTrend>=0?'up':'down'}">Trošak ovog meseca ${outTrend>=0?'▲':'▼'} <b>${Math.abs(outTrend).toFixed(0)}%</b> vs prošli mesec</div>` : ''}`;
+    ${outTrend!=null ? `<div class="fin-hero-trend ${outTrend>=0?'up':'down'}">Trošak ovog meseca ${outTrend>=0?'▲':'▼'} <b>${Math.abs(outTrend).toFixed(0)}%</b> vs prošli mesec</div>` : ''}
+    ${finRunwayHtml(balance)}`;
   animateCountUp(document.querySelector('#finHeroMain .fcu'), balance, {suffix:' RSD'});
+  const runwayFill = document.querySelector('#finHeroMain .fin-runway-fill');
+  if(runwayFill){ runwayFill.getBoundingClientRect(); runwayFill.style.width = runwayFill.dataset.w; }
 
   document.getElementById('finHeroSide').innerHTML = `
     <div class="fin-hero-mini">
