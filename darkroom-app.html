@@ -1300,7 +1300,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .ta-more{ background:var(--ink-solid-bg) !important; font-size:10.5px; }
 
 /* ---- HERO ROW ---- */
-.hero-row{ display:grid; grid-template-columns:300px minmax(0,1.45fr) minmax(0,1fr) minmax(0,0.62fr); gap:18px; margin-bottom:16px; flex:0 0 auto; }
+/* Week column ends exactly where the Nedeljni cilj card above ends: that
+   card is 1.15/2.15 of .fun-row (minus its 16px gap); 318px = photo + gap. */
+.hero-row{ display:grid; grid-template-columns:300px calc((100% - 16px) * 1.15 / 2.15 - 318px) 2fr 1fr; gap:18px; margin-bottom:16px; flex:0 0 auto; }
 .hero-todo{ display:flex; flex-direction:column; }
 
 .employee-card{ padding:0; overflow:hidden; display:flex; flex-direction:column; opacity:0; animation:empCardIn .5s cubic-bezier(.25,.8,.35,1) both; }
