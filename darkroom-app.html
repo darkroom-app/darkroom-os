@@ -639,6 +639,47 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 #finDonutWrap .donut-hole-val{ font-size:14px; font-weight:400; font-variant-numeric:tabular-nums; }
 #finDonutWrap .donut-hole-label{ max-width:86%; text-align:center; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .cal-filter-item.sep{ border-top:1px solid var(--border); }
+/* Finansije → Pregled on wide screens: the six panels as a 3×2 grid that
+   fills the viewport instead of three tall rows. Row wrappers are flattened
+   with display:contents; long lists scroll inside their own panel. Narrower
+   screens keep the stacked layout (and page scroll) below. */
+@media (min-width:1500px){
+  #finTabPregled.active{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); grid-template-rows:repeat(2, minmax(340px, 1fr)); gap:14px; }
+  #finTabPregled > .stat-grid-2{ display:contents; }
+  #finTabPregled .stat-panel{ margin:0; min-height:0; overflow:hidden; display:flex; flex-direction:column; padding:14px 16px !important; }
+  #finTabPregled .stat-panel-head{ margin-bottom:10px; flex-shrink:0; }
+  /* Trenutno stanje */
+  #finTabPregled .fin-hero-val{ font-size:30px; margin-bottom:10px; }
+  #finTabPregled .fin-hero-grid{ gap:10px; }
+  #finTabPregled .fin-hero-side{ padding-top:10px; }
+  #finTabPregled .fin-runway{ margin-top:10px; padding:10px 12px 9px; }
+  /* Projekcija */
+  #finTabPregled .fin-proj-flow{ gap:8px; margin-bottom:8px; }
+  #finTabPregled .fin-proj-step{ padding:10px 12px; border-radius:13px; }
+  #finTabPregled .fin-proj-step .kpi-icon{ width:24px; height:24px; margin-bottom:6px; }
+  #finTabPregled .fin-proj-step .kpi-val{ font-size:17px; }
+  #finTabPregled .fin-proj-step-sub{ margin-top:6px; padding-top:6px; }
+  #finTabPregled .sal-progress-row{ margin-bottom:6px; }
+  /* Priliv vs odliv */
+  #finTabPregled .fin-highlight-badge{ gap:8px; font-size:9.5px; padding:5px 10px; }
+  /* Struktura troška + tabs */
+  #finTabPregled .fin-cost-head{ flex-wrap:wrap; }
+  #finTabPregled .fin-cost-row{ flex:1; min-height:0; align-items:stretch; gap:18px; }
+  #finTabPregled #finDonutWrap{ width:150px; height:150px; align-self:center; }
+  #finTabPregled .fin-cost-row .donut-legend{ min-height:0; overflow-y:auto; justify-content:flex-start; padding-right:3px; }
+  #finTabPregled #costTabTop, #finTabPregled #costTabRecent{ flex:1; min-height:0; overflow-y:auto; }
+  #finTabPregled #costTabRecent .tx-head, #finTabPregled #costTabRecent .tx-row{ grid-template-columns:0.9fr 1fr 1.5fr 0.8fr 1.3fr; gap:8px; padding:8px 6px; }
+  #finTabPregled #costTabRecent .tx-head > :nth-child(2), #finTabPregled #costTabRecent .tx-row > :nth-child(2){ display:none; }
+  /* Vrednost projekta */
+  #finTabPregled .pv-toolbar{ margin-bottom:10px; }
+  #finTabPregled .pv-summary{ grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; }
+  #finTabPregled .pv-stat{ padding:7px 10px; display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  #finTabPregled .pv-stat-val{ font-size:13px; order:2; }
+  #finTabPregled .pv-stat-label{ margin-top:0; }
+  #finTabPregled .pv-list{ max-height:none; flex:1; min-height:0; }
+  /* Najvredniji projekti / Prihod po klijentu */
+  #finTabPregled #rankPanel .lb-list{ max-height:none; flex:1; min-height:0; gap:10px; }
+}
 /* Najvredniji projekti / Prihod po klijentu (merged panel) */
 .rank-head{ flex-wrap:wrap; gap:8px; }
 .rank-head .cal-view-toggle{ display:inline-flex; }
@@ -9849,11 +9890,25 @@ function renderFinFlowChart(){
     dotOut.style.top = yFor(monthOut[i])+'px';
     const net = monthIn[i] - monthOut[i];
     readout.innerHTML = `<b>${monthNamesFull[i]} ${year}.</b><span class="in">Priliv ${fmtRSD(monthIn[i])}</span><span class="out">Odliv ${fmtRSD(monthOut[i])}</span><span class="${net>=0?'in':'out'}">Neto ${net<0?'−':''}${fmtRSD(Math.abs(net))}</span>`;
-    readout.style.left = pct+'%';
-    readout.style.transform = pct < 22 ? 'translateX(0)' : (pct > 78 ? 'translateX(-100%)' : 'translateX(-50%)');
+    // Center the readout on the month, but keep it fully inside the chart.
+    const rowW = readout.parentElement.clientWidth, bw = readout.offsetWidth;
+    if(rowW && bw){
+      readout.style.transform = 'none';
+      readout.style.left = Math.max(0, Math.min(rowW - bw, pct/100*rowW - bw/2)) + 'px';
+    } else {
+      readout.style.left = pct+'%';
+      readout.style.transform = pct < 22 ? 'translateX(0)' : (pct > 78 ? 'translateX(-100%)' : 'translateX(-50%)');
+    }
     labels.forEach((l,j)=>l.classList.toggle('active', j===i));
   }
   const restIdx = ()=> finFlowPinnedIdx!=null ? finFlowPinnedIdx : lastIdx;
+  // Re-place the readout once the chart actually has a width (it can be
+  // rendered while the view is still hidden) and whenever it resizes.
+  if(window.ResizeObserver){
+    if(wrap._finFlowRO) wrap._finFlowRO.disconnect();
+    wrap._finFlowRO = new ResizeObserver(()=> showMonth(restIdx()));
+    wrap._finFlowRO.observe(plot);
+  }
   const idxAt = (clientX)=>{
     const r = plot.getBoundingClientRect();
     const i = Math.round(((clientX - r.left)/r.width) * (n-1));
@@ -9881,7 +9936,7 @@ function renderFinFlowChart(){
       requestAnimationFrame(()=>{ path.style.strokeDashoffset = 0; });
     });
   });
-  setTimeout(()=>{ wrap.classList.add('shown'); }, 200);
+  setTimeout(()=>{ wrap.classList.add('shown'); showMonth(restIdx()); }, 200);
 }
 
 /* Struktura troska: umesto donuta koji je nekad imao samo jednu stvarnu
