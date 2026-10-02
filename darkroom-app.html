@@ -3857,14 +3857,16 @@ function renderDashboardProjects(){
   document.querySelectorAll('.dash-proj-view-btn').forEach(b=>b.classList.toggle('active', b.dataset.mode===dashProjViewMode));
   projGridEl.classList.toggle('list-mode', dashProjViewMode==='list');
 
-  // Staggered bottom-to-top: the last row lands first, each row above it
-  // follows shortly after. Capped at 8 rows so a long (scrollable) list
-  // doesn't push the topmost, most-visible row's entrance out too far.
+  // Staggered bottom-to-top across the rows that are actually on screen
+  // (≈4 grid rows / 8 list rows): the lowest visible row lands first, each
+  // row above follows. Rows below the fold get no delay — counting the wave
+  // from the list's real last row gave every visible row of a long list the
+  // same capped delay, so they all popped in at once.
   projGridEl.classList.toggle('no-entrance', dashProjSuppressEntrance);
   const cols = dashProjViewMode==='list' ? 1 : 2;
   const totalRows = Math.ceil(list.length / cols);
-  const cappedRows = Math.min(totalRows, 8);
-  const rowDelay = (i) => Math.min(totalRows - 1 - Math.floor(i/cols), cappedRows-1) * 60;
+  const waveRows = Math.min(totalRows, dashProjViewMode==='list' ? 8 : 4);
+  const rowDelay = (i) => { const r = Math.floor(i/cols); return r < waveRows ? (waveRows - 1 - r) * 60 : 0; };
   projGridEl.innerHTML = list.map((p,i)=>{
     const rows = (personal ? p.kadrovi.filter(k=>k.employee===u.key) : p.kadrovi).slice(0, 2);
     return `
