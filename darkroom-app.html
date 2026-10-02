@@ -697,12 +697,27 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   #finTabPregled .pv-list{ max-height:none; flex:1; min-height:0; }
   /* Row 3 — Najvredniji projekti / Prihod po klijentu */
   #finTabPregled #rankPanel .lb-list{ max-height:none; flex:1; min-height:0; gap:10px; }
+  #finTabPregled #inflowBoard{ flex:1; min-height:0; }
+  #finTabPregled #inflowList{ gap:6px; }
+  #finTabPregled .inflow-summary{ margin-bottom:8px; }
+  #finTabPregled #rankTabs .dash-proj-tab{ padding:5px 9px; font-size:11px; }
 }
 /* Najvredniji projekti / Prihod po klijentu (merged panel) */
 .rank-head{ flex-wrap:wrap; gap:8px; }
 .rank-head .cal-view-toggle{ display:inline-flex; }
 .rank-head .dash-proj-tab{ display:inline-flex; align-items:center; }
 #rankPanel .lb-list{ max-height:470px; overflow-y:auto; padding-right:3px; }
+.rank-controls{ display:flex; align-items:center; gap:6px; }
+.rank-controls .cal-filter-btn{ padding:5px 10px; gap:6px; font-size:11.5px; }
+.inflow-board{ display:flex; flex-direction:column; min-height:0; }
+.inflow-summary{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:6px; margin-bottom:10px; flex-shrink:0; }
+#inflowList{ gap:7px; }
+.inflow-row{ display:grid; grid-template-columns:150px minmax(0,1fr) 118px; align-items:center; gap:12px; }
+.inflow-row .lb-value{ min-width:0; font-variant-numeric:tabular-nums; }
+.inflow-label{ font-size:11.5px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.lb-fill.inflow-fill{ background:linear-gradient(90deg, #3d7046, #4C8A55); }
+.inflow-partial{ font-family:var(--font-mono); font-size:8.5px; font-weight:400; color:var(--gold); margin-left:4px; text-transform:uppercase; letter-spacing:0.04em; }
+.inflow-row.future{ opacity:0.4; }
 /* Vrednost projekta */
 #projValuePanel{ display:flex; flex-direction:column; }
 .pv-toolbar{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
@@ -2903,16 +2918,29 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
           <div class="stat-panel" id="rankPanel">
             <div class="stat-panel-head rank-head">
               <div class="cal-view-toggle" id="rankTabs">
-                <button class="dash-proj-tab active" data-rank="projects"><i class="ui-ico sm" data-ico="layers"></i>Najvredniji projekti</button>
+                <button class="dash-proj-tab active" data-rank="inflow"><i class="ui-ico sm" data-ico="trendUp"></i>Prilivi</button>
+                <button class="dash-proj-tab" data-rank="projects"><i class="ui-ico sm" data-ico="layers"></i>Najvredniji projekti</button>
                 <button class="dash-proj-tab" data-rank="clients"><i class="ui-ico sm" data-ico="award"></i>Prihod po klijentu</button>
               </div>
-              <div class="cal-view-toggle" id="rankStatusFilter">
+              <div class="rank-controls" id="inflowControls">
+                <div class="cal-view-toggle" id="inflowModes">
+                  <button class="dash-proj-tab active" data-mode="month">Mesečno</button>
+                  <button class="dash-proj-tab" data-mode="quarter">Kvartalno</button>
+                  <button class="dash-proj-tab" data-mode="year">Godišnje</button>
+                </div>
+                <div class="cal-filter" id="filterInflowYear"><div class="cal-filter-btn"><span id="filterInflowYearLabel">—</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></div><div class="cal-filter-menu" id="filterInflowYearMenu"></div></div>
+              </div>
+              <div class="cal-view-toggle" id="rankStatusFilter" style="display:none;">
                 <button class="dash-proj-tab active" data-st="all">Svi</button>
                 <button class="dash-proj-tab" data-st="active">Aktivni</button>
                 <button class="dash-proj-tab" data-st="done">Završeni</button>
               </div>
             </div>
-            <div class="lb-list" id="topValueProjectsList"></div>
+            <div class="inflow-board" id="inflowBoard">
+              <div class="inflow-summary" id="inflowSummary"></div>
+              <div class="lb-list" id="inflowList"></div>
+            </div>
+            <div class="lb-list" id="topValueProjectsList" style="display:none;"></div>
             <div class="lb-list" id="finClientLeaderboard" style="display:none;"></div>
           </div>
         </div>
@@ -10257,11 +10285,76 @@ document.querySelectorAll('#rankTabs .dash-proj-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
     const tab = btn.dataset.rank;
     document.querySelectorAll('#rankTabs .dash-proj-tab').forEach(b=>b.classList.toggle('active', b===btn));
+    document.getElementById('inflowBoard').style.display = tab==='inflow' ? '' : 'none';
     document.getElementById('topValueProjectsList').style.display = tab==='projects' ? '' : 'none';
     document.getElementById('finClientLeaderboard').style.display = tab==='clients' ? '' : 'none';
-    document.getElementById('rankStatusFilter').style.visibility = tab==='projects' ? '' : 'hidden';
-    if(tab==='projects') renderTopValueProjects(); else renderClientRevenueBoard();
+    document.getElementById('inflowControls').style.display = tab==='inflow' ? '' : 'none';
+    document.getElementById('rankStatusFilter').style.display = tab==='projects' ? '' : 'none';
+    if(tab==='inflow') renderInflowBoard();
+    else if(tab==='projects') renderTopValueProjects();
+    else renderClientRevenueBoard();
   });
+});
+
+/* Prilivi: Priliv transactions summed per month / quarter (of one year) or
+   per year. For the current year, periods that haven't started yet are
+   shown dimmed instead of as a zero bar. */
+let inflowMode = 'month', inflowYear = null;
+function renderInflowBoard(){
+  const years = finFlowAvailableYears();
+  if(inflowYear==null) inflowYear = TODAY.y;
+  document.getElementById('filterInflowYearLabel').textContent = `${inflowYear}.`;
+  document.getElementById('filterInflowYearMenu').innerHTML = years.map(y=>`<div class="cal-filter-item" data-val="${y}">${y}.</div>`).join('');
+  wireCalFilter('filterInflowYear', v=>{ inflowYear = parseInt(v,10); renderInflowBoard(); });
+  document.getElementById('filterInflowYear').style.display = inflowMode==='year' ? 'none' : '';
+  document.querySelectorAll('#inflowModes .dash-proj-tab').forEach(b=>b.classList.toggle('active', b.dataset.mode===inflowMode));
+
+  const inflow = allTransactions.filter(t=>t.type==='Priliv' && t.date);
+  const sumWhere = fn => inflow.filter(fn).reduce((s,t)=>s+t.amount,0);
+  let rows;
+  if(inflowMode==='year'){
+    rows = years.slice().sort((a,b)=>a-b).map(y=>({ label:`${y}.`, value:sumWhere(t=>txYear(t.date)===y), future:false, partial:y===TODAY.y }));
+  } else if(inflowMode==='quarter'){
+    rows = [0,1,2,3].map(q=>({
+      label:`Q${q+1}`, hint:finQuarterSpan(q),
+      value:sumWhere(t=>txYear(t.date)===inflowYear && Math.floor(txMonth(t.date)/3)===q),
+      future: inflowYear===TODAY.y && q*3 > TODAY.m-1,
+      partial: inflowYear===TODAY.y && Math.floor((TODAY.m-1)/3)===q,
+    }));
+  } else {
+    rows = monthNamesFull.map((name,m)=>({
+      label:name,
+      value:sumWhere(t=>txYear(t.date)===inflowYear && txMonth(t.date)===m),
+      future: inflowYear===TODAY.y && m > TODAY.m-1,
+      partial: inflowYear===TODAY.y && m === TODAY.m-1,
+    }));
+  }
+  const counted = rows.filter(r=>!r.future);
+  const total = counted.reduce((s,r)=>s+r.value,0);
+  // Average only over finished periods — the running month/quarter/year would drag it down.
+  const finished = counted.filter(r=>!r.partial);
+  const avg = finished.length ? finished.reduce((s,r)=>s+r.value,0)/finished.length : 0;
+  const best = counted.reduce((b,r)=> r.value > (b ? b.value : -1) ? r : b, null);
+  const unit = inflowMode==='year' ? 'godišnje' : (inflowMode==='quarter' ? 'po kvartalu' : 'mesečno');
+  const scope = inflowMode==='year' ? `Ukupno ${years[years.length-1]}–${TODAY.y}` : `Ukupno ${inflowYear}.${inflowYear===TODAY.y ? ' (do danas)' : ''}`;
+  document.getElementById('inflowSummary').innerHTML = `
+    <div class="pv-stat"><div class="pv-stat-val in">${fmtRSD(total)}</div><div class="pv-stat-label">${scope}</div></div>
+    <div class="pv-stat"><div class="pv-stat-val">${fmtRSD(avg)}</div><div class="pv-stat-label">Prosek ${unit}</div></div>
+    <div class="pv-stat"><div class="pv-stat-val">${best && best.value>0 ? escapeHtml(best.label) : '—'}</div><div class="pv-stat-label">Najjači period${best && best.value>0 ? ' · '+fmtRSD(best.value) : ''}</div></div>`;
+  const max = Math.max(...counted.map(r=>r.value), 1);
+  const listEl = document.getElementById('inflowList');
+  listEl.innerHTML = rows.map(r=>`
+    <div class="inflow-row${r.future ? ' future' : ''}">
+      <div class="inflow-label">${escapeHtml(r.label)}${r.hint ? ` <span class="cal-filter-hint">${r.hint}</span>` : ''}${r.partial ? ' <span class="inflow-partial">u toku</span>' : ''}</div>
+      <div class="lb-track"><div class="lb-fill inflow-fill" data-w="${r.future ? 0 : (r.value/max)*100}" style="width:0%"></div></div>
+      <div class="lb-value">${r.future ? '—' : fmtRSD(r.value)}</div>
+    </div>`).join('');
+  setTimeout(()=>{
+    listEl.querySelectorAll('.lb-fill').forEach((el,i)=>{ setTimeout(()=>{ el.style.width = el.dataset.w+'%'; }, i*50); });
+  }, 120);
+}
+document.querySelectorAll('#inflowModes .dash-proj-tab').forEach(btn=>{
+  btn.addEventListener('click', ()=>{ inflowMode = btn.dataset.mode; renderInflowBoard(); });
 });
 document.querySelectorAll('#rankStatusFilter .dash-proj-tab').forEach(btn=>{
   btn.addEventListener('click', ()=>{
@@ -12027,6 +12120,7 @@ function initFinansije(){
   renderFinFlowChart();
   renderFinDonut();
   renderProjectValueDonut();
+  renderInflowBoard();
   renderTopValueProjects();
   renderClientRevenueBoard();
   renderTopExpenses();
@@ -12067,7 +12161,7 @@ function initFinansije(){
    spin already replay on their own). Filter state is kept. */
 function replayFinPregled(){
   renderFinHero(); renderFinProjection(); renderFinFlowChart(); renderFinDonut();
-  renderProjectValueDonut(); renderTopValueProjects(); renderClientRevenueBoard(); renderTopExpenses();
+  renderProjectValueDonut(); renderInflowBoard(); renderTopValueProjects(); renderClientRevenueBoard(); renderTopExpenses();
 }
 function replayFinPlate(){ renderSalBreakdown(); renderSalPayrun(); renderSalChart(); renderSalProgress(); }
 function replayFinansije(){
