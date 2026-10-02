@@ -1155,6 +1155,16 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 #view-finansije .kpi-card::before{ display:none; }
 #view-finansije .stat-tab-panel > .stat-panel{ margin-bottom:16px; }
 #view-finansije .fin-proj-step.capstone{ background:var(--card-soft); }
+/* Trenutno stanje + Projekcija side by side: hero stacks its side stats
+   under the balance, projection steps become a 2×2 grid without arrows. */
+.fin-top-row{ grid-template-columns:1fr 1.35fr; align-items:stretch; }
+.fin-top-row .fin-hero{ display:flex; flex-direction:column; padding:18px 20px 20px; }
+.fin-top-row .fin-hero-label{ display:none; }
+.fin-top-row .fin-hero-grid{ flex:1; display:flex; flex-direction:column; justify-content:space-between; align-items:stretch; gap:16px; }
+.fin-top-row .fin-hero-side{ flex-direction:row; gap:32px; border-left:none; padding-left:0; border-top:1px solid var(--border); padding-top:14px; }
+.fin-top-row .fin-proj-flow{ display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.fin-top-row .fin-proj-arrow{ display:none; }
+.fin-top-row .fin-proj-step.capstone{ margin-left:0; }
 .stat-panel-sub{ font-family:var(--font-mono); font-size:9.5px; color:var(--ink-faint); }
 
 /* monthly bar chart */
@@ -2673,7 +2683,9 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 
       <!-- TAB 1: PREGLED -->
       <div class="stat-tab-panel active" id="finTabPregled">
+        <div class="stat-grid-2 fin-top-row">
         <div class="stat-panel fin-hero">
+          <div class="stat-panel-head"><div class="stat-panel-title"><i class="ui-ico" data-ico="wallet"></i>Trenutno stanje</div></div>
           <div class="fin-hero-grid">
             <div id="finHeroMain"></div>
             <div class="fin-hero-side" id="finHeroSide"></div>
@@ -2693,6 +2705,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
             <div class="sal-progress-track" id="finProjPendingFillWrap"><div class="sal-progress-fill" id="finProjPendingFill" style="width:0%;"></div></div>
           </div>
           <div class="stat-panel-sub" id="finProjPendingText" style="margin-top:6px;"></div>
+        </div>
         </div>
 
         <div class="stat-grid-2">
@@ -3723,6 +3736,7 @@ const APP_ZOOM = parseFloat(getComputedStyle(document.documentElement).getProper
 // Line icons (24×24, stroke = currentColor) used instead of emoji. Static
 // markup uses <i class="ui-ico" data-ico="name"></i>; templates use uiIcon().
 const ICONS = {
+  wallet:'<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20"/><path d="M6 15h4"/>',
   target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
   trendUp:'<path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/>',
   trendDown:'<path d="M3 3v18h18"/><path d="M7 8l4 5 3-3 5 7"/>',
