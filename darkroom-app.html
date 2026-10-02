@@ -1206,11 +1206,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .raise-hist-stat-val.down{ color:var(--coral); }
 .raise-hist-stat-amt{ font-family:var(--font-mono); font-size:10px; color:var(--ink-dim); }
 .fun-row{ display:grid; grid-template-columns:1.15fr 1fr; gap:16px; margin-bottom:16px; flex:0 0 auto; }
-.fun-card{ border-radius:20px; border:1px solid var(--border); padding:15px 20px; display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; background:var(--card); }
-.fun-card::before{ content:""; position:absolute; inset:0; z-index:0; }
-.fun-card > *{ position:relative; z-index:1; }
+.fun-card{ border-radius:20px; border:1px solid var(--border); padding:15px 20px; display:flex; align-items:center; gap:16px; position:relative; overflow:hidden; background:var(--bg-sidebar); }
 
-.fun-goal::before{ background:radial-gradient(130% 170% at 0% 0%, var(--gold-soft), transparent 62%); }
 .ring-wrap{ position:relative; width:72px; height:72px; flex-shrink:0; }
 .ring-wrap svg{ width:100%; height:100%; transform:rotate(-90deg); }
 .ring-track{ fill:none; stroke:var(--card-soft); stroke-width:9; }
@@ -1280,7 +1277,6 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 .fw-fog{ position:absolute; height:4px; border-radius:3px; background:rgba(222,218,201,0.7); animation:fwFogDrift 4s ease-in-out infinite; }
 @keyframes fwFogDrift{ 0%,100%{ transform:translateX(-4px); } 50%{ transform:translateX(4px); } }
 
-.fun-team::before{ background:radial-gradient(130% 170% at 100% 0%, var(--teal-soft), transparent 62%); }
 .team-info{ flex:1; min-width:0; }
 .ti-kicker{ font-family:var(--font-mono); font-size:9px; color:var(--teal); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:4px; }
 .ti-title{ font-family:var(--font-display); font-weight:700; font-size:15.5px; margin-bottom:4px; }
@@ -1382,9 +1378,8 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
   padding:17px 18px 18px;
   overflow:hidden;
 }
-/* Dashboard windows match the sidebar's tone instead of stark white —
-   .fun-card (Nedeljni cilj/Najviše sarađuješ sa) is a separate class so
-   its corner gradients are untouched by this. */
+/* Dashboard windows match the sidebar's tone instead of stark white
+   (.fun-card sets the same background on its own). */
 #view-pregled .panel{ background:var(--bg-sidebar); }
 .panel-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex:0 0 auto; }
 .panel-title{ display:flex; align-items:center; gap:8px; font-family:var(--font-display); font-weight:600; font-size:13.5px; }
