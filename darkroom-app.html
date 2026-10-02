@@ -152,6 +152,8 @@ body{
 .sidebar{
   background:var(--bg-sidebar);
   border-right:1px solid var(--border);
+  /* Same 30px rounding on the right as the shell gives it on the left. */
+  border-radius:0 30px 30px 0;
   display:flex; flex-direction:column;
   padding:24px 18px;
   position:relative; z-index:1;
@@ -1739,7 +1741,7 @@ body.app-booting .login-screen, body.app-booting .shell, body.app-booting #chatF
 }
 @media (max-width:1000px){
   .shell{ grid-template-columns:1fr; border-radius:22px; }
-  .sidebar{ flex-direction:row; align-items:center; border-right:none; border-bottom:1px solid var(--border); padding:14px; overflow-x:auto; overflow-y:visible; }
+  .sidebar{ flex-direction:row; align-items:center; border-right:none; border-radius:0; border-bottom:1px solid var(--border); padding:14px; overflow-x:auto; overflow-y:visible; }
   .brand{ padding:0 14px 0 0; }
   .nav{ flex-direction:row; }
   .sidebar-foot{ margin-top:0; margin-left:auto; padding-top:0; }
