@@ -27,7 +27,18 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  event.respondWith(fetch(event.request));
+  const req = event.request;
+  // The page itself: always revalidate with the server (cache:'no-cache'),
+  // otherwise a normal refresh can keep serving the previous deploy for up to
+  // GitHub Pages' 10-minute max-age. redirect:'manual' keeps a redirected
+  // response valid for a navigation request.
+  if (req.mode === 'navigate') {
+    event.respondWith(
+      fetch(req.url, { cache: 'no-cache', credentials: 'include', redirect: 'manual' }).catch(() => fetch(req))
+    );
+    return;
+  }
+  event.respondWith(fetch(req));
 });
 
 // push-notify (the Edge Function) sends { title, body, url } as JSON —
