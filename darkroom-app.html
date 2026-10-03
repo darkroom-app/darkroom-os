@@ -5671,6 +5671,27 @@ document.getElementById('evDelete').addEventListener('click', async ()=>{
   renderCalendar();
   renderWeekWidget();
 });
+// Enter in the event modal = Sačuvaj / Dodaj stavku (not in textareas, and
+// not in a dropdown's search box, where Enter picks the first match).
+let evEnterAt = 0;
+document.getElementById('eventModalOverlay').addEventListener('keydown', (e)=>{
+  if(e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
+  if(e.target.matches('textarea, .xsel-search, button')) return;
+  const submit = document.getElementById('evSubmit');
+  if(submit.style.display === 'none' || submit.disabled) return;
+  e.preventDefault();
+  // Held key / quick double Enter must not save (or create) the item twice.
+  if(e.repeat || Date.now() - evEnterAt < 1000) return;
+  evEnterAt = Date.now();
+  submit.click();
+});
+// Moji sati / Radna nedelja hour fields save on change — Enter commits too.
+document.addEventListener('keydown', (e)=>{
+  if(e.key === 'Enter' && e.target.matches && e.target.matches('.msati-reg, .msati-ot')){
+    e.preventDefault();
+    e.target.blur();
+  }
+});
 document.getElementById('evSubmit').addEventListener('click', async ()=>{
   const kind = evActiveTab;
   let newEvent;
